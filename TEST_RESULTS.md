@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-17 09:40 ET, **119 passed, 0 failed** in about 12 seconds on Python 3.13.18.
+Latest full run: 2026-11-17 09:30 ET, **119 passed, 0 failed** in about 10 seconds on Python 3.13.18.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
