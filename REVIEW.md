@@ -26,6 +26,9 @@ The arithmetic in C.11 is right (edge 2.63%, sd 1.44%, P 0.966, and 0.40% / P 0.
 For a signal with no paper, P ≥ 0.80 needs t ≥ 0.8416 × sqrt(1 + σ²/τ²). A zero-edge signal passes that 3.0% of the time with 1 year of record, 7.2% with 2 years, 11.7% with 4 years, 17.3% with 16 years, and 20% in the limit. The 95% exclusion only holds because of the Tier 4 gate.
 **Change:** C.12 now states the test on the joint gate (Tier 4 economic test and P ≥ 0.80). The 0.80 default stays. See D1 for the option of raising it.
 
+**E30. The Tier 4 test alone meets the 95% noise bar with no margin.** Found while building the C.12 tests on 2026-11-17. The economic test is a one-sided 5% test, so it admits about 5% of zero-edge signals (measured: 4.9% at 2000 resamples, 5.7% at 300). A C.12 test that checks Tier 4 alone against "excluded in at least 95%" passes or fails on the random seed. The bar holds with margin only because Tier 4 sits behind Tier 3, an independent replication significant at 5%.
+**Change:** C.12 now tests the full path (Tier 3, Tier 4, P\_s). A separate test pins the Tier 4 rate near 5%. The Tier 3 significance level is a config value.
+
 **E3. For published signals the P gate depends almost only on the paper, and δ cancels out.**
 With paper evidence alone, μ̂/√V = t_paper / sqrt(1 + 0.25 t_paper²). δ appears in numerator and denominator and drops out. Any paper with in-sample t above 0.93 gives P ≥ 0.80, and P can never exceed 0.977. A published signal with a one-year out-of-sample record of -10% still shows P = 0.93. This is by construction of ω = 0.5 × δ × R.
 **Change:** documented in C.4 as a known property. The Tier 4 gate is named as the binding test for published signals. No formula change.

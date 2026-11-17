@@ -154,6 +154,37 @@ CHECKS: tuple[tuple[str, Check], ...] = (
 )
 
 
+FLOAT_TOLERANCE = 1e-9  # numeric round-off only, not a risk threshold
+
+
+def evaluate_portfolio(weights: dict[str, float], clusters: dict[str, str], limits: HardLimits) -> tuple[str, ...]:
+    """Independent check of a proposed target book. Returns reasons, empty when it passes.
+
+    This runs before any order is built from the optimizer's output. A name with no
+    cluster mapping blocks the book.
+    """
+    reasons: list[str] = []
+    if any(w != w for w in weights.values()):
+        return ("target weights contain a non-number",)
+    if any(w < -FLOAT_TOLERANCE for w in weights.values()):
+        reasons.append("short position in target book")
+    if sum(weights.values()) > 1.0 + FLOAT_TOLERANCE:
+        reasons.append("target book uses leverage")
+    for asset, weight in weights.items():
+        if weight > limits.max_position_pct_equity + FLOAT_TOLERANCE:
+            reasons.append(f"{asset} at {weight:.2%} over position limit {limits.max_position_pct_equity:.2%}")
+    totals: dict[str, float] = {}
+    for asset, weight in weights.items():
+        if asset not in clusters:
+            reasons.append(f"{asset} has no cluster mapping")
+            continue
+        totals[clusters[asset]] = totals.get(clusters[asset], 0.0) + weight
+    for cluster, total in totals.items():
+        if total > limits.max_cluster_pct_equity + FLOAT_TOLERANCE:
+            reasons.append(f"cluster {cluster} at {total:.2%} over limit {limits.max_cluster_pct_equity:.2%}")
+    return tuple(reasons)
+
+
 def limits_hash(limits: HardLimits) -> str:
     return sha256_hex(canonical_json(limits.model_dump()))[:24]
 

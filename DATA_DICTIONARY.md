@@ -127,13 +127,13 @@ Event types in use: `observation_ingested`, `forecast_issued`, `order_intent_cre
 
 ## 7. Composite records
 
-### 7.1 Evidence and EdgeEstimate (planned, `composite/edge.py`)
+### 7.1 Evidence and EdgeEstimate (built, `composite/edge.py`)
 
 `Evidence`: `kind` (`family_prior`, `paper`, `out_of_sample`), `value` (annual return at 10% volatility, as a fraction), `variance`.
 
 `EdgeEstimate`: `mu_hat`, `variance`, `prob_positive`, `evidence_used`.
 
-### 7.2 Signal state (planned as a registry table, used as an in-memory record now)
+### 7.2 Signal state (built as the in-memory `SignalState` and `SignalInput` records in `composite/`. The registry table is planned)
 
 | Field | Meaning |
 | --- | --- |
@@ -150,7 +150,7 @@ Event types in use: `observation_ingested`, `forecast_issued`, `order_intent_cre
 | `feed_healthy` | Data feed state today |
 | `tier4_long_short_pass`, `tier4_long_only_pass` | The two parts of the Tier 4 economic test |
 
-### 7.3 CompositeRun, the C.10 output contract (planned, `composite/run.py`)
+### 7.3 CompositeRun, the C.10 output contract (built, `composite/run.py`)
 
 | Field | Meaning |
 | --- | --- |
@@ -163,10 +163,12 @@ Event types in use: `observation_ingested`, `forecast_issued`, `order_intent_cre
 | `score` | S per asset |
 | `alpha` | α per asset, null when not calibrated |
 | `calibration_status` | `calibrated` or `signal_strength_only` |
-| `optimizer_status` | `optimal`, `vol_below_target`, `reduce_only`, `not_run`, `failed` |
+| `optimizer_status` | `optimal`, `vol_below_target`, `vol_target_unreachable`, `reduce_only`, `not_run`, `failed` |
 | `target_weights` | x per asset |
 | `ex_ante_vol_annual` | Forecast volatility of the target book |
 | `contributions` | Per asset, each signal's share of its α |
+| `calibration_reasons` | Why calibration failed, empty when calibrated |
+| `benchmarks` | Scores from the frozen-weight Composite and the equal-weight challenger, computed in the same run |
 
 ## 8. Planned schemas, from the spec
 

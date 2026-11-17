@@ -29,7 +29,11 @@ def test_event_flows_end_to_end(tmp_path):
     assert by_kind["order_intent_created"]["forecast_id"] == result["forecast_id"]
     assert by_kind["risk_decision"]["client_order_id"] == result["client_order_id"]
     assert by_kind["fill"]["client_order_id"] == result["client_order_id"]
-    assert all(r["actor"] and r["strategy_version"].startswith("config:3.1.0:") for r in records)
+    from candleisgreen.core.config import load_config
+
+    cfg = load_config()
+    expected = f"config:{cfg.config_version}:{cfg.config_hash}"
+    assert all(r["actor"] and r["strategy_version"] == expected for r in records)
 
 
 def test_ids_are_identical_across_independent_runs(tmp_path):

@@ -68,6 +68,11 @@ class EligibilityConfig(_Section):
     min_prob_positive: float
     min_oos_days: int
     min_events: int
+    interval_level: float = Field(gt=0, lt=1)
+    cost_multiplier: float = Field(ge=1)
+    bootstrap_block_days: int = Field(gt=0)
+    bootstrap_resamples: int = Field(gt=0)
+    replication_significance: float = Field(gt=0, lt=1)
 
 
 class WeightConfig(_Section):
@@ -79,6 +84,7 @@ class WeightConfig(_Section):
     max_monthly_relative_change: float
     max_monthly_absolute_change_floor: float
     new_signal_initial_weight_max: float
+    duplicate_correlation_threshold: float
 
 
 class AlphaConfig(_Section):
@@ -99,6 +105,11 @@ class OptimizerConfig(_Section):
     sector_cap: float
     no_trade_band: float
     lambda_bisection_iterations: int
+    lambda_min: float = Field(gt=0)
+    lambda_max: float = Field(gt=0)
+    specific_var_shrink: float = Field(ge=0, le=1)
+    min_history_days: int
+    alpha_horizon_days: int
 
 
 class CompositeConfig(_Section):

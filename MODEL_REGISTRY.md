@@ -82,7 +82,7 @@ A result on data without delisted securities is labeled SURVIVORSHIP-BIASED and 
 | Refit schedule | Weights on the first trading day of each month, and at once on a demotion or feed failure. Calibration monthly |
 | Benchmark | Frozen-weight Composite, champion against challenger, and a broad US equity ETF mixed with cash to the same volatility target |
 | Evidence tier | Not applicable. It inherits the tiers of its signals |
-| Status | See `HANDOFF.md` for what is built. It has no eligible signals, so it produces no orders |
+| Status | Built and tested on synthetic inputs (C.2 and C.4 to C.10, plus the C.12 tests). The C.3 research portfolio builder is not built. It has no real eligible signals, so it produces no orders |
 | Code | `candleisgreen/composite/` |
 
 Composite parameters, all in `config/default.yaml` under `composite`:

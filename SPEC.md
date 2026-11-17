@@ -237,7 +237,7 @@ A pure-noise signal with no paper and an out-of-sample record of 0.5% (standard 
 ### C.12 Required tests
 
 - Synthetic signals with known true edges: estimates recover them within their stated intervals at the stated rate.
-- Pure-noise signals are excluded in at least 95% of simulated runs by the joint gate (Tier 4 economic test and P\_s). P\_s alone lets through up to 20% of zero-edge signals with long records, so it is not tested alone.
+- Pure-noise signals are excluded in at least 95% of simulated runs by the joint gate a signal actually faces: Tier 3 replication on independent data, the Tier 4 economic test after its cutoff, and P\_s. P\_s alone lets through up to 20% of zero-edge signals with long records. The Tier 4 test alone lets through about 5%, which is exactly the 95% bar with no margin, so neither is tested alone against it.
 - Two identical copies of a signal together receive the same total weight as one copy, within 2 percentage points, measured before caps.
 - With three signals the caps leave `unallocated_weight` of 40% and the weighting step ends.
 - A score computed with any input whose `first_usable_at` is after decision time fails the build.

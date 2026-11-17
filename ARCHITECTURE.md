@@ -70,7 +70,7 @@ candleisgreen/
   data/                     pit_store.py is built
   research/                 claim cards, evidence graph, experiment registry (planned, Phase 3)
   models/                   fixture_baseline.py is a Phase 0 stub. Level A models are planned
-  composite/                spec section C. See MODEL_REGISTRY.md for status
+  composite/                spec section C, built except the C.3 research portfolio builder. See HANDOFF.md
   backtests/                planned, Phase 1 and 3
   risk/                     engine.py is built
   broker/                   base.py and simulator.py are built
@@ -156,9 +156,9 @@ issue_forecast(asset_id, inputs, decision_time, issued_at, ...) -> Forecast
 
 Every model calls `assert_no_lookahead(inputs, decision_time)` before producing output and records `data_snapshot_id` and `feature_snapshot_id`.
 
-### 3.6 Composite (`composite/`)
+### 3.6 Composite (`composite/`, built except the C.3 portfolio builder)
 
-One function per step of spec section C. All are pure functions of arrays and config.
+One module per step of spec section C. All are pure functions of arrays and config. The names below are the target interface. The built modules are `stats.py`, `standardize.py`, `edge.py`, `eligibility.py`, `weights.py`, `riskmodel.py`, `combine.py`, `optimizer.py` and `run.py`. Read their signatures in the code. Where they differ from this list, the code is current.
 
 ```python
 standardize.cross_sectional(raw, cfg, sectors=None) -> z          # C.2
@@ -182,6 +182,7 @@ run.daily(inputs, cfg) -> CompositeRun                            # C.10 output 
 
 ```python
 evaluate(intent: OrderIntent, ctx: RiskContext, limits: HardLimits) -> RiskDecision
+evaluate_portfolio(weights: dict, clusters: dict, limits: HardLimits) -> tuple[str, ...]   # independent check of a target book
 limits_hash(limits: HardLimits) -> str
 CHECKS: tuple[(name, check_function), ...]     # each returns None or a reason string
 ```

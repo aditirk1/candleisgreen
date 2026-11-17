@@ -1,7 +1,7 @@
 # CandleIsGreen configuration. Spec v3.1 defaults.
 # Every threshold and limit lives here. Change a value here, never in code.
 # Bump config_version on every edit. The loader rejects unknown keys.
-config_version: "3.1.0"
+config_version: "3.1.1"
 spec_version: "3.1"
 
 time:
@@ -33,6 +33,8 @@ composite:
     newey_west_max_lag_days: 63
     trading_days_per_year: 252
   edge:
+    # McLean and Pontiff (2016): 58% lower after publication, 26% lower out of sample.
+    # Less severe estimates: Jensen, Kelly and Pedersen about 0.53, Chen and Zimmermann about 0.88.
     delta_us_published: 0.42
     delta_non_us_published: 0.74
     delta_other_published: 0.74
@@ -47,6 +49,13 @@ composite:
     min_prob_positive: 0.80
     min_oos_days: 252
     min_events: 30
+    # Tier 4 economic test: block-bootstrap interval of net return at multiplied costs.
+    interval_level: 0.90
+    cost_multiplier: 2.0
+    bootstrap_block_days: 21
+    bootstrap_resamples: 2000
+    # Tier 3 independent replication: same sign and significant at this two-sided level.
+    replication_significance: 0.05
   weights:
     cov_window_days: 756
     cov_min_days: 252
@@ -56,6 +65,7 @@ composite:
     max_monthly_relative_change: 0.25
     max_monthly_absolute_change_floor: 0.02
     new_signal_initial_weight_max: 0.05
+    duplicate_correlation_threshold: 0.95
   alpha:
     ic_horizon_days: 21
     ic_shrink_days: 252
@@ -72,6 +82,11 @@ composite:
     sector_cap: 0.25
     no_trade_band: 0.0025
     lambda_bisection_iterations: 30
+    lambda_min: 0.001
+    lambda_max: 100000.0
+    specific_var_shrink: 0.5
+    min_history_days: 126
+    alpha_horizon_days: 21
 
 risk:
   # Hard limits. Aditi sets these. Tightening applies now. Loosening waits.

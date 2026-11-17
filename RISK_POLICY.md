@@ -42,6 +42,8 @@ A correlated cluster is defined in the spec as a hierarchical cluster on 252-day
 
 ## 4. Fail-closed rules
 
+- The optimizer's target book is checked by `evaluate_portfolio` before any order is built from it. Short positions, leverage, a position over its limit, a cluster over its limit, a name with no cluster mapping and a non-number weight each block the book. This is tested with a deliberately injected book.
+
 - A missing input blocks the order. This is tested as a property over every combination of missing fields.
 - An exception inside any check blocks the order with the reason "rule could not be evaluated".
 - A stale quote, unknown account state, uncertain instrument mapping, closed or halted market, or disconnected broker each block the order.
