@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-17 09:25 ET, **111 passed, 0 failed** in about 8 seconds on Python 3.13.18.
+Latest full run: 2026-11-17 09:40 ET, **119 passed, 0 failed** in about 12 seconds on Python 3.13.18.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -96,6 +96,20 @@ Result: **42 passed** (`tests/test_composite_steps.py` 24, `tests/test_composite
 
 ### Not tested
 
-- The C.3 research portfolio builder, because it is not built. Signal return series are supplied as inputs.
 - Any real data. No signal has a real out-of-sample record.
 - Optimizer speed at full universe size (about 3,000 names). The tested books have 40 to 60 names and solve in under a second.
+
+## Research portfolios and cost model (spec C.3), 2026-11-17
+
+Result: **8 passed** (`tests/test_research_portfolio.py`). All inputs are synthetic.
+
+| Test | What it shows |
+| --- | --- |
+| `test_weights_use_no_future_returns` | Changing returns after day 150 leaves every weight up to day 150 unchanged |
+| `test_cross_sectional_is_dollar_neutral_and_hits_the_vol_target` | Weights sum to zero and realized volatility is within 1.5 points of 10% |
+| `test_planted_edge_is_recovered` | A planted edge is recovered within 3 standard errors, and pure noise comes back near zero |
+| `test_costs_are_charged_and_grow_with_the_spread` | Net equals gross minus cost, and a 10x wider spread costs more than 5x as much |
+| `test_borrow_is_charged_only_on_short_legs` | With no spread or impact, cost equals borrow on the short leg plus SEC fees on sells, to the cent |
+| `test_long_only_series_and_vol_scale` | The top third beats the universe before costs. With daily full turnover, costs exceed that edge |
+| `test_no_weights_before_enough_history` | No position until 21 days of history exist |
+| `test_builder_output_feeds_the_daily_composite_run` | Builder output for two real signals and one noise signal goes through the economic test into `run.daily`. Both real signals are eligible and get capital weight. Noise does not |

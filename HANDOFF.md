@@ -1,6 +1,6 @@
 # HANDOFF.md
 
-Last updated: 2026-11-17 09:27 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
+Last updated: 2026-11-17 09:42 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
 
 ## Timeline note
 
@@ -12,14 +12,13 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 2. **Spec v3.1.** `SPEC.md` has every technical fix from the review applied, with a change log at the end. Hard risk limits were not changed. Decisions that need Aditi are in `QUESTIONS.md`, each with the default now in use.
 3. **Documents.** `ARCHITECTURE.md`, `DATA_DICTIONARY.md`, `RISK_POLICY.md`, `MODEL_REGISTRY.md`, `DECISIONS.md`, `TEST_RESULTS.md`, `README.md`.
 4. **Phase 0.** Both acceptance tests pass: one offline event flows end to end with immutable IDs, and a planted lookahead leak is caught.
-5. **Composite module.** `candleisgreen/composite/` covers C.2 and C.4 to C.10, plus `risk.engine.evaluate_portfolio` for the independent book check. Every C.12 test passes on synthetic inputs.
+5. **Composite module.** `candleisgreen/composite/` covers all of spec section C: research portfolios and the cost model (C.3), standardization (C.2), edge estimation (C.4), eligibility with the Tier 3 and Tier 4 gates (C.5), weights (C.6), score, α and calibration (C.7), factor model and optimizer (C.8), and the daily run record (C.10). `risk.engine.evaluate_portfolio` gives the independent book check. Every C.12 test passes on synthetic inputs.
 
-Full suite: 111 passed. Details in `TEST_RESULTS.md`.
+Full suite: 119 passed. Details in `TEST_RESULTS.md`.
 
 ## Half done
 
-- **C.3 research portfolio builder.** Not built. It should turn smoothed z-scores and daily returns into each signal's daily net return series: dollar-neutral weights for cross-sectional signals, directional for time-series, scaled to 10% ex-ante volatility, costs from the cost model at actual turnover, plus the long-only top-tercile series for the Tier 4 test. Today `composite/run.py` takes these series as inputs.
-- **Cost model.** Defined in SPEC C.3. Not in code. The SEC and FINRA fee rates and a borrow rate need config keys.
+- **The Composite has no real inputs.** Everything in section C runs on synthetic data. Nothing connects it to the point-in-time store yet, because there is no real price history and no Level A signal. That wiring is Phase 1 and Phase 3 work.
 
 ## Not started
 
@@ -52,4 +51,6 @@ make phase0
 
 ## Exact next step
 
-Build `candleisgreen/composite/research_portfolio.py` (spec C.3) with the cost model: input T x N smoothed z-scores, T x N next-day asset returns, the factor model, quotes and ADV, config. Output daily gross and net returns, daily cost, turnover, and the long-only top-tercile series. Test it by feeding a signal with a planted known edge and checking that `annualized_mean_and_se` recovers it, then pass its output into `run.daily` in place of the synthetic `returns` used in `tests/test_composite_c12.py`. After that, Phase 1 (US paper vertical slice) per `SPEC.md`.
+Start Phase 1 (US paper vertical slice) per `SPEC.md`. The first atomic task: write `candleisgreen/models/ts_momentum.py`, the Level A trend baseline `ts_momentum_252_21` from `MODEL_REGISTRY.md` section 4. It reads daily closes through `PointInTimeStore.as_of`, outputs `signal_strength` per asset, and calls `assert_no_lookahead`. Test it on a new multi-day fixture in `tests/fixtures/`, then route its forecast through the existing `pipeline.py` path in place of `fixture_baseline`. Alpaca stays out until the fixture path passes, and only paper endpoints are allowed.
+
+Before that, Aditi should skim `QUESTIONS.md`. Q1 (data purchase), Q4 (execution timing) and D-009 in `DECISIONS.md` (daily loss stop and sells) change what Phase 1 builds.

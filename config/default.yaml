@@ -1,7 +1,7 @@
 # CandleIsGreen configuration. Spec v3.1 defaults.
 # Every threshold and limit lives here. Change a value here, never in code.
 # Bump config_version on every edit. The loader rejects unknown keys.
-config_version: "3.1.1"
+config_version: "3.1.2"
 spec_version: "3.1"
 
 time:
@@ -32,6 +32,19 @@ composite:
     research_nav_usd: 1000000
     newey_west_max_lag_days: 63
     trading_days_per_year: 252
+  costs:
+    # SEC Section 31 fee since 2026-04-04 (REVIEW O12).
+    sec_fee_per_million_usd_sold: 20.60
+    # FINRA TAF is 0 for 2026-10-01 to 2026-12-31. Scheduled 2027 rate is 0.000232 per share.
+    finra_taf_per_share_sold: 0.0
+    finra_taf_max_per_trade_usd: 9.79
+    # Borrow cost for the short leg of research portfolios. Judgment call, see DECISIONS D-015.
+    borrow_rate_annual: 0.005
+    # Ex-ante volatility of research portfolios from trailing returns of today's weights.
+    vol_lookback_days: 63
+    min_vol_history_days: 21
+    # Long-only economic test: top third by z-score against the universe.
+    long_only_quantile: 0.6667
   edge:
     # McLean and Pontiff (2016): 58% lower after publication, 26% lower out of sample.
     # Less severe estimates: Jensen, Kelly and Pedersen about 0.53, Chen and Zimmermann about 0.88.

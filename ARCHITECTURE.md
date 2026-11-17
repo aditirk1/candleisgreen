@@ -70,7 +70,7 @@ candleisgreen/
   data/                     pit_store.py is built
   research/                 claim cards, evidence graph, experiment registry (planned, Phase 3)
   models/                   fixture_baseline.py is a Phase 0 stub. Level A models are planned
-  composite/                spec section C, built except the C.3 research portfolio builder. See HANDOFF.md
+  composite/                spec section C, built and tested on synthetic data. See HANDOFF.md
   backtests/                planned, Phase 1 and 3
   risk/                     engine.py is built
   broker/                   base.py and simulator.py are built
@@ -156,9 +156,9 @@ issue_forecast(asset_id, inputs, decision_time, issued_at, ...) -> Forecast
 
 Every model calls `assert_no_lookahead(inputs, decision_time)` before producing output and records `data_snapshot_id` and `feature_snapshot_id`.
 
-### 3.6 Composite (`composite/`, built except the C.3 portfolio builder)
+### 3.6 Composite (`composite/`, built)
 
-One module per step of spec section C. All are pure functions of arrays and config. The names below are the target interface. The built modules are `stats.py`, `standardize.py`, `edge.py`, `eligibility.py`, `weights.py`, `riskmodel.py`, `combine.py`, `optimizer.py` and `run.py`. Read their signatures in the code. Where they differ from this list, the code is current.
+One module per step of spec section C. All are pure functions of arrays and config. The names below are the target interface. The built modules are `stats.py`, `standardize.py`, `research_portfolio.py`, `edge.py`, `eligibility.py`, `weights.py`, `riskmodel.py`, `combine.py`, `optimizer.py` and `run.py`. Read their signatures in the code. Where they differ from this list, the code is current.
 
 ```python
 standardize.cross_sectional(raw, cfg, sectors=None) -> z          # C.2
@@ -226,17 +226,21 @@ composite:
   standardize:        winsor_lower_pct, winsor_upper_pct, ts_std_window_days, ts_clip,
                       ema_halflife_fraction_of_horizon
   research_portfolio: vol_target_annual, research_nav_usd, newey_west_max_lag_days, trading_days_per_year
+  costs:              sec_fee_per_million_usd_sold, finra_taf_per_share_sold, finra_taf_max_per_trade_usd,
+                      borrow_rate_annual, vol_lookback_days, min_vol_history_days, long_only_quantile
   edge:               delta_us_published, delta_non_us_published, delta_other_published, omega_factor,
                       cold_start_tau_annual, tau_floor_annual, family_min_signals_for_prior,
                       delta_replace_min_signals
-  eligibility:        min_tier, capital_min_tier, min_prob_positive, min_oos_days, min_events
+  eligibility:        min_tier, capital_min_tier, min_prob_positive, min_oos_days, min_events, interval_level,
+                      cost_multiplier, bootstrap_block_days, bootstrap_resamples, replication_significance
   weights:            cov_window_days, cov_min_days, hrp_min_families, signal_cap, family_cap,
                       max_monthly_relative_change, max_monthly_absolute_change_floor,
-                      new_signal_initial_weight_max
+                      new_signal_initial_weight_max, duplicate_correlation_threshold
   alpha:              ic_horizon_days, ic_shrink_days, alpha_clip_sigmas, calibration_slope_min,
                       calibration_slope_max, calibration_min_t
   optimizer:          n_factors, cov_window_days, impact_kappa, impact_kappa_floor, vol_target_annual,
-                      sector_cap, no_trade_band, lambda_bisection_iterations
+                      sector_cap, no_trade_band, lambda_bisection_iterations, lambda_min, lambda_max,
+                      specific_var_shrink, min_history_days, alpha_horizon_days
 risk:
   hard_limits:  max_position_pct_equity, max_cluster_pct_equity, max_order_pct_adv20, max_spread_pct,
                 daily_loss_stop_pct_equity, max_quote_age_seconds

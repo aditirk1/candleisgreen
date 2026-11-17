@@ -51,6 +51,16 @@ class ResearchPortfolioConfig(_Section):
     trading_days_per_year: int
 
 
+class CostConfig(_Section):
+    sec_fee_per_million_usd_sold: float = Field(ge=0)
+    finra_taf_per_share_sold: float = Field(ge=0)
+    finra_taf_max_per_trade_usd: float = Field(ge=0)
+    borrow_rate_annual: float = Field(ge=0)
+    vol_lookback_days: int = Field(gt=1)
+    min_vol_history_days: int = Field(gt=1)
+    long_only_quantile: float = Field(gt=0, lt=1)
+
+
 class EdgeConfig(_Section):
     delta_us_published: float
     delta_non_us_published: float
@@ -115,6 +125,7 @@ class OptimizerConfig(_Section):
 class CompositeConfig(_Section):
     standardize: StandardizeConfig
     research_portfolio: ResearchPortfolioConfig
+    costs: CostConfig
     edge: EdgeConfig
     eligibility: EligibilityConfig
     weights: WeightConfig

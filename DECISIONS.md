@@ -17,3 +17,7 @@ Choices made where the spec was silent, or where the review changed it. Newest l
 | D-011 | 2026-11-17 | Orders are sliced in the regular session. The opening auction is not used | REVIEW.md E24. An auction order conflicts with two safety invariants |
 | D-012 | 2026-11-17 | Python floor is 3.12, target 3.14. Development ran on 3.13 | REVIEW.md O9 |
 | D-013 | 2026-11-17 | Review items that need Aditi use the recommended default from `QUESTIONS.md` | Her instruction for the overnight run |
+| D-014 | 2026-11-17 | Research portfolios (C.3) are scaled to 10% with an ex-ante estimate from the trailing 63-day returns of today's weights, not from the full factor model | The spec names the Composite's risk model. Fitting it per signal per day is costly. The trailing estimate is also point-in-time and needs no extra data. Revisit if research volatility drifts from target |
+| D-015 | 2026-11-17 | Borrow cost for research short legs is 0.5% a year | Judgment call for easy-to-borrow names. Hard-to-borrow names cost far more, which this understates. In config |
+| D-016 | 2026-11-17 | Research turnover is the change in target weights and ignores drift from price moves | Simpler and slightly understates turnover |
+| D-017 | 2026-11-17 | The Tier 3 replication gate for published signals is a Newey-West t-test, two-sided at 5%, same sign | The spec says "significant at 5% on the new data". The level is in config |
