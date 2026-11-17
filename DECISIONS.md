@@ -22,3 +22,7 @@ Choices made where the spec was silent, or where the review changed it. Newest l
 | D-016 | 2026-11-17 | Research turnover is the change in target weights and ignores drift from price moves | Simpler and slightly understates turnover |
 | D-017 | 2026-11-17 | The Tier 3 replication gate for published signals is a Newey-West t-test, two-sided at 5%, same sign | The spec says "significant at 5% on the new data". The level is in config |
 | D-018 | 2026-11-17 | No subscription-based platform and no monthly fee, ever. Only free data, free tools and free accounts | Aditi's rule. Recorded as spec principle 11. Paid options are removed from every document rather than kept as alternatives |
+| D-019 | 2026-11-17 | Evidence of edge (Tiers 2 to 4) may come from free portfolio returns built from CRSP. Evidence of implementation (Tier 5) comes from the platform's forward stock-level record | Aditi's free-datasets-by-purpose direction. Research starts on day one instead of waiting a year for 252 days of new data |
+| D-020 | 2026-11-17 | A capability map in `config/capabilities.yaml` drives every NOT AVAILABLE label, and code must call `require()` | Spec principle 3, enforced in one place |
+| D-021 | 2026-11-17 | Open Source Asset Pricing stock-level signals are not used at the stock level | They are keyed to CRSP identifiers, and a stock-level backtest needs CRSP returns |
+| D-022 | 2026-11-17 | QuantConnect is an optional outside tool and is not connected | Its terms were not verified, and its data stays in its cloud |

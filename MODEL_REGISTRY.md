@@ -2,7 +2,7 @@
 
 Source: `SPEC.md` v3.1, sections "The Composite", "Model laboratory" and "Evidence tiers". This file defines what a registry entry holds, lists every model and signal the platform knows about, and gives each one's honest status.
 
-Nothing in this registry holds an evidence tier above 1 today. No real signal has been tested, because survivorship-free data is not licensed (`QUESTIONS.md` Q1).
+Nothing in this registry holds an evidence tier above 1 today. No real signal has been tested yet. Published factors can be taken to Tier 4 on free portfolio returns once the Phase 3 research engine exists (`QUESTIONS.md` Q1 and Q14).
 
 ## 1. Registry entry schema
 
@@ -45,8 +45,8 @@ Rules:
 | 1 | Claim | An idea with no reproduction | Hypothesis Factory queue |
 | 2 | Reproduced | Same sign, and effect inside the paper's interval or at least half its size, on the original definitions and period | Independent testing |
 | 3 | Independently replicated | Same sign and significant at 5% on new data, independence recorded. A platform discovery needs t above 3.0 and FDR under 5% (Benjamini-Yekutieli) and a pass on an untouched holdout | Out-of-sample economic test |
-| 4 | Out-of-sample net | Lower bound of the block-bootstrap 90% interval of net excess return above zero at doubled costs. Cross-sectional signals pass twice: long-short, and long-only top tercile against the universe | Composite at shadow weight |
-| 5 | Shadow-confirmed | 63 trading days of pre-registered forecasts, realized returns inside the 90% band, tracking error under the limit | Paper capital in the Composite |
+| 4 | Out-of-sample net | Lower bound of the block-bootstrap 90% interval of net excess return above zero at doubled costs. The record may be free survivorship-free portfolio returns after the selection cutoff, or the forward record. Cross-sectional signals pass twice: long-short, and long-only top portfolio against the market | Composite at shadow weight |
+| 5 | Shadow-confirmed | 63 trading days of pre-registered forecasts on the stock-level forward record, realized returns inside the 90% band, and tracking of the Tier 4 portfolio-level record within the limit | Paper capital in the Composite |
 | 6 | Paper-deployed | Trading in the paper account under governance | Eligible for a future live review |
 
 A result on data without delisted securities is labeled SURVIVORSHIP-BIASED and cannot pass any gate.

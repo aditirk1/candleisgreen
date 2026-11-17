@@ -48,4 +48,6 @@ Zero. No subscription or monthly fee is used, ever (spec principle 11).
 | US history with delisted stocks | Forward recorder from Phase 1, plus free portfolio returns built from CRSP | Free |
 | Filings, macro, papers | SEC EDGAR, FRED, BLS, BEA, Crossref, OpenAlex free key, arXiv | Free |
 | News | Lawful RSS feeds | Free |
-| AI | Off | Free |
+| AI | Optional local open-weight model, off by default | Free |
+
+What the platform cannot do without paid data is listed, with reasons, in `config/capabilities.yaml`.

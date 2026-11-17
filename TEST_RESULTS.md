@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-17 09:30 ET, **119 passed, 0 failed** in about 10 seconds on Python 3.13.18.
+Latest full run: 2026-11-17, **128 passed, 0 failed** in about 14 seconds on Python 3.13.18.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -113,3 +113,7 @@ Result: **8 passed** (`tests/test_research_portfolio.py`). All inputs are synthe
 | `test_long_only_series_and_vol_scale` | The top third beats the universe before costs. With daily full turnover, costs exceed that edge |
 | `test_no_weights_before_enough_history` | No position until 21 days of history exist |
 | `test_builder_output_feeds_the_daily_composite_run` | Builder output for two real signals and one noise signal goes through the economic test into `run.daily`. Both real signals are eligible and get capital weight. Noise does not |
+
+## Capability map, 2026-11-17
+
+Result: **9 passed** (`tests/test_capabilities.py`). Every limited or unavailable capability states its reason. Options data, real-time consolidated quotes, intraday trading, analyst estimates, licensed news and non-US execution each raise `CapabilityNotAvailableError` when code asks for them. A capability entry without a reason is rejected at load time.

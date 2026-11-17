@@ -50,6 +50,27 @@ Rules that the layout enforces:
 5. The Composite and models read limits from config and can never write them.
 6. Every step writes an audit record before the next step runs.
 
+## 1a. Data by purpose, zero subscriptions
+
+Each purpose uses a genuinely free dataset built for it (spec principle 11).
+
+| Purpose | Source | Enters as |
+| --- | --- | --- |
+| Historical factor research, US | Open Source Asset Pricing portfolio returns, Kenneth French library | Portfolio return series with each paper's sample period. Survivorship-free because built from CRSP |
+| Historical factor research, global | JKP Global Factor Data | Factor and portfolio returns, non-commercial licence |
+| Daily US market data | Alpaca consolidated history, requested at least 15 minutes after the close | Observations in the point-in-time store |
+| Forward stock-level record | The recorder: full Alpaca asset list and daily bars after each close | Observations with `collection_mode: live`, survivorship-free from day one |
+| Live quotes for risk checks | Alpaca real-time IEX feed | `Quote` objects |
+| Filings and fundamentals | SEC EDGAR submissions and XBRL, using the filed date | Observations |
+| Macro | FRED, ALFRED, BLS, BEA | Observations with vintages |
+| News | Lawful RSS feeds | Planned, Phase 4 |
+| Paper execution | Alpaca paper account | Broker adapter, planned for Phase 2 |
+| Language models | Optional local open-weight model, off by default | Planned |
+
+What is not available is listed in `config/capabilities.yaml` and loaded by `core/capabilities.py`. `require(name)` raises `CapabilityNotAvailableError` for a capability marked `not_available`.
+
+Two evidence paths run side by side. Edge is judged on portfolio returns from the first day. Implementation is checked on the forward record in the 63-day Tier 5 shadow.
+
 ## 2. Repository layout
 
 ```
@@ -59,6 +80,7 @@ DECISIONS.md  TEST_RESULTS.md  HANDOFF.md  README.md
 pyproject.toml  Makefile
 config/
   default.yaml              all thresholds and limits, versioned
+  capabilities.yaml         what is available, limited or not available, and why
 candleisgreen/
   core/                     shared contracts (built)
     timeutil.py             UTC rules
@@ -66,6 +88,7 @@ candleisgreen/
     config.py               typed config loader
     schemas.py              Observation, Forecast, OrderIntent, RiskContext, RiskDecision, Fill, BrokerAck
     audit.py                hash-chained audit log
+    capabilities.py         capability map loader, NOT AVAILABLE labels
   sources/                  collectors. fixtures.py is built
   data/                     pit_store.py is built
   research/                 claim cards, evidence graph, experiment registry (planned, Phase 3)

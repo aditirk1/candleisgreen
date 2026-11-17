@@ -46,7 +46,7 @@ CandleIsGreen is an evidence-driven quantitative research workstation that happe
 8. **Unknowns are shown.** No invented confidence, consensus estimate, track record or data freshness.
 9. **Paper first.** Internal simulation and broker paper trading are the first deliverables. Real money is a separate, later project with live trading disabled by default.
 10. **Runs without a paid LLM.** AI analysis is optional, cached and budget-capped. The default budget is zero.
-11. **No subscriptions.** The platform uses only free data, free tools and free accounts. An option that needs a subscription or a monthly fee is not considered, recommended or built (Aditi, 2026-11-17).
+11. **No subscriptions.** The platform uses only free data, free tools and free accounts. An option that needs a subscription or a monthly fee is not considered, recommended or built (Aditi, 2026-11-17). Each purpose uses a genuinely free dataset built for it, not a restricted free tier of a paid product. Unofficial scraping is never a primary dependency. A feature that has no adequate free data stays in the architecture and shows NOT AVAILABLE with the reason, read from `config/capabilities.yaml`.
 
 ## Architecture at a glance
 
@@ -64,9 +64,11 @@ Every signal, whether it came from a paper, a practitioner or the platform's own
 | 1 | Claim | An idea with no reproduction yet: a preprint, a practitioner post, a pattern the platform's own search found | Hypothesis Factory queue |
 | 2 | Reproduced | The platform matched the original result on the original definitions and period | Independent testing |
 | 3 | Independently replicated | Holds on a different period, universe, dataset or implementation, with the independence recorded | Out-of-sample economic test |
-| 4 | Out-of-sample net | Beats its baseline out of sample on platform data, after costs, under the validation protocol. A cross-sectional signal must pass twice: as a long-short portfolio (validity) and as its long-only implementation, top tercile against the universe return (economic value) | Composite at shadow weight |
-| 5 | Shadow-confirmed | At least 63 trading days of pre-registered live forecasts, issued before outcomes. Realized returns sit inside the pre-registered 90% band and tracking error against the backtest is under the config limit. This is an implementation check. The evidence of edge is the Tier 4 test | Paper capital in the Composite |
+| 4 | Out-of-sample net | Beats its baseline out of sample, after modeled costs, under the validation protocol. The out-of-sample record may come from free portfolio returns built from a survivorship-free database (the years after the selection cutoff) or from the platform's forward record. A cross-sectional signal must pass twice: as a long-short portfolio (validity) and as its long-only implementation, the top portfolio against the market (economic value) | Composite at shadow weight |
+| 5 | Shadow-confirmed | At least 63 trading days of pre-registered live forecasts on the platform's own stock-level forward record, issued before outcomes. Realized returns sit inside the pre-registered 90% band and the stock-level version tracks its Tier 4 portfolio-level record within the config limit. This is an implementation check. The evidence of edge is the Tier 4 test | Paper capital in the Composite |
 | 6 | Paper-deployed | Trading in the paper account under governance | Eligible for a future live review |
+
+**Evidence of edge and evidence of implementation are separate.** Edge can be judged now from decades of free portfolio returns: Open Source Asset Pricing and the Kenneth French library are built from CRSP, which includes delisted stocks, and every year after a factor's selection cutoff is out of sample. Implementation needs the platform's own stock-level data, which starts the day the forward recorder starts. So research and Tiers 2 to 4 can run from the first day, and the first paper capital needs only the 63-day Tier 5 shadow on the forward record. Portfolio returns cover the whole CRSP universe, including small names the platform will not trade, so their costs are modeled conservatively and the Tier 5 tracking check confirms the tradable version behaves the same.
 
 Two routes reach Tier 3. A published signal gets there through replication by others or by the platform. A **new pattern** the platform discovers itself has no outside replication, so it must clear a stricter multiple-testing bar (see default decision criteria) and pass on a holdout period never touched during its search.
 
@@ -340,15 +342,37 @@ The backtester and every model read `first_usable_at`, the moment a value could 
 
 | Data | Source | Cost |
 | --- | --- | --- |
-| US prices and paper execution | Alpaca. [Paper trading is free](https://docs.alpaca.markets/docs/paper-trading). The free plan gives real-time quotes from the IEX exchange only and history from 2016. Only the free plan is used. Paper fills ignore quote size and market impact. Alpaca is the source for live prices and for the forward-recorded universe below | Free |
+| US prices and paper execution | Alpaca. [Paper trading is free](https://docs.alpaca.markets/docs/paper-trading). Only the free plan is used. Real-time quotes come from the IEX exchange only and feed the risk checks. Daily bars come from consolidated (SIP) history, which is free when the request ends at least 15 minutes in the past, so end-of-day data covers all exchanges. History starts in 2016. Paper fills ignore quote size and market impact | Free |
 | US filings and fundamentals | SEC EDGAR submissions and XBRL APIs | Free |
-| Equity factor library | Open Source Asset Pricing (US), JKP Global Factor Data (93 countries). Free downloads are factor and portfolio returns. Stock-level signals are keyed to CRSP identifiers and need a CRSP licence to map to tickers. JKP data is licensed for non-commercial use | Free for returns |
+| Equity factor library | Open Source Asset Pricing (US), JKP Global Factor Data (93 countries). Free downloads are factor and portfolio returns, plus signal documentation with each paper's sample period. Open Source Asset Pricing also publishes stock-level signals, but they are keyed to CRSP identifiers and a stock-level backtest with them needs CRSP returns, so they are not used at the stock level. JKP data is licensed for non-commercial use | Free for returns |
 | Macro | FRED and ALFRED through the FRED API (v1 `series/observations` with `realtime_start` and `realtime_end` for vintages, API key required), BLS (500 queries per day with a key), BEA (100 requests per minute), central banks | Free |
 | Papers | Crossref, OpenAlex (free key with a daily usage allowance), arXiv, NBER, SSRN where its terms allow | Free |
 | Biotech events | ClinicalTrials.gov API, the FDA advisory committee calendar and FDA documents. FDA action dates come from company press releases and 8-K filings, since FDA publishes no calendar of them | Free |
 | News | Lawful RSS feeds only | Free |
 | Survivorship-free US history, forward | A Phase 1 collector records the full Alpaca asset list and daily bars for every listed US stock and ETF after each close. Every recorded day includes names that later delist, so the record is survivorship-free from its first day. For personal use only, never shared | Free |
-| Survivorship-free US history, portfolio level | Open Source Asset Pricing portfolio returns and the Kenneth French data library, both built from CRSP, which includes delisted stocks | Free |
+| Survivorship-free US history, portfolio level | Open Source Asset Pricing portfolio returns and the Kenneth French data library, both built from CRSP, which includes delisted stocks. The Kenneth French files carry a copyright notice and no licence text, so they are used for personal research only | Free |
+| Outside research tool, optional | QuantConnect's free cloud backtesting. It is not connected to the platform, and nothing from it enters the evidence pipeline. Its terms were not verified | Free |
+
+### Capability map
+
+`config/capabilities.yaml` lists every capability with status `available`, `limited` or `not_available`, its sources, and the reason for any gap. Code calls `require()` before using a capability, and an unavailable one raises. Screens show the label.
+
+| Capability | Status | Reason |
+| --- | --- | --- |
+| US factor research | Available | Free portfolio returns built from CRSP |
+| Global factor research | Limited | Returns only, non-commercial licence |
+| US daily bars | Limited | From 2016, delisted coverage unconfirmed, labeled SURVIVORSHIP-BIASED |
+| US stock history with delistings | Limited | Only from the day the forward recorder starts |
+| Point-in-time fundamentals | Limited | SEC XBRL from 2009, using the filed date |
+| Macro | Available | FRED, ALFRED, BLS, BEA |
+| US paper execution | Available | Alpaca paper |
+| Real-time consolidated quotes | Not available | The free real-time feed covers IEX only |
+| Intraday trading | Not available | No free real-time consolidated data |
+| Options data and options flow | Not available | No free source |
+| Analyst consensus estimates | Not available | No free timestamped source, so earnings beat or miss is never shown |
+| Licensed news | Not available | Lawful RSS only |
+| Non-US execution | Not available | Non-US market data needs monthly fees |
+| LLM features | Limited | Optional, off by default, local open-weight models only |
 
 ### Storage
 
@@ -398,10 +422,10 @@ Every model registers its scope, data contract, horizon, refit schedule, version
 | Macro and cross-asset | Rate and inflation surprises, curve, credit spreads, FX, commodities | Days to quarters | Data revisions, unstable correlations |
 | Volatility | EWMA, GARCH, HAR, implied minus realized, skew, term structure | Days to weeks | Stale or sparse option data |
 | Statistical arbitrage | Cointegrated pairs and baskets, sector-neutral spreads | Days to weeks | Breakdown of the relationship, borrow |
-| News and text | Entity-event extraction, surprise versus expectation, novelty | Minutes to days | Duplicates, delayed feeds |
+| News and text | Entity-event extraction, surprise versus expectation, novelty | Days. Minutes-scale use is NOT AVAILABLE | Duplicates, delayed feeds |
 | Biotech catalysts | FDA action dates, trial phase, endpoints, effect sizes, cash runway | Event-dependent | Binary gaps, misread trial science |
 | Practitioner claims | Scored claims from sources with enough history | Days to months | Selection bias, vague targets |
-| Options and flow | Greeks, surface, put-call, dealer exposure scenarios | Minutes to weeks | Dealer positioning is inferred, not observed |
+| Options and flow | Greeks, surface, put-call, dealer exposure scenarios. NOT AVAILABLE: no free options data. Kept in the architecture | Minutes to weeks | Dealer positioning is inferred, not observed |
 
 Biotech catalysts are a natural edge given Aditi's background: each FDA date or readout is paired with trial design details (phase, endpoint, comparator, enrollment, prior data) and with how the market priced similar events before.
 
@@ -409,7 +433,7 @@ Biotech catalysts are a natural edge given Aditi's background: each FDA date or 
 
 | Task | Tier |
 | --- | --- |
-| Claim cards, research digest, reasoning summaries | Larger model, budget-capped, cached |
+| Claim cards, research digest, reasoning summaries | A locally hosted open-weight model, optional and off by default, cached. No paid API |
 | News tagging, entity linking, translation, glossary lookups | Small model or rules |
 | Anything that sets a number used in trading | Never an LLM |
 
@@ -633,6 +657,7 @@ One stack, chosen now so the coding model does not build two.
 | Transactional store | SQLite, moving to Postgres when needed | Approvals, journal, registries |
 | Scheduling | APScheduler 3.x, then a durable queue when volume requires | Simple first. APScheduler 4 is still alpha |
 | Statistics and ML | numpy, pandas 3, statsmodels, scikit-learn, LightGBM, arch (GARCH), cvxpy with Clarabel | Standard, tested |
+| Language models | Optional, a locally hosted open-weight model | Zero cost. Off by default |
 | Brokers | `alpaca-py` for Alpaca paper. No other broker (principle 11) | `alpaca-trade-api` is archived |
 | Testing | pytest, hypothesis for invariants, recorded API fixtures | Reproducible tests |
 | Secrets | Environment variables or the OS credential store, never Git or logs | Safety |
@@ -658,7 +683,7 @@ Eight phases. Each ships only when its acceptance test passes and `HANDOFF.md` r
 | 0. Repository and contracts | Directories (`sources/`, `data/`, `research/`, `models/`, `composite/`, `backtests/`, `risk/`, `broker/`, `ui/`, `tests/`), typed schemas, UTC rules, config file, audit log, fixtures, CI command | One offline event flows end to end with immutable IDs. A planted lookahead leak is caught |
 | 1. US paper vertical slice | Daily data from fixtures or Alpaca, the forward recorder of the full US asset list and daily bars (started as early as possible, because every day it runs adds clean history), one Level A trend baseline, candidate trade, risk check, approval or auto-simulation, journal, minimal Overview and Execution screens | Approval, rejection, fill, stale-feed block and kill switch all verified end to end |
 | 2. Broker paper and filings | Alpaca paper adapter, reconciliation, SEC filing timestamps and XBRL facts, earnings scorecard | A duplicate submission is not repeated. Every financial figure traces to an SEC filing. No "beat" without a consensus estimate |
-| 3. Research engine and the first Composite | Claim cards, evidence graph, experiment registry, two published factor reproductions (one passing, one expected to fail), Composite v0 over three Level A signals with shrinkage and frozen-weight benchmark. Reproductions may use free portfolio returns built from CRSP. Stock-level tests use the forward record once it holds 252 trading days. Before that, stock-level work runs on fixtures and synthetic data, and results on older Alpaca history stay labeled SURVIVORSHIP-BIASED at Tier 1 | Full evidence chain shown in the UI. Negative result stored and visible. Composite output traces to each signal's weight and evidence |
+| 3. Research engine and the first Composite | Claim cards, evidence graph, experiment registry, two published factor reproductions (one passing, one expected to fail), Composite v0 over three Level A signals with shrinkage and frozen-weight benchmark. Reproductions, replications and the Tier 4 out-of-sample test use free portfolio returns built from CRSP, so they can run as soon as this phase starts. Stock-level work runs on fixtures and synthetic data until the forward record exists, and results on older Alpaca history stay labeled SURVIVORSHIP-BIASED at Tier 1 | Full evidence chain shown in the UI. Negative result stored and visible. Composite output traces to each signal's weight and evidence |
 | 4. News and teaching | Lawful RSS ingestion, event clustering, Reasoning screen, predict first, one full historical replay | Replay cannot see later news or prices at earlier timestamps |
 | 5. Hypothesis Factory and model levels B and C | Daily research loop, decision criteria by study type, champion and challenger, calibration, drift monitoring, practitioner claim scoring | A model update never changes risk limits or permissions. A contradicting paper opens a re-evaluation case |
 | 6. Global research | JKP global factor returns, instrument taxonomy, exchange calendars, market rule table, FX split. No non-US execution (principle 11) | Every non-US instrument is `research_only` and cannot receive orders. A week of global research jobs runs with no manual step |
@@ -695,6 +720,8 @@ Each line cites the finding in `REVIEW.md`.
 - Hard risk limits: no change.
 
 Amendment, 2026-11-17, from Aditi: no subscription-based platform and no monthly fee. Added principle 11. Removed the paid data, paid real-time feed, licensed news, server rental and Interactive Brokers execution. Added the forward recorder to Phase 1 and free portfolio-level history to Phase 3. Phase 6 is global research only.
+
+Amendment 2, 2026-11-17, from Aditi: free datasets by purpose. Edge is judged on free portfolio returns from day one, and the forward stock record is needed only for the 63-day Tier 5 implementation check. Daily bars come from Alpaca's delayed consolidated history. Added the capability map. Options flow, intraday trading, real-time consolidated quotes and analyst estimates are NOT AVAILABLE and stay in the architecture. Language models are optional and local. QuantConnect is an optional outside tool, not connected.
 
 ## Sources
 
