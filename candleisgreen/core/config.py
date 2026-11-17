@@ -1,0 +1,169 @@
+"""Versioned configuration. Every threshold and limit in the spec lives here, not in code.
+
+The YAML file is validated against these models. Unknown keys are rejected. The loaded
+config carries a content hash that every run and audit record can reference.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Literal
+
+import yaml
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from .ids import canonical_json, sha256_hex
+
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "default.yaml"
+
+
+class _Section(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class TimeConfig(_Section):
+    market_timezone: str
+    decision_time_local: str
+    execution_window_start_local: str
+    execution_window_end_local: str
+
+
+class UniverseConfig(_Section):
+    min_price: float = Field(gt=0)
+    min_median_dollar_volume_20d: float = Field(gt=0)
+    exit_min_price: float = Field(gt=0)
+    exit_min_median_dollar_volume_20d: float = Field(gt=0)
+    dollar_volume_window_days: int = Field(gt=0)
+    exclude_leveraged_inverse_etfs: bool
+
+
+class StandardizeConfig(_Section):
+    winsor_lower_pct: float
+    winsor_upper_pct: float
+    ts_std_window_days: int
+    ts_clip: float
+    ema_halflife_fraction_of_horizon: float
+
+
+class ResearchPortfolioConfig(_Section):
+    vol_target_annual: float
+    research_nav_usd: float
+    newey_west_max_lag_days: int
+    trading_days_per_year: int
+
+
+class EdgeConfig(_Section):
+    delta_us_published: float
+    delta_non_us_published: float
+    delta_other_published: float
+    omega_factor: float
+    cold_start_tau_annual: float
+    tau_floor_annual: float
+    family_min_signals_for_prior: int
+    delta_replace_min_signals: int
+
+
+class EligibilityConfig(_Section):
+    min_tier: int
+    capital_min_tier: int
+    min_prob_positive: float
+    min_oos_days: int
+    min_events: int
+
+
+class WeightConfig(_Section):
+    cov_window_days: int
+    cov_min_days: int
+    hrp_min_families: int
+    signal_cap: float
+    family_cap: float
+    max_monthly_relative_change: float
+    max_monthly_absolute_change_floor: float
+    new_signal_initial_weight_max: float
+
+
+class AlphaConfig(_Section):
+    ic_horizon_days: int
+    ic_shrink_days: int
+    alpha_clip_sigmas: float
+    calibration_slope_min: float
+    calibration_slope_max: float
+    calibration_min_t: float
+
+
+class OptimizerConfig(_Section):
+    n_factors: int
+    cov_window_days: int
+    impact_kappa: float
+    impact_kappa_floor: float
+    vol_target_annual: float
+    sector_cap: float
+    no_trade_band: float
+    lambda_bisection_iterations: int
+
+
+class CompositeConfig(_Section):
+    standardize: StandardizeConfig
+    research_portfolio: ResearchPortfolioConfig
+    edge: EdgeConfig
+    eligibility: EligibilityConfig
+    weights: WeightConfig
+    alpha: AlphaConfig
+    optimizer: OptimizerConfig
+
+
+class HardLimits(_Section):
+    """Hard risk limits. Aditi sets these. Code never changes them."""
+
+    max_position_pct_equity: float = Field(gt=0, le=1)
+    max_cluster_pct_equity: float = Field(gt=0, le=1)
+    max_order_pct_adv20: float = Field(gt=0, le=1)
+    max_spread_pct: float = Field(gt=0, le=1)
+    daily_loss_stop_pct_equity: float = Field(gt=0, le=1)
+    max_quote_age_seconds: float = Field(gt=0)
+
+
+class RiskConfig(_Section):
+    hard_limits: HardLimits
+    loosening_delay_hours: int = Field(ge=0)
+
+
+Mode = Literal[
+    "research",
+    "teaching",
+    "manual_simulation",
+    "auto_simulation",
+    "broker_paper_approval",
+    "broker_paper_auto",
+]
+
+
+class ExecutionConfig(_Section):
+    mode: Mode
+    live_trading_enabled: bool
+    simulator_starting_equity_usd: float = Field(gt=0)
+
+    @model_validator(mode="after")
+    def _live_is_never_enabled(self) -> "ExecutionConfig":
+        if self.live_trading_enabled:
+            raise ValueError("live trading is not built in this project and cannot be enabled")
+        return self
+
+
+class AppConfig(_Section):
+    config_version: str
+    spec_version: str
+    time: TimeConfig
+    universe: UniverseConfig
+    composite: CompositeConfig
+    risk: RiskConfig
+    execution: ExecutionConfig
+
+    @property
+    def config_hash(self) -> str:
+        return sha256_hex(canonical_json(self.model_dump()))[:24]
+
+
+def load_config(path: str | Path | None = None) -> AppConfig:
+    with open(path or DEFAULT_CONFIG_PATH, "r", encoding="utf-8") as handle:
+        raw = yaml.safe_load(handle)
+    return AppConfig.model_validate(raw)
