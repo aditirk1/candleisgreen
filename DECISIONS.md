@@ -21,3 +21,4 @@ Choices made where the spec was silent, or where the review changed it. Newest l
 | D-015 | 2026-11-17 | Borrow cost for research short legs is 0.5% a year | Judgment call for easy-to-borrow names. Hard-to-borrow names cost far more, which this understates. In config |
 | D-016 | 2026-11-17 | Research turnover is the change in target weights and ignores drift from price moves | Simpler and slightly understates turnover |
 | D-017 | 2026-11-17 | The Tier 3 replication gate for published signals is a Newey-West t-test, two-sided at 5%, same sign | The spec says "significant at 5% on the new data". The level is in config |
+| D-018 | 2026-11-17 | No subscription-based platform and no monthly fee, ever. Only free data, free tools and free accounts | Aditi's rule. Recorded as spec principle 11. Paid options are removed from every document rather than kept as alternatives |

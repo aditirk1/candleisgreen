@@ -45,7 +45,8 @@ CandleIsGreen is an evidence-driven quantitative research workstation that happe
 7. **Negative results are kept.** Failed replications and dead strategies stay visible so the system never rediscovers or cherry-picks them.
 8. **Unknowns are shown.** No invented confidence, consensus estimate, track record or data freshness.
 9. **Paper first.** Internal simulation and broker paper trading are the first deliverables. Real money is a separate, later project with live trading disabled by default.
-10. **Runs without a paid LLM.** AI analysis is optional, cached and budget-capped.
+10. **Runs without a paid LLM.** AI analysis is optional, cached and budget-capped. The default budget is zero.
+11. **No subscriptions.** The platform uses only free data, free tools and free accounts. An option that needs a subscription or a monthly fee is not considered, recommended or built (Aditi, 2026-11-17).
 
 ## Architecture at a glance
 
@@ -339,15 +340,15 @@ The backtester and every model read `first_usable_at`, the moment a value could 
 
 | Data | Source | Cost |
 | --- | --- | --- |
-| US prices and paper execution | Alpaca. [Paper trading is free](https://docs.alpaca.markets/docs/paper-trading). The free plan gives real-time quotes from the IEX exchange only and history from 2016. Full consolidated real-time data is a paid plan. Paper fills ignore quote size and market impact. Alpaca is a source for live and recent prices, not for backtests | Free. $99 per month for full real-time data |
+| US prices and paper execution | Alpaca. [Paper trading is free](https://docs.alpaca.markets/docs/paper-trading). The free plan gives real-time quotes from the IEX exchange only and history from 2016. Only the free plan is used. Paper fills ignore quote size and market impact. Alpaca is the source for live prices and for the forward-recorded universe below | Free |
 | US filings and fundamentals | SEC EDGAR submissions and XBRL APIs | Free |
 | Equity factor library | Open Source Asset Pricing (US), JKP Global Factor Data (93 countries). Free downloads are factor and portfolio returns. Stock-level signals are keyed to CRSP identifiers and need a CRSP licence to map to tickers. JKP data is licensed for non-commercial use | Free for returns |
 | Macro | FRED and ALFRED through the FRED API (v1 `series/observations` with `realtime_start` and `realtime_end` for vintages, API key required), BLS (500 queries per day with a key), BEA (100 requests per minute), central banks | Free |
 | Papers | Crossref, OpenAlex (free key with a daily usage allowance), arXiv, NBER, SSRN where its terms allow | Free |
 | Biotech events | ClinicalTrials.gov API, the FDA advisory committee calendar and FDA documents. FDA action dates come from company press releases and 8-K filings, since FDA publishes no calendar of them | Free |
-| News | Lawful RSS at launch, a licensed news API later | Free, then paid |
-| Global prices and execution | Interactive Brokers in the global phase | Per-exchange data fees |
-| Survivorship-free US history | Not licensed yet. See `QUESTIONS.md` Q1. Recommended: Sharadar Bundle Full History | $499 per year if approved |
+| News | Lawful RSS feeds only | Free |
+| Survivorship-free US history, forward | A Phase 1 collector records the full Alpaca asset list and daily bars for every listed US stock and ETF after each close. Every recorded day includes names that later delist, so the record is survivorship-free from its first day. For personal use only, never shared | Free |
+| Survivorship-free US history, portfolio level | Open Source Asset Pricing portfolio returns and the Kenneth French data library, both built from CRSP, which includes delisted stocks | Free |
 
 ### Storage
 
@@ -370,7 +371,7 @@ Views: NEWS LIVE (last 72 hours), RECENT (90 days, searchable), ARCHIVE (structu
 
 ### Mandatory survivorship rule
 
-Historical tests use point-in-time universes that include delisted securities. When only a current-constituents list is available, the result is labeled SURVIVORSHIP-BIASED and cannot pass any gate.
+Historical tests use point-in-time universes that include delisted securities. When only a current-constituents list is available, the result is labeled SURVIVORSHIP-BIASED and cannot pass any gate. Two free sources meet the rule: the forward record from the Phase 1 recorder, from its first recorded day, and portfolio returns built from a database that includes delisted stocks.
 
 ## Model laboratory
 
@@ -495,7 +496,7 @@ A correlated cluster is a group from hierarchical clustering on 252-day residual
 
 ### Broker adapters
 
-One adapter interface, two implementations. Alpaca paper for Phase 1 and 2 (US equities, simple setup). Interactive Brokers paper in the global phase, after its gateway and permissions are configured and tested. Never claim an exchange or instrument is available without confirmed entitlements.
+One adapter interface. Alpaca paper for US equities. There is no Interactive Brokers adapter, because its market data needs monthly fees (principle 11). Never claim an exchange or instrument is available without confirmed entitlements.
 
 ### Who can change what
 
@@ -610,7 +611,7 @@ Layout pattern: a sortable table on the left, an evidence pane on the right. Com
 Research covers the world from early on. Execution starts with US stocks and ETFs and expands market by market, each only after its data entitlements, rules and adapter are tested.
 
 - **Research data.** JKP Global Factor Data covers 153 equity factors in 93 countries for free, so global factor research can start before any global execution.
-- **Execution reach.** Interactive Brokers offers [over 170 market centers in 29 currencies](https://www.interactivebrokers.com.hk/en/general/about/ibkr-fact-sheet.php) from one account. Each market still needs its own data subscription and permissions.
+- **Execution reach.** Interactive Brokers offers [over 170 market centers in 29 currencies](https://www.interactivebrokers.com.hk/en/general/about/ibkr-fact-sheet.php) from one account, but each market needs its own market data subscription. Under principle 11 there is no non-US execution. Every non-US instrument is `research_only`.
 - **Instrument tags.** Every instrument is `direct` (tradable now), `proxy` (exposure through an ADR, ETF or future) or `research_only`. Unsupported markets cannot receive orders.
 - **Market rule table.** One record per exchange: hours, auctions, price limits, short-sale rules, settlement, holidays, lot sizes, transaction taxes. Filled from official exchange documents and read by the risk service before every order.
 - **Follow the sun.** Jobs run by session: Asia-Pacific, Europe, US, then overnight review. All times stored in UTC.
@@ -632,10 +633,10 @@ One stack, chosen now so the coding model does not build two.
 | Transactional store | SQLite, moving to Postgres when needed | Approvals, journal, registries |
 | Scheduling | APScheduler 3.x, then a durable queue when volume requires | Simple first. APScheduler 4 is still alpha |
 | Statistics and ML | numpy, pandas 3, statsmodels, scikit-learn, LightGBM, arch (GARCH), cvxpy with Clarabel | Standard, tested |
-| Brokers | `alpaca-py` for Alpaca. The official TWS API client for Interactive Brokers | `alpaca-trade-api` and `ib_insync` are archived |
+| Brokers | `alpaca-py` for Alpaca paper. No other broker (principle 11) | `alpaca-trade-api` is archived |
 | Testing | pytest, hypothesis for invariants, recorded API fixtures | Reproducible tests |
 | Secrets | Environment variables or the OS credential store, never Git or logs | Safety |
-| Hosting | A small always-on cloud server for scheduled jobs, local browser for the interface | Overnight and global jobs cannot depend on a laptop |
+| Hosting | Aditi's own computer for scheduled jobs and the interface. A job that missed its time catches up on the next run and marks what it collected late | No server rental under principle 11. Global research has no live deadlines, so it does not need an always-on machine |
 
 The services:
 
@@ -646,7 +647,7 @@ The services:
 5. **Risk and execution**: separate process and permissions, broker adapters, reconciliation, audit log.
 6. **Workstation**: the interface and teaching.
 
-Agent names in the interface are roles, not separate recurring LLM calls. Document estimated monthly costs for hosting, data and optional AI in `README.md`.
+Agent names in the interface are roles, not separate recurring LLM calls. Document costs in `README.md`. The target is zero, and any cost that appears is a bug in the plan.
 
 ## Build phases and acceptance tests
 
@@ -655,22 +656,22 @@ Eight phases. Each ships only when its acceptance test passes and `HANDOFF.md` r
 | Phase | Scope | Pass when |
 | --- | --- | --- |
 | 0. Repository and contracts | Directories (`sources/`, `data/`, `research/`, `models/`, `composite/`, `backtests/`, `risk/`, `broker/`, `ui/`, `tests/`), typed schemas, UTC rules, config file, audit log, fixtures, CI command | One offline event flows end to end with immutable IDs. A planted lookahead leak is caught |
-| 1. US paper vertical slice | Daily data from fixtures or Alpaca, one Level A trend baseline, candidate trade, risk check, approval or auto-simulation, journal, minimal Overview and Execution screens | Approval, rejection, fill, stale-feed block and kill switch all verified end to end |
+| 1. US paper vertical slice | Daily data from fixtures or Alpaca, the forward recorder of the full US asset list and daily bars (started as early as possible, because every day it runs adds clean history), one Level A trend baseline, candidate trade, risk check, approval or auto-simulation, journal, minimal Overview and Execution screens | Approval, rejection, fill, stale-feed block and kill switch all verified end to end |
 | 2. Broker paper and filings | Alpaca paper adapter, reconciliation, SEC filing timestamps and XBRL facts, earnings scorecard | A duplicate submission is not repeated. Every financial figure traces to an SEC filing. No "beat" without a consensus estimate |
-| 3. Research engine and the first Composite | Claim cards, evidence graph, experiment registry, two published factor reproductions (one passing, one expected to fail), Composite v0 over three Level A signals with shrinkage and frozen-weight benchmark. Until survivorship-free data is licensed this phase runs on fixture and synthetic data, and real signals stay labeled SURVIVORSHIP-BIASED at Tier 1 | Full evidence chain shown in the UI. Negative result stored and visible. Composite output traces to each signal's weight and evidence |
+| 3. Research engine and the first Composite | Claim cards, evidence graph, experiment registry, two published factor reproductions (one passing, one expected to fail), Composite v0 over three Level A signals with shrinkage and frozen-weight benchmark. Reproductions may use free portfolio returns built from CRSP. Stock-level tests use the forward record once it holds 252 trading days. Before that, stock-level work runs on fixtures and synthetic data, and results on older Alpaca history stay labeled SURVIVORSHIP-BIASED at Tier 1 | Full evidence chain shown in the UI. Negative result stored and visible. Composite output traces to each signal's weight and evidence |
 | 4. News and teaching | Lawful RSS ingestion, event clustering, Reasoning screen, predict first, one full historical replay | Replay cannot see later news or prices at earlier timestamps |
 | 5. Hypothesis Factory and model levels B and C | Daily research loop, decision criteria by study type, champion and challenger, calibration, drift monitoring, practitioner claim scoring | A model update never changes risk limits or permissions. A contradicting paper opens a re-evaluation case |
-| 6. Global research and execution | JKP global data, instrument taxonomy, exchange calendars, market rule table, FX split, Interactive Brokers paper adapter | Unsupported markets cannot receive orders. A follow-the-sun week runs with no manual step |
+| 6. Global research | JKP global factor returns, instrument taxonomy, exchange calendars, market rule table, FX split. No non-US execution (principle 11) | Every non-US instrument is `research_only` and cannot receive orders. A week of global research jobs runs with no manual step |
 | 7. Live trading (separate project) | Threat model, independent review, broker permissions, capped manual-approval prototype | Not started without a separate written decision from Aditi |
 
 ## Open decisions for Aditi
 
 - [ ] Hard limit values in the risk table (defaults are placeholders)
-- [ ] Survivorship-free US data: free sources lack delisted stocks, so US factor tests are labeled SURVIVORSHIP-BIASED until a source is licensed. CRSP through a university WRDS account is for academic research only and must be deleted when the affiliation ends, so it cannot be the platform's data layer. The recommended paid source and the other open decisions from the review are in `QUESTIONS.md`
-- [ ] News provider after the RSS phase
-- [ ] Hosting: which small cloud server runs the scheduled jobs
-- [ ] AI budget per month for claim cards and research digests
-- [ ] Order of non-US markets in Phase 6
+- [x] Survivorship-free US data: free only. The forward recorder and free portfolio-level returns, as in `QUESTIONS.md` Q1. CRSP through a university WRDS account is for academic research only, so it is not used
+- [x] News provider: lawful RSS only
+- [x] Hosting: Aditi's own computer (`QUESTIONS.md` Q13)
+- [x] AI budget: zero
+- [x] Non-US markets: research only, no execution
 - [ ] Tax professional review before any foreign fund or non-US holding
 
 ## Change log, v3 to v3.1
@@ -692,6 +693,8 @@ Each line cites the finding in `REVIEW.md`.
 - Stack: Python 3.14, APScheduler 3.x, Clarabel, current broker SDKs (O4, O6, O9, O10).
 - Phase 3 runs on fixtures until data is licensed (E25).
 - Hard risk limits: no change.
+
+Amendment, 2026-11-17, from Aditi: no subscription-based platform and no monthly fee. Added principle 11. Removed the paid data, paid real-time feed, licensed news, server rental and Interactive Brokers execution. Added the forward recorder to Phase 1 and free portfolio-level history to Phase 3. Phase 6 is global research only.
 
 ## Sources
 

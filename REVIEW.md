@@ -120,7 +120,7 @@ The risk rules block an order when the market is closed and when the quote is ol
 
 **E25. The survivorship rule blocks Phase 3 as written.**
 Free sources lack delisted stocks. Under the mandatory rule nothing tested on them can pass a gate, so no signal reaches Tier 2 and the Composite stays empty. Phase 3 needs three signals in it.
-**Change:** Phase 3 is split. Its acceptance test runs on synthetic and fixture data until survivorship-free data is licensed. Real signals stay labeled SURVIVORSHIP-BIASED and at Tier 1. See D3 and Q1.
+**Change:** Phase 3 is split. Its acceptance test runs on synthetic and fixture data until the free forward record holds 252 days, and reproductions may use free portfolio returns built from CRSP. Real signals stay labeled SURVIVORSHIP-BIASED and at Tier 1. See D3 and Q1.
 
 **E26. The universe cannot be built from Alpaca alone.**
 "US common stocks" needs a security-type field. Alpaca's assets endpoint has none: common stock, ADR, preferred, unit and warrant are not separable (VERIFIED). Sector neutrality needs GICS, which is proprietary with no free point-in-time source (SNIPPET).
@@ -149,7 +149,7 @@ Most earnings arrive after 16:30 or before 09:30. Orders decided at 16:30 are se
 **O1. Alpaca "includes real-time market data". QUALIFIED, VERIFIED.**
 The free Basic plan gives real-time data from IEX only, a small share of consolidated volume, with 30 websocket symbols and 200 historical calls per minute. Paper-only accounts get IEX only. Full SIP data is Algo Trader Plus at $99 per month. Historical SIP is free only when the request ends at least 15 minutes ago. Sources: https://docs.alpaca.markets/docs/about-market-data-api , https://docs.alpaca.markets/docs/market-data-faq
 Effect: the 15-second staleness limit and the 0.5% spread limit will block many names on IEX quotes. That is the correct fail-closed result, and it means the tradable set on the free plan is smaller than the universe.
-**Change:** source table updated. Paid SIP stays an open decision (Q2).
+**Change:** source table updated. Paid data is excluded (Q2 closed on 2026-11-17).
 
 **O2. Alpaca paper fills. VERIFIED.**
 Paper orders fill at the NBBO without checking quote size, with random partial fills 10% of the time, and no impact, queue position, fees or dividends. Source: https://docs.alpaca.markets/docs/paper-trading
@@ -246,7 +246,7 @@ CRSP through Columbia's WRDS access should not be the platform's data layer. The
 
 Vendors not reached in this pass: Intrinio, FirstRate Data, Kibot, Algoseek, QuantConnect export terms, CSI Data, Financial Modeling Prep.
 
-**Proposed change:** make Sharadar Bundle Full History the default plan, at $499 per year, after reading its licence terms. It is the only verified option with delisted prices, corporate actions, ETF prices and filing-dated fundamentals at an individual price. Norgate Platinum is the alternative when index membership history matters more than fundamentals. Nothing is bought without Aditi's decision (Q1). Until then the build runs on fixtures and synthetic data.
+**Superseded on 2026-11-17.** Aditi ruled out every subscription and monthly fee, so every paid option in the table above is excluded. The adopted plan is free: record the full US asset list and daily bars forward from Phase 1, and use free portfolio returns built from CRSP for reproductions. See `QUESTIONS.md` Q1. The original proposal, kept for the record: make Sharadar Bundle Full History the default plan, at $499 per year, after reading its licence terms. It is the only verified option with delisted prices, corporate actions, ETF prices and filing-dated fundamentals at an individual price. Norgate Platinum is the alternative when index membership history matters more than fundamentals. Nothing is bought without Aditi's decision (Q1). Until then the build runs on fixtures and synthetic data.
 
 **D4. Signals are validated long-short and traded long-only.** Much of the published return of equity anomalies sits in the short leg. A signal can pass Tier 4 as a long-short portfolio and add nothing to a long-only book. **Proposed change, applied:** the Tier 4 economic test for a cross-sectional signal has two parts. The long-short test stays as the validity check. The economic value score is measured on the long-only implementation: top-tercile portfolio against the universe return, net of costs. Both are shown, and Tier 4 needs both.
 
@@ -284,8 +284,8 @@ Vendors not reached in this pass: Intrinio, FirstRate Data, Kibot, Algoseek, Qua
 
 Each has a recommended answer. v3.1 uses the recommendation until told otherwise. The same list is in `QUESTIONS.md`.
 
-- **Q1. Buy survivorship-free data?** Recommended: Sharadar Bundle Full History at $499 per year, after reading its terms. Until then every real signal stays SURVIVORSHIP-BIASED at Tier 1 and the build uses fixtures.
-- **Q2. Pay for Alpaca SIP data ($99 per month)?** Recommended: no for now. Build and test on IEX and fixtures, and accept that the staleness and spread limits will block many names.
+- **Q1. Survivorship-free data.** Revised on 2026-11-17 after Aditi ruled out subscriptions: the free forward recorder plus free portfolio returns built from CRSP. See `QUESTIONS.md`.
+- **Q2. Paid real-time data.** Closed on 2026-11-17: no. The free IEX feed only.
 - **Q3. JKP data is licensed non-commercial.** Is personal paper trading non-commercial for this purpose, and does that change if real money ever follows? Recommended: use it for research now and re-check before Phase 7.
 - **Q4. Execution timing.** Recommended: sliced orders from 09:35 to 10:30 ET. The opening auction would need an exception to two safety invariants, and I did not make one.
 - **Q5. Biotech names under $5 or $10M.** Recommended: keep the universe filter for the tradable book and allow a research-only biotech universe with its own lower filters.

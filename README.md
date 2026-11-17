@@ -37,16 +37,15 @@ make phase0
 
 Not written yet: `SOURCE_REGISTRY.md`, `RESEARCH_PROTOCOL.md`, `DESIGN_SYSTEM.md`.
 
-## Estimated monthly cost
+## Cost
 
-Nothing is being paid for today. Everything runs offline on fixtures.
+Zero. No subscription or monthly fee is used, ever (spec principle 11).
 
-| Item | Option | Cost | Status |
-| --- | --- | --- | --- |
-| Hosting | Hetzner CX23, 2 vCPU and 4 GB | EUR 5.99 per month | Not started |
-| Hosting | DigitalOcean or AWS Lightsail, same size | $24 per month | Alternative |
-| US history with delisted stocks | Sharadar Bundle Full History | $499 per year | Needs Aditi's decision |
-| Real-time consolidated quotes | Alpaca Algo Trader Plus | $99 per month | Not recommended yet |
-| AI for claim cards and digests | Optional, budget-capped | Set by Aditi | Not built |
-
-Prices were read on 2026-11-17. Sources are in `REVIEW.md`.
+| Item | Choice | Cost |
+| --- | --- | --- |
+| Hosting | Aditi's own computer | Free |
+| US prices and paper trading | Alpaca free plan | Free |
+| US history with delisted stocks | Forward recorder from Phase 1, plus free portfolio returns built from CRSP | Free |
+| Filings, macro, papers | SEC EDGAR, FRED, BLS, BEA, Crossref, OpenAlex free key, arXiv | Free |
+| News | Lawful RSS feeds | Free |
+| AI | Off | Free |
