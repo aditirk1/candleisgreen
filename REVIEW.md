@@ -253,7 +253,7 @@ Vendors not reached in this pass: Intrinio, FirstRate Data, Kibot, Algoseek, Qua
 
 **D7. Truncating negative weights from Σ⁻¹μ̂.** Setting negatives to zero and rescaling is not the constrained optimum. **Proposed change, applied:** within-family weights solve the non-negative problem directly (minimize w'Σw - 2 w'μ̂ subject to w ≥ 0), then rescale to sum to 1.
 
-**D8. Diebold-Mariano for forecasting models.** The test is not valid when one model nests the other, which is the usual case when a model is compared with its own baseline. **Proposed change, applied:** nested comparisons use the Clark-West test. Non-nested comparisons keep Diebold-Mariano with the Harvey-Leybourne-Newbold correction. (Literature check pending in the follow-up pass.)
+**D8. Diebold-Mariano for forecasting models.** The test is not valid when one model nests the other, which is the usual case when a model is compared with its own baseline. **Proposed change, applied:** nested comparisons use the Clark-West test. Non-nested comparisons keep Diebold-Mariano with the Harvey-Leybourne-Newbold correction. The follow-up pass confirmed the nested-model problem from secondary sources, with one caveat: under Giacomini-White assumptions Diebold-Mariano can stay valid for nested models. Clark-West is the safer default.
 
 **D9. Selection cutoff for published signals.** The platform makes its own design choices (horizon, sector neutrality, smoothing) using data after the paper's cutoff. Those choices contaminate the out-of-sample record. **Proposed change, applied:** the cutoff is the latest of the paper's sample end, its first public date, and the date of the platform's last design choice for that signal. Every variant tried counts in the trial registry.
 
@@ -267,7 +267,7 @@ Vendors not reached in this pass: Intrinio, FirstRate Data, Kibot, Algoseek, Qua
 | Monthly change 25% | Keep, with the floor and exemptions in E9 |
 | IC shrinkage at 252 days | Keep, with the overlap fix in E13 |
 | Calibration slope 0.5 to 1.5 | Keep, measured on the unshrunk forecast (E12) |
-| Impact coefficient 0.5 | Keep as a floor (E17). Literature check pending |
+| Impact coefficient 0.5 | Keep as a floor (E17). Toth et al. (2011) put the peak-impact prefactor at "order unity". Average cost over a square-root path is about two thirds of peak, so 0.5 on cost implies a peak prefactor near 0.75. That two-thirds step is my own derivation and is unsourced |
 | Volatility target 12% | Keep as an upper bound (E16) |
 | Universe $5 and $10M | Keep, with hysteresis. Many catalyst-stage biotech names fall below these levels (Q5) |
 | 30 claims for practitioners | Keep as a minimum. At 30 binary claims a 50% baseline is only excluded by a hit rate near 68% |
@@ -295,14 +295,33 @@ Each has a recommended answer. v3.1 uses the recommendation until told otherwise
 
 ---
 
-## 5. Not verified in this pass
+## 5. Follow-up pass and what is still unverified
 
-A follow-up research pass is running on these. Results are appended below when it reports.
+A second research pass covered the items the first pass did not reach.
 
-- YouTube captions.download permission rule, Meta Content Library access rules and the isr.umich.edu link.
-- FRED and ALFRED API terms, BLS and BEA limits.
-- FINRA BrokerCheck terms, SEC IAPD bulk files, SEC litigation release feeds.
-- ClinicalTrials.gov API version, Crossref, arXiv, NBER and SSRN access terms.
-- Gu, Kelly and Xiu citation. Literature values for the square-root impact coefficient. Benjamini-Yekutieli, Diebold-Mariano and Clark-West properties.
-- EDGAR XBRL start year, the `filed` field and SIC coverage.
-- Sharadar start year and licence text. Norgate licence text.
+**O17. Meta Content Library. CHANGED.** Independent review moved from ICPSR at the University of Michigan to CASD, the French Secure Data Access Center, announced 2025-12-08. Eligibility is still academic or not-for-profit research institutions. The spec's isr.umich.edu link is outdated. Source: https://transparency.meta.com/researchtools/secure-access-data-center/ **Change:** text and links updated.
+
+**O18. FRED API. CHANGED in part.** A v2 API exists with one bulk endpoint. v1 is still documented, needs an API key, and serves ALFRED vintages through `realtime_start` and `realtime_end`. The official docs state neither a price for the key nor a rate limit. Source: https://fred.stlouisfed.org/docs/api/fred/ **Change:** source table names the v1 endpoint.
+
+**O19. FINRA BrokerCheck. QUALIFIED.** No public API was found. FINRA's permitted-uses page allows compiling data for investor protection, academic, compliance or regulatory purposes. Use as an input to a trading system is outside that list. SEC adviser bulk files and the litigation release RSS feed are available. Source: https://www.finra.org/investors/learn-to-invest/choosing-investment-professional/about-brokercheck/permitted-uses **Change:** BrokerCheck lookups are manual and started by Aditi.
+
+**Verified in the follow-up, no change needed.**
+- YouTube captions.download "requires the user to have permission to edit the video". VERIFIED.
+- ClinicalTrials.gov API v2 is current and the classic API retired in June 2024. SNIPPET.
+- BLS v2 with a key: 500 queries per day, 50 series per query. BEA: key required, 100 requests per minute. VERIFIED.
+- Crossref pools: public 5, polite 10, paid 150 requests (the unit is believed to be per second). arXiv: one request per 3 seconds. NBER RSS still offered. VERIFIED.
+- Gu, Kelly and Xiu, RFS 33(5), 2223 to 2273. VERIFIED.
+- statsmodels has `fdr_by` and HAC covariance. arch has the stationary and circular block bootstraps. VERIFIED.
+- EDGAR XBRL facts carry a `filed` date, data starts in 2009, and the submissions JSON has `sic`. VERIFIED.
+
+**Still unverified.**
+
+- SSRN: no official API or feed was found and its terms page blocked fetches. Treat automated collection as not permitted until the terms are read.
+- Whether a FRED API key is free and what the rate limit is. The official docs do not say.
+- Benjamini-Yekutieli under arbitrary dependence, from a primary source. It is the textbook property and the spec relies on it.
+- Impact prefactor values in Almgren et al. (2005) and Frazzini, Israel and Moskowitz.
+- EDGAR coverage of deregistered companies.
+- The licence on the Fama-French industry definitions. The files are free to download and carry a copyright notice with no licence text.
+- Sharadar start year and licence text. Norgate licence text. Whether Alpaca serves bars for delisted symbols.
+- Interactive Brokers figures, which were read from search snippets only.
+- The seven data vendors listed under D3 as not reached.
