@@ -99,4 +99,4 @@ def test_fixture_model_cannot_be_routed_to_a_paper_broker(tmp_path):
     closes = [make_obs(value=50.0), make_obs(value=51.0, event=datetime(2026, 11, 10, 21, 0, tzinfo=timezone.utc))]
     forecast = fixture_baseline.issue_forecast("inst_TEST", closes, decision, decision, 5)
     with pytest.raises(NotEligibleForOrdersError):
-        build_intent(forecast, 10.0, "2026-11-16", Venue.PAPER)
+        build_intent(forecast, 10.0, "2026-11-16", Venue.PAPER, 51.0)

@@ -24,6 +24,16 @@ class PaperRecord:
 
 
 @dataclass(frozen=True)
+class AcademicRecord:
+    """Out-of-sample academic portfolio returns after the selection cutoff (Q14)."""
+
+    mean: float  # annual at 10% volatility
+    se: float
+    modeled_cost: float
+    license: str  # license ID of the source dataset
+
+
+@dataclass(frozen=True)
 class SignalInput:
     state: SignalState
     z: np.ndarray  # standardized, smoothed score per asset today
@@ -32,6 +42,7 @@ class SignalInput:
     oos_se: float  # annual, Newey-West
     first_usable_at: datetime  # latest first_usable_at over every input of this signal
     paper: Optional[PaperRecord] = None
+    academic: Optional[AcademicRecord] = None
 
 
 @dataclass(frozen=True)
@@ -95,6 +106,8 @@ def _edge_for(index: int, signals: tuple, cfg) -> edge.EdgeEstimate:
         delta = edge.delta_for(me.paper.group, cfg)
         if delta is not None:
             evidence.append(edge.paper_evidence(me.paper.r_paper, me.paper.se_paper, delta, me.paper.modeled_cost, cfg))
+    if me.academic is not None:
+        evidence.append(edge.academic_evidence(me.academic.mean, me.academic.se, me.academic.modeled_cost, cfg))
     evidence.append(edge.oos_evidence(me.oos_mean, me.oos_se))
     return edge.estimate(evidence)
 

@@ -14,7 +14,7 @@ from candleisgreen.risk import engine
 from candleisgreen.risk.engine import evaluate
 from tests.conftest import T0, make_ctx, make_intent
 
-GOOD_QUOTE = Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=3))
+GOOD_QUOTE = Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=3), feed="iex_realtime")
 
 
 def test_clean_order_is_approved(limits):
@@ -24,10 +24,10 @@ def test_clean_order_is_approved(limits):
 
 
 BLOCKS = {
-    "stale quote": dict(quote=Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=16))),
+    "stale quote": dict(quote=Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=16), feed="iex_realtime")),
     "no quote": dict(quote=None),
-    "quote for another instrument": dict(quote=Quote(asset_id="inst_OTHER", bid=51.18, ask=51.22, quote_time=T0)),
-    "wide spread": dict(quote=Quote(asset_id="inst_TEST", bid=50.00, ask=50.30, quote_time=T0)),
+    "quote for another instrument": dict(quote=Quote(asset_id="inst_OTHER", bid=51.18, ask=51.22, quote_time=T0, feed="iex_realtime")),
+    "wide spread": dict(quote=Quote(asset_id="inst_TEST", bid=50.00, ask=50.30, quote_time=T0, feed="iex_realtime")),
     "kill switch": dict(kill_switch_engaged=True),
     "kill switch unknown": dict(kill_switch_engaged=None),
     "market closed": dict(market_open=False),
@@ -44,6 +44,13 @@ BLOCKS = {
     "cluster unknown": dict(cluster_value=None),
     "order over 1% of ADV": dict(adv20_shares=4_000.0),
     "ADV unknown": dict(adv20_shares=None),
+    "outside execution window": dict(in_execution_window=False),
+    "execution window unknown": dict(in_execution_window=None),
+    "delayed consolidated quote": dict(quote=Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0, feed="sip_delayed")),
+    "quote with no size": dict(quote=Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0, feed="iex_realtime", ask_size=0)),
+    "pending buys push position over 5%": dict(pending_position_value=3_000.0),
+    "pending buys push cluster over 20%": dict(pending_cluster_value=19_000.0),
+    "pending orders unknown": dict(pending_cluster_value=None),
 }
 
 
@@ -55,8 +62,8 @@ def test_each_failure_blocks_the_order(name, limits):
 
 
 def test_quote_at_the_limit_passes_and_just_over_fails(limits):
-    at = Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=15))
-    over = Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=15, milliseconds=1))
+    at = Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=15), feed="iex_realtime")
+    over = Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=15, milliseconds=1), feed="iex_realtime")
     assert evaluate(make_intent(), make_ctx(quote=at), limits).verdict is RiskVerdict.APPROVED
     assert evaluate(make_intent(), make_ctx(quote=over), limits).verdict is RiskVerdict.BLOCKED
 
@@ -79,7 +86,7 @@ def test_a_check_that_raises_blocks_the_order(limits, monkeypatch):
 OPTIONAL_FIELDS = [
     "kill_switch_engaged", "market_open", "market_halted", "broker_connected", "account_state_known",
     "instrument_mapping_certain", "quote", "equity", "day_start_equity", "position_value",
-    "cluster_value", "adv20_shares",
+    "cluster_value", "pending_position_value", "pending_cluster_value", "adv20_shares", "in_execution_window",
 ]
 
 
@@ -144,3 +151,22 @@ def test_non_paper_endpoints_are_refused(url):
 
 def test_paper_endpoint_is_accepted():
     assert_paper_endpoint("https://paper-api.alpaca.markets/v2/orders")
+
+
+def test_limit_too_far_from_mid_is_blocked(limits):
+    far = make_intent(limit=51.20 * 1.006)  # more than the 0.5% spread limit above mid
+    assert evaluate(far, make_ctx(), limits).verdict is RiskVerdict.BLOCKED
+    assert evaluate(make_intent(limit=51.24), make_ctx(), limits).verdict is RiskVerdict.APPROVED
+
+
+def test_non_marketable_limit_rests_unfilled(limits):
+    intent = make_intent(limit=51.19)  # below the ask
+    approved = evaluate(intent, make_ctx(), limits)
+    ack = InternalSimulator(100_000).submit(intent, approved, GOOD_QUOTE)
+    assert ack.status == "accepted" and ack.fills == ()
+
+
+def test_fill_records_slippage_against_arrival_mid(limits):
+    intent = make_intent()
+    ack = InternalSimulator(100_000).submit(intent, evaluate(intent, make_ctx(), limits), GOOD_QUOTE)
+    assert ack.fills[0].slippage_bps == pytest.approx((51.22 - 51.20) / 51.20 * 1e4)

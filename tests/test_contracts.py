@@ -106,7 +106,7 @@ def test_rationale_is_at_most_six_lines():
 
 
 def test_config_loads_and_hashes(cfg):
-    assert cfg.spec_version == "3.1"
+    assert cfg.spec_version == "3.2"
     assert cfg.config_hash == load_config().config_hash
 
 
@@ -115,7 +115,9 @@ def test_hard_limits_match_the_spec_defaults(limits):
     assert limits.model_dump() == {
         "max_position_pct_equity": 0.05, "max_cluster_pct_equity": 0.20, "max_order_pct_adv20": 0.01,
         "max_spread_pct": 0.005, "daily_loss_stop_pct_equity": 0.02, "max_quote_age_seconds": 15.0,
+        "execution_grade_feeds": ("iex_realtime", "fixture_realtime"),
     }
+    assert "sip_delayed" not in limits.execution_grade_feeds
 
 
 def _raw():

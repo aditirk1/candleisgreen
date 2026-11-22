@@ -34,9 +34,10 @@ def make_obs(value=50.0, event=None, usable=None, vintage=0, field="close", inst
     )
 
 
-def make_intent(quantity=48.0, side=Side.BUY, venue=Venue.SIMULATION):
+def make_intent(quantity=48.0, side=Side.BUY, venue=Venue.SIMULATION, limit=None):
+    limit = limit if limit is not None else (51.24 if side is Side.BUY else 51.16)
     return OrderIntent(
-        forecast_id="fc_test", asset_id="inst_TEST", side=side, quantity=quantity,
+        forecast_id="fc_test", asset_id="inst_TEST", side=side, quantity=quantity, limit_price=limit,
         strategy_id="fixture_baseline", strategy_version="0.1.0", session_date="2026-11-16", venue=venue,
     )
 
@@ -45,9 +46,11 @@ def make_ctx(**overrides):
     base = dict(
         now=T0, kill_switch_engaged=False, market_open=True, market_halted=False, broker_connected=True,
         account_state_known=True, instrument_mapping_certain=True,
-        quote=Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=3)),
+        quote=Quote(asset_id="inst_TEST", bid=51.18, ask=51.22, quote_time=T0 - timedelta(seconds=3),
+                    feed="iex_realtime"),
         equity=100_000.0, day_start_equity=100_000.0, position_value=0.0, cluster_value=0.0,
-        adv20_shares=2_000_000.0,
+        pending_position_value=0.0, pending_cluster_value=0.0, adv20_shares=2_000_000.0,
+        in_execution_window=True,
     )
     base.update(overrides)
     return RiskContext(**base)

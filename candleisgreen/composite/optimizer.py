@@ -42,8 +42,16 @@ class OptimizerResult:
     solves: int
 
 
+UNKNOWN = "UNKNOWN"
+
+
+def _normalize(labels: Sequence[str]) -> np.ndarray:
+    """Missing or blank labels share one UNKNOWN bucket, so they cannot evade a cap."""
+    return np.array([str(x).strip() if x is not None and str(x).strip() else UNKNOWN for x in labels])
+
+
 def _groups(labels: Sequence[str]) -> list[np.ndarray]:
-    arr = np.asarray(labels)
+    arr = _normalize(labels)
     return [np.where(arr == name)[0] for name in np.unique(arr)]
 
 

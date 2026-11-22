@@ -1,8 +1,10 @@
-# CandleIsGreen configuration. Spec v3.1 defaults.
-# Every threshold and limit lives here. Change a value here, never in code.
+# CandleIsGreen configuration. Spec v3.2 defaults.
+# Every value lives here, never in code. Every value is classified in
+# config/parameters.yaml as empirical, safeguard, provisional or external_fact,
+# and that basis decides who may change it and how it is shown.
 # Bump config_version on every edit. The loader rejects unknown keys.
-config_version: "3.1.2"
-spec_version: "3.1"
+config_version: "3.2.0"
+spec_version: "3.2"
 
 time:
   market_timezone: America/New_York
@@ -19,6 +21,13 @@ universe:
   exit_min_median_dollar_volume_20d: 7500000
   dollar_volume_window_days: 20
   exclude_leveraged_inverse_etfs: true
+  # Research only. No price or volume filter, never receives orders (QUESTIONS Q5).
+  research_universes:
+    biotech:
+      description: Pharmaceutical, biological and medical research companies, research only
+      min_price: 0.0
+      min_median_dollar_volume_20d: 0.0
+      sic_codes: [2834, 2835, 2836, 8731]
 
 composite:
   standardize:
@@ -56,6 +65,8 @@ composite:
     tau_floor_annual: 0.01
     family_min_signals_for_prior: 5
     delta_replace_min_signals: 20
+    # Extra uncertainty on academic portfolio evidence, which is not the tradable version.
+    implementation_gap_factor: 0.5
   eligibility:
     min_tier: 4
     capital_min_tier: 5
@@ -69,6 +80,16 @@ composite:
     bootstrap_resamples: 2000
     # Tier 3 independent replication: same sign and significant at this two-sided level.
     replication_significance: 0.05
+  promotion:
+    shadow_min_trading_days: 63
+    default_min_shadow_trades: 20
+    default_max_se_to_expected_ratio: 1.0
+    shadow_band_level: 0.90
+    max_tracking_error_annual: 0.05
+  monitoring:
+    min_observation_days: 63
+    review_window_days: 252
+    alert_probability: 0.05
   weights:
     cov_window_days: 756
     cov_min_days: 252
@@ -110,6 +131,8 @@ risk:
     max_spread_pct: 0.005
     daily_loss_stop_pct_equity: 0.02
     max_quote_age_seconds: 15
+    # Quote feeds fit for execution decisions. Delayed consolidated data is not.
+    execution_grade_feeds: [iex_realtime, fixture_realtime]
   loosening_delay_hours: 24
 
 execution:
@@ -117,3 +140,6 @@ execution:
   # Must stay false. The loader refuses any other value.
   live_trading_enabled: false
   simulator_starting_equity_usd: 100000
+  order_type: limit
+  # Buy limit = ask + offset x spread. Sell limit = bid - offset x spread.
+  limit_offset_fraction: 0.5

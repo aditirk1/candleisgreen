@@ -18,7 +18,8 @@ from .broker.simulator import InternalSimulator
 from .core.audit import AuditLog
 from .core.config import AppConfig, load_config
 from .core.schemas import Forecast, OrderIntent, Quote, RiskContext, RiskVerdict, Side, Venue
-from .core.timeutil import ensure_utc, local_to_utc
+from .core.licenses import load_licenses
+from .core.timeutil import ensure_utc, in_local_window, local_to_utc
 from .data.pit_store import PointInTimeStore
 from .models import fixture_baseline
 from .risk.engine import evaluate
@@ -35,12 +36,20 @@ def _ts(text: str) -> datetime:
     return ensure_utc(datetime.fromisoformat(text.replace("Z", "+00:00")))
 
 
-def build_intent(forecast: Forecast, quantity: float, session_date: str, venue: Venue) -> Optional[OrderIntent]:
-    """Long-only. A non-positive signal gives no order."""
+def limit_price(side: Side, quote: Quote, offset_fraction: float) -> float:
+    """Marketable limit: a share of the spread past the touch."""
+    spread = quote.ask - quote.bid
+    return quote.ask + offset_fraction * spread if side is Side.BUY else quote.bid - offset_fraction * spread
+
+
+def build_intent(forecast: Forecast, quantity: float, session_date: str, venue: Venue,
+                 limit: float) -> Optional[OrderIntent]:
+    """Long-only limit orders. A non-positive signal gives no order."""
     if not forecast.eligible_for_orders:
         raise NotEligibleForOrdersError("forecast is not eligible for orders")
     if forecast.model_id == fixture_baseline.MODEL_ID and venue is not Venue.SIMULATION:
         raise NotEligibleForOrdersError("the fixture model may only be routed to the simulator")
+    load_licenses().assert_use(forecast.data_licenses, "paper_trading")
     strength = forecast.signal_strength if forecast.signal_strength is not None else forecast.expected_excess_return
     if strength is None or strength <= 0 or quantity <= 0:
         return None
@@ -49,6 +58,7 @@ def build_intent(forecast: Forecast, quantity: float, session_date: str, venue: 
         asset_id=forecast.asset_id,
         side=Side.BUY,
         quantity=quantity,
+        limit_price=limit,
         strategy_id=forecast.model_id,
         strategy_version=forecast.model_version,
         session_date=session_date,
@@ -97,12 +107,13 @@ def run_offline_event(fixture_path: str | Path, workdir: str | Path, config: Opt
         ex = payload["execution"]
         now = _ts(ex["now"])
         quote = Quote(asset_id=asset, bid=ex["quote"]["bid"], ask=ex["quote"]["ask"],
-                      quote_time=_ts(ex["quote"]["quote_time"]))
+                      quote_time=_ts(ex["quote"]["quote_time"]), feed=ex["quote"]["feed"])
         limits = cfg.risk.hard_limits
         by_position = limits.max_position_pct_equity * ex["equity"] / quote.ask
         by_volume = limits.max_order_pct_adv20 * ex["adv20_shares"]
         quantity = float(math.floor(ex["fraction_of_limit"] * min(by_position, by_volume)))
-        intent = build_intent(forecast, quantity, ex["session_date"], Venue.SIMULATION)
+        limit = limit_price(Side.BUY, quote, cfg.execution.limit_offset_fraction)
+        intent = build_intent(forecast, quantity, ex["session_date"], Venue.SIMULATION, limit)
         result = {
             "observation_ids": [o.observation_id for o in observations],
             "data_snapshot_id": forecast.data_snapshot_id,
@@ -122,7 +133,12 @@ def run_offline_event(fixture_path: str | Path, workdir: str | Path, config: Opt
                 instrument_mapping_certain=ex["instrument_mapping_certain"], quote=quote,
                 equity=ex["equity"], day_start_equity=ex["day_start_equity"],
                 position_value=ex["position_value"], cluster_value=ex["cluster_value"],
+                pending_position_value=ex["pending_position_value"],
+                pending_cluster_value=ex["pending_cluster_value"],
                 adv20_shares=ex["adv20_shares"],
+                in_execution_window=in_local_window(
+                    now, cfg.time.execution_window_start_local, cfg.time.execution_window_end_local,
+                    cfg.time.market_timezone),
             )
             decision = evaluate(intent, ctx, limits)
             log("risk_decision", decision.risk_decision_id, decision, now)
@@ -135,6 +151,7 @@ def run_offline_event(fixture_path: str | Path, workdir: str | Path, config: Opt
                 for fill in ack.fills:
                     log("fill", fill.fill_id, fill, fill.filled_at)
                 result["fill_ids"] = [f.fill_id for f in ack.fills]
+                result["slippage_bps"] = [round(f.slippage_bps, 4) for f in ack.fills]
                 result["positions"] = broker.positions()
         result["audit_records"] = len(audit.records())
         result["audit_chain_ok"] = audit.verify() is None

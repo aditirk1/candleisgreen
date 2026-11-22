@@ -27,6 +27,15 @@ class TimeConfig(_Section):
     execution_window_end_local: str
 
 
+class ResearchUniverseConfig(_Section):
+    """A research-only universe. It can never receive orders."""
+
+    description: str
+    min_price: float = Field(ge=0)
+    min_median_dollar_volume_20d: float = Field(ge=0)
+    sic_codes: tuple[int, ...] = ()
+
+
 class UniverseConfig(_Section):
     min_price: float = Field(gt=0)
     min_median_dollar_volume_20d: float = Field(gt=0)
@@ -34,6 +43,7 @@ class UniverseConfig(_Section):
     exit_min_median_dollar_volume_20d: float = Field(gt=0)
     dollar_volume_window_days: int = Field(gt=0)
     exclude_leveraged_inverse_etfs: bool
+    research_universes: dict[str, ResearchUniverseConfig] = {}
 
 
 class StandardizeConfig(_Section):
@@ -70,6 +80,7 @@ class EdgeConfig(_Section):
     tau_floor_annual: float
     family_min_signals_for_prior: int
     delta_replace_min_signals: int
+    implementation_gap_factor: float = Field(ge=0)
 
 
 class EligibilityConfig(_Section):
@@ -83,6 +94,24 @@ class EligibilityConfig(_Section):
     bootstrap_block_days: int = Field(gt=0)
     bootstrap_resamples: int = Field(gt=0)
     replication_significance: float = Field(gt=0, lt=1)
+
+
+class PromotionConfig(_Section):
+    """Tier 5 prospective validation. A strategy may declare stricter values."""
+
+    shadow_min_trading_days: int = Field(gt=0)
+    default_min_shadow_trades: int = Field(gt=0)
+    default_max_se_to_expected_ratio: float = Field(gt=0)
+    shadow_band_level: float = Field(gt=0, lt=1)
+    max_tracking_error_annual: float = Field(gt=0)
+
+
+class MonitoringConfig(_Section):
+    """Strategy deterioration, measured against the forecast distribution."""
+
+    min_observation_days: int = Field(gt=0)
+    review_window_days: int = Field(gt=0)
+    alert_probability: float = Field(gt=0, lt=1)
 
 
 class WeightConfig(_Section):
@@ -129,6 +158,8 @@ class CompositeConfig(_Section):
     edge: EdgeConfig
     eligibility: EligibilityConfig
     weights: WeightConfig
+    promotion: PromotionConfig
+    monitoring: MonitoringConfig
     alpha: AlphaConfig
     optimizer: OptimizerConfig
 
@@ -142,6 +173,7 @@ class HardLimits(_Section):
     max_spread_pct: float = Field(gt=0, le=1)
     daily_loss_stop_pct_equity: float = Field(gt=0, le=1)
     max_quote_age_seconds: float = Field(gt=0)
+    execution_grade_feeds: tuple[str, ...] = Field(min_length=1)
 
 
 class RiskConfig(_Section):
@@ -163,6 +195,8 @@ class ExecutionConfig(_Section):
     mode: Mode
     live_trading_enabled: bool
     simulator_starting_equity_usd: float = Field(gt=0)
+    order_type: Literal["limit"]
+    limit_offset_fraction: float = Field(ge=0)
 
     @model_validator(mode="after")
     def _live_is_never_enabled(self) -> "ExecutionConfig":

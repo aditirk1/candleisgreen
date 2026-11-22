@@ -59,5 +59,11 @@ def local_to_utc(day: date, hhmm: str, tz: str) -> datetime:
     return first.astimezone(UTC)
 
 
+def in_local_window(now: datetime, start_hhmm: str, end_hhmm: str, tz: str) -> bool:
+    """True when `now` falls inside [start, end) local time on its own local date."""
+    local_day = ensure_utc(now).astimezone(ZoneInfo(tz)).date()
+    return local_to_utc(local_day, start_hhmm, tz) <= ensure_utc(now) < local_to_utc(local_day, end_hhmm, tz)
+
+
 def utc_now() -> datetime:
     return datetime.now(UTC)

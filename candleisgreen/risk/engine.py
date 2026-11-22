@@ -64,6 +64,33 @@ def check_instrument(intent, ctx, limits):
     )
 
 
+def check_execution_window(intent, ctx, limits):
+    return _require_true(ctx.in_execution_window, "execution window unknown", "outside the execution window")
+
+
+def check_quote_feed(intent, ctx, limits):
+    """Only execution-grade feeds may price an order. Delayed consolidated data never is."""
+    if ctx.quote is None:
+        return "no quote"
+    if ctx.quote.feed not in limits.execution_grade_feeds:
+        return f"quote feed '{ctx.quote.feed}' is not execution grade"
+    if ctx.quote.bid_size == 0 or ctx.quote.ask_size == 0:
+        return "quote has no size on one side"
+    return None
+
+
+def check_limit_price(intent, ctx, limits):
+    """Limit orders only. The limit may not reach further than the spread limit from mid."""
+    if ctx.quote is None:
+        return "no quote"
+    mid = ctx.quote.mid
+    if intent.side is Side.BUY and intent.limit_price > mid * (1 + limits.max_spread_pct):
+        return f"buy limit {intent.limit_price:.4f} too far above mid {mid:.4f}"
+    if intent.side is Side.SELL and intent.limit_price < mid * (1 - limits.max_spread_pct):
+        return f"sell limit {intent.limit_price:.4f} too far below mid {mid:.4f}"
+    return None
+
+
 def check_quote_fresh(intent, ctx, limits):
     if ctx.quote is None:
         return "no quote"
@@ -107,10 +134,10 @@ def _order_value(intent: OrderIntent, ctx: RiskContext) -> Optional[float]:
 
 def check_position_size(intent, ctx, limits):
     value = _order_value(intent, ctx)
-    if value is None or ctx.position_value is None or not ctx.equity:
+    if value is None or ctx.position_value is None or ctx.pending_position_value is None or not ctx.equity:
         return "position size cannot be evaluated"
     sign = 1 if intent.side is Side.BUY else -1
-    after = ctx.position_value + sign * value
+    after = ctx.position_value + (ctx.pending_position_value if sign > 0 else 0.0) + sign * value
     if after < -1e-9:
         return "order would create a short position"
     if sign > 0 and after / ctx.equity > limits.max_position_pct_equity:
@@ -120,10 +147,10 @@ def check_position_size(intent, ctx, limits):
 
 def check_cluster(intent, ctx, limits):
     value = _order_value(intent, ctx)
-    if value is None or ctx.cluster_value is None or not ctx.equity:
+    if value is None or ctx.cluster_value is None or ctx.pending_cluster_value is None or not ctx.equity:
         return "cluster exposure cannot be evaluated"
     if intent.side is Side.BUY:
-        after = (ctx.cluster_value + value) / ctx.equity
+        after = (ctx.cluster_value + ctx.pending_cluster_value + value) / ctx.equity
         if after > limits.max_cluster_pct_equity:
             return f"cluster {after:.2%} over limit {limits.max_cluster_pct_equity:.2%}"
     return None
@@ -142,10 +169,13 @@ CHECKS: tuple[tuple[str, Check], ...] = (
     ("venue", check_venue),
     ("kill_switch", check_kill_switch),
     ("market_open", check_market_open),
+    ("execution_window", check_execution_window),
     ("broker", check_broker),
     ("account", check_account),
     ("instrument", check_instrument),
     ("quote_fresh", check_quote_fresh),
+    ("quote_feed", check_quote_feed),
+    ("limit_price", check_limit_price),
     ("spread", check_spread),
     ("daily_loss", check_daily_loss),
     ("position_size", check_position_size),

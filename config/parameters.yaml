@@ -1,0 +1,127 @@
+# Parameter registry. Every value in config/default.yaml is classified here.
+#
+# basis:
+#   empirical      A value taken from published evidence. Needs `source`. Changes only with
+#                  a new cited source or platform evidence in the experiment registry.
+#   safeguard      An engineering protection. Its job is to limit damage, not to fit data.
+#                  Never chosen by a search, backtest or optimizer. Aditi approves changes.
+#   provisional    An initial configuration with no evidence behind the exact number.
+#                  Needs `review`: what evidence would change it. Shown as PROVISIONAL
+#                  wherever it decides an outcome. Experiments may vary it, and every
+#                  variant counts in the trial registry.
+#   external_fact  An official or conventional number that is not a threshold (a fee rate,
+#                  a time zone). Needs `source` and `as_of`.
+#
+# Metadata keys (config_version, spec_version, any `description`) are not parameters.
+registry_version: "1.0.0"
+parameters:
+  time.market_timezone: {basis: external_fact, source: IANA time zone of US equity exchanges, as_of: "2026-11-17"}
+  time.decision_time_local: {basis: provisional, review: Move if data needed at decision time arrives later than 16:30 ET}
+  time.execution_window_start_local: {basis: provisional, review: "Compare measured slippage across alternative windows before fixing a permanent default (Q4)"}
+  time.execution_window_end_local: {basis: provisional, review: "Compare measured slippage across alternative windows before fixing a permanent default (Q4)"}
+
+  universe.min_price: {basis: provisional, review: Revisit with measured spreads and costs by price bucket (Q5)}
+  universe.min_median_dollar_volume_20d: {basis: provisional, review: Revisit with measured participation and slippage (Q5)}
+  universe.exit_min_price: {basis: provisional, review: Hysteresis width. Revisit with measured universe turnover}
+  universe.exit_min_median_dollar_volume_20d: {basis: provisional, review: Hysteresis width. Revisit with measured universe turnover}
+  universe.dollar_volume_window_days: {basis: provisional, review: Shorter windows react faster and are noisier}
+  universe.exclude_leveraged_inverse_etfs: {basis: safeguard, change_policy: Aditi approves}
+  universe.research_universes.biotech.min_price: {basis: provisional, review: Research only. Zero means no filter}
+  universe.research_universes.biotech.min_median_dollar_volume_20d: {basis: provisional, review: Research only. Zero means no filter}
+  universe.research_universes.biotech.sic_codes: {basis: provisional, review: "SIC 2834, 2835, 2836 and 8731 as the biotech definition. Revisit if names are missed"}
+
+  composite.standardize.winsor_lower_pct: {basis: provisional, review: "Common practice, no evidence for the exact percentile"}
+  composite.standardize.winsor_upper_pct: {basis: provisional, review: "Common practice, no evidence for the exact percentile"}
+  composite.standardize.ts_std_window_days: {basis: provisional, review: One trading year by convention}
+  composite.standardize.ts_clip: {basis: safeguard, change_policy: Aditi approves. Limits the effect of one extreme score}
+  composite.standardize.ema_halflife_fraction_of_horizon: {basis: provisional, review: Trades turnover against signal decay. Test per family}
+
+  composite.research_portfolio.vol_target_annual: {basis: provisional, review: A scaling convention so signals compare on one scale. Any value works if used consistently}
+  composite.research_portfolio.research_nav_usd: {basis: provisional, review: Sets the impact cost of research portfolios. Should match a realistic book size}
+  composite.research_portfolio.newey_west_max_lag_days: {basis: provisional, review: Cap on the HAC lag for long horizons}
+  composite.research_portfolio.trading_days_per_year: {basis: external_fact, source: US equity market convention, as_of: "2026-11-17"}
+
+  composite.costs.sec_fee_per_million_usd_sold: {basis: external_fact, source: "SEC fee rate advisory 2026-2, https://www.sec.gov/rules-regulations/fee-rate-advisories/2026-2", as_of: "2026-04-04"}
+  composite.costs.finra_taf_per_share_sold: {basis: external_fact, source: "FINRA TAF fee holiday 2026-10-01 to 2026-12-31 (SR-FINRA-2026-021). Scheduled 2027 rate 0.000232 per share", as_of: "2026-10-01"}
+  composite.costs.finra_taf_max_per_trade_usd: {basis: external_fact, source: FINRA 2026 TAF schedule, as_of: "2026-10-01"}
+  composite.costs.borrow_rate_annual: {basis: provisional, review: Easy-to-borrow assumption. Understates hard-to-borrow names}
+  composite.costs.vol_lookback_days: {basis: provisional, review: Ex-ante volatility window for research portfolios}
+  composite.costs.min_vol_history_days: {basis: safeguard, change_policy: Aditi approves. No position without enough history to size it}
+  composite.costs.long_only_quantile: {basis: provisional, review: Top third. Test top quintile and decile as variants}
+
+  composite.edge.delta_us_published: {basis: empirical, source: "McLean and Pontiff (2016), JF 71(1): long-short returns 58% lower after publication, 97 predictors. Less severe estimates: Jensen, Kelly and Pedersen (2023) about 0.53, Chen and Zimmermann (2020) about 0.88"}
+  composite.edge.delta_non_us_published: {basis: empirical, source: "McLean and Pontiff (2016) data-mining share of 26%, and Jacobs and Mueller (2020), JFE 135(1): no reliable post-publication decline outside the US"}
+  composite.edge.delta_other_published: {basis: provisional, review: Extrapolated from equity results to other families. No direct evidence}
+  composite.edge.omega_factor: {basis: provisional, review: Caps paper-only confidence at P of 0.977 (REVIEW E3)}
+  composite.edge.cold_start_tau_annual: {basis: provisional, review: Allows a Sharpe of about 0.5 either way at one standard deviation}
+  composite.edge.tau_floor_annual: {basis: safeguard, change_policy: Aditi approves. Stops the family prior collapsing to zero variance}
+  composite.edge.family_min_signals_for_prior: {basis: provisional, review: Fewer signals give an unstable prior}
+  composite.edge.delta_replace_min_signals: {basis: provisional, review: Signals needed before a family's own decay ratio replaces the literature value}
+  composite.edge.implementation_gap_factor: {basis: provisional, review: Extra variance for academic portfolio evidence that is not the tradable version (Q14)}
+
+  composite.eligibility.min_tier: {basis: safeguard, change_policy: Aditi approves. Governance gate}
+  composite.eligibility.capital_min_tier: {basis: safeguard, change_policy: Aditi approves. Governance gate}
+  composite.eligibility.min_prob_positive: {basis: provisional, review: "Weak alone (REVIEW E2, E3). Tier 3 and Tier 4 do most of the filtering"}
+  composite.eligibility.min_oos_days: {basis: provisional, review: One trading year. Not a statistical requirement}
+  composite.eligibility.min_events: {basis: provisional, review: Rule of thumb for event studies}
+  composite.eligibility.interval_level: {basis: provisional, review: 90% two-sided equals a one-sided 5% test (REVIEW E30)}
+  composite.eligibility.cost_multiplier: {basis: safeguard, change_policy: Aditi approves. Margin of safety on modeled costs}
+  composite.eligibility.bootstrap_block_days: {basis: provisional, review: Matches the 21-day alpha horizon}
+  composite.eligibility.bootstrap_resamples: {basis: provisional, review: Numerical precision only}
+  composite.eligibility.replication_significance: {basis: provisional, review: The conventional 5% level}
+
+  composite.promotion.shadow_min_trading_days: {basis: provisional, review: "63 trading days as the minimum (Q8). Strategies add trade-count and precision requirements"}
+  composite.promotion.default_min_shadow_trades: {basis: provisional, review: Default when a strategy declares none. Low-turnover strategies need their own value}
+  composite.promotion.default_max_se_to_expected_ratio: {basis: provisional, review: Shadow standard error no larger than the expected return. Strategies may be stricter}
+  composite.promotion.shadow_band_level: {basis: provisional, review: Width of the pre-registered band for realized shadow returns}
+  composite.promotion.max_tracking_error_annual: {basis: provisional, review: Allowed gap between the tradable version and its research record}
+
+  composite.monitoring.min_observation_days: {basis: provisional, review: Below this the deterioration test is not run}
+  composite.monitoring.review_window_days: {basis: provisional, review: Rolling window for the deterioration test. Strategies may declare their own (Q6)}
+  composite.monitoring.alert_probability: {basis: provisional, review: Predictive tail probability that opens a review. Not a universal test (Q6)}
+
+  composite.weights.cov_window_days: {basis: provisional, review: Three trading years}
+  composite.weights.cov_min_days: {basis: provisional, review: One trading year}
+  composite.weights.hrp_min_families: {basis: provisional, review: HRP needs at least three clusters to be meaningful}
+  composite.weights.signal_cap: {basis: safeguard, change_policy: Aditi approves. Concentration limit}
+  composite.weights.family_cap: {basis: safeguard, change_policy: Aditi approves. Concentration limit}
+  composite.weights.max_monthly_relative_change: {basis: safeguard, change_policy: Aditi approves. Limits weight churn}
+  composite.weights.max_monthly_absolute_change_floor: {basis: safeguard, change_policy: Aditi approves. Limits weight churn}
+  composite.weights.new_signal_initial_weight_max: {basis: safeguard, change_policy: Aditi approves. Limits a new signal's first weight}
+  composite.weights.duplicate_correlation_threshold: {basis: provisional, review: Above this two signals are treated as one}
+
+  composite.alpha.ic_horizon_days: {basis: provisional, review: One trading month}
+  composite.alpha.ic_shrink_days: {basis: provisional, review: Shrinks IC by half at one year of evidence}
+  composite.alpha.alpha_clip_sigmas: {basis: safeguard, change_policy: Aditi approves. Limits the effect of one extreme score}
+  composite.alpha.calibration_slope_min: {basis: provisional, review: Wide band for a noisy slope estimate}
+  composite.alpha.calibration_slope_max: {basis: provisional, review: Wide band for a noisy slope estimate}
+  composite.alpha.calibration_min_t: {basis: provisional, review: Conventional significance on overlap-corrected IC}
+
+  composite.optimizer.n_factors: {basis: provisional, review: Number of principal components in the risk model}
+  composite.optimizer.cov_window_days: {basis: provisional, review: One trading year}
+  composite.optimizer.impact_kappa: {basis: provisional, review: "Consistent with an order-unity square-root prefactor (Toth et al. 2011). Calibrate from measured slippage"}
+  composite.optimizer.impact_kappa_floor: {basis: safeguard, change_policy: Aditi approves. Paper fills contain no impact and cannot lower it (REVIEW E17)}
+  composite.optimizer.vol_target_annual: {basis: safeguard, change_policy: Aditi approves. Upper bound on book volatility}
+  composite.optimizer.sector_cap: {basis: safeguard, change_policy: Aditi approves. Concentration limit. Unknown sectors share one bucket}
+  composite.optimizer.no_trade_band: {basis: provisional, review: Skips trades too small to be worth their cost}
+  composite.optimizer.lambda_bisection_iterations: {basis: provisional, review: Numerical setting}
+  composite.optimizer.lambda_min: {basis: provisional, review: Numerical setting}
+  composite.optimizer.lambda_max: {basis: provisional, review: Numerical setting}
+  composite.optimizer.specific_var_shrink: {basis: provisional, review: Shrinks noisy specific variances halfway to the median}
+  composite.optimizer.min_history_days: {basis: provisional, review: Below this a name gets average loadings}
+  composite.optimizer.alpha_horizon_days: {basis: provisional, review: One trading month}
+
+  risk.hard_limits.max_position_pct_equity: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  risk.hard_limits.max_cluster_pct_equity: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  risk.hard_limits.max_order_pct_adv20: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  risk.hard_limits.max_spread_pct: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  risk.hard_limits.daily_loss_stop_pct_equity: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  risk.hard_limits.max_quote_age_seconds: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  risk.hard_limits.execution_grade_feeds: {basis: safeguard, change_policy: "Aditi only. Delayed consolidated data may never be added (Q4)"}
+  risk.loosening_delay_hours: {basis: safeguard, change_policy: Aditi only}
+
+  execution.mode: {basis: provisional, review: Starts in auto simulation. Broker paper modes need the integration test}
+  execution.live_trading_enabled: {basis: safeguard, change_policy: Must stay false. The loader rejects any other value}
+  execution.simulator_starting_equity_usd: {basis: provisional, review: Paper account size}
+  execution.order_type: {basis: safeguard, change_policy: "Aditi approves. Limit orders only (Q4)"}
+  execution.limit_offset_fraction: {basis: provisional, review: "How far past the touch a limit is placed, as a share of the spread. Tune from measured fills (Q4)"}

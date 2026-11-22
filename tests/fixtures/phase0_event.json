@@ -4,28 +4,83 @@
   "timezone": "America/New_York",
   "currency": "USD",
   "adjustment_method": "split_and_dividend_adjusted",
-  "license": "synthetic fixture, no restrictions",
+  "license": "synthetic",
   "backfill_lag_seconds": 900,
   "ingested_at": "2026-11-14T12:00:00Z",
   "asset_id": "inst_TEST",
   "decision_date": "2026-11-13",
   "horizon_days": 5,
   "bars": [
-    {"instrument_id": "inst_TEST", "raw_symbol": "TEST", "exchange": "XNYS", "field": "close", "value": 50.00, "event_time": "2026-11-09T21:00:00Z", "published_at": "2026-11-09T21:00:05Z"},
-    {"instrument_id": "inst_TEST", "raw_symbol": "TEST", "exchange": "XNYS", "field": "close", "value": 50.40, "event_time": "2026-11-10T21:00:00Z", "published_at": "2026-11-10T21:00:05Z"},
-    {"instrument_id": "inst_TEST", "raw_symbol": "TEST", "exchange": "XNYS", "field": "close", "value": 50.10, "event_time": "2026-11-11T21:00:00Z", "published_at": "2026-11-11T21:00:05Z"},
-    {"instrument_id": "inst_TEST", "raw_symbol": "TEST", "exchange": "XNYS", "field": "close", "value": 50.90, "event_time": "2026-11-12T21:00:00Z", "published_at": "2026-11-12T21:00:05Z"},
-    {"instrument_id": "inst_TEST", "raw_symbol": "TEST", "exchange": "XNYS", "field": "close", "value": 51.20, "event_time": "2026-11-13T21:00:00Z", "published_at": "2026-11-13T21:00:05Z"},
-    {"instrument_id": "inst_TEST", "raw_symbol": "TEST", "exchange": "XNYS", "field": "close", "value": 49.00, "event_time": "2026-11-16T21:00:00Z", "published_at": "2026-11-16T21:00:05Z"}
+    {
+      "instrument_id": "inst_TEST",
+      "raw_symbol": "TEST",
+      "exchange": "XNYS",
+      "field": "close",
+      "value": 50.0,
+      "event_time": "2026-11-09T21:00:00Z",
+      "published_at": "2026-11-09T21:00:05Z"
+    },
+    {
+      "instrument_id": "inst_TEST",
+      "raw_symbol": "TEST",
+      "exchange": "XNYS",
+      "field": "close",
+      "value": 50.4,
+      "event_time": "2026-11-10T21:00:00Z",
+      "published_at": "2026-11-10T21:00:05Z"
+    },
+    {
+      "instrument_id": "inst_TEST",
+      "raw_symbol": "TEST",
+      "exchange": "XNYS",
+      "field": "close",
+      "value": 50.1,
+      "event_time": "2026-11-11T21:00:00Z",
+      "published_at": "2026-11-11T21:00:05Z"
+    },
+    {
+      "instrument_id": "inst_TEST",
+      "raw_symbol": "TEST",
+      "exchange": "XNYS",
+      "field": "close",
+      "value": 50.9,
+      "event_time": "2026-11-12T21:00:00Z",
+      "published_at": "2026-11-12T21:00:05Z"
+    },
+    {
+      "instrument_id": "inst_TEST",
+      "raw_symbol": "TEST",
+      "exchange": "XNYS",
+      "field": "close",
+      "value": 51.2,
+      "event_time": "2026-11-13T21:00:00Z",
+      "published_at": "2026-11-13T21:00:05Z"
+    },
+    {
+      "instrument_id": "inst_TEST",
+      "raw_symbol": "TEST",
+      "exchange": "XNYS",
+      "field": "close",
+      "value": 49.0,
+      "event_time": "2026-11-16T21:00:00Z",
+      "published_at": "2026-11-16T21:00:05Z"
+    }
   ],
   "execution": {
     "session_date": "2026-11-16",
     "now": "2026-11-16T14:40:00Z",
-    "quote": {"bid": 51.18, "ask": 51.22, "quote_time": "2026-11-16T14:39:57Z"},
+    "quote": {
+      "bid": 51.18,
+      "ask": 51.22,
+      "quote_time": "2026-11-16T14:39:57Z",
+      "feed": "fixture_realtime"
+    },
     "equity": 100000.0,
     "day_start_equity": 100000.0,
     "position_value": 0.0,
     "cluster_value": 0.0,
+    "pending_position_value": 0.0,
+    "pending_cluster_value": 0.0,
     "adv20_shares": 2000000.0,
     "fraction_of_limit": 0.5,
     "kill_switch_engaged": false,

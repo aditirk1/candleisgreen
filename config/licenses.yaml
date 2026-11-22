@@ -1,0 +1,38 @@
+# License registry. Every observation carries a license ID, and every forecast carries the
+# IDs of the data it used. A use not marked `permitted` is refused, including `unverified`
+# (QUESTIONS Q3: never assume trading use is authorized without checking the license).
+registry_version: "1.0.0"
+licenses:
+  synthetic:
+    description: Invented test data
+    research: permitted
+    paper_trading: permitted
+  cc_by_4_0:
+    description: Creative Commons Attribution 4.0. Open Source Asset Pricing data
+    research: permitted
+    paper_trading: permitted
+    note: Attribution required in any published output
+  cc_by_nc_4_0:
+    description: Creative Commons Attribution-NonCommercial 4.0. JKP Global Factor Data
+    research: permitted
+    paper_trading: unverified
+    note: Noncommercial academic and personal research only until the trading interpretation is checked
+  french_library:
+    description: Kenneth French data library. Copyright notice, no license text
+    research: permitted
+    paper_trading: unverified
+    note: Personal research only until terms are confirmed
+  alpaca_market_data:
+    description: Alpaca free market data for the account holder
+    research: permitted
+    paper_trading: permitted
+    note: For the account holder only. Never redistributed or published
+  us_government_public:
+    description: SEC EDGAR, BLS, BEA public data
+    research: permitted
+    paper_trading: permitted
+  fred_terms:
+    description: FRED and ALFRED terms of use
+    research: permitted
+    paper_trading: unverified
+    note: Some series carry third-party copyright. Check per series before trading use

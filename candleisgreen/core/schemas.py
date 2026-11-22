@@ -86,6 +86,14 @@ class CalibrationStatus(str, Enum):
     NOT_AVAILABLE = "not_available"
 
 
+class RecordType(str, Enum):
+    """Prospective: issued before the outcome window started. Retrospective: reconstructed
+    later by walk-forward, even with point-in-time inputs. The two are never pooled."""
+
+    PROSPECTIVE = "prospective"
+    RETROSPECTIVE = "retrospective"
+
+
 class Forecast(Contract):
     model_id: str
     model_version: str
@@ -104,6 +112,8 @@ class Forecast(Contract):
     calibration_status: CalibrationStatus
     evidence_refs: tuple[str, ...] = ()
     eligible_for_orders: bool
+    record_type: RecordType = RecordType.PROSPECTIVE
+    data_licenses: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _one_output(self) -> "Forecast":
@@ -117,6 +127,10 @@ class Forecast(Contract):
             raise ValueError("require training_cutoff <= as_of <= issued_at")
         if self.target_start < self.as_of or self.target_end <= self.target_start:
             raise ValueError("target window must start at or after as_of and have positive length")
+        if self.record_type is RecordType.PROSPECTIVE and self.issued_at > self.target_start:
+            raise ValueError("a forecast issued after its target window started is retrospective")
+        if self.record_type is RecordType.RETROSPECTIVE and self.eligible_for_orders:
+            raise ValueError("a retrospective forecast can never be eligible for orders")
         return self
 
     @property
@@ -141,7 +155,7 @@ class OrderIntent(Contract):
     asset_id: str
     side: Side
     quantity: float = Field(gt=0)
-    limit_price: Optional[float] = Field(default=None, gt=0)
+    limit_price: float = Field(gt=0)
     strategy_id: str
     strategy_version: str
     session_date: str
@@ -166,6 +180,13 @@ class Quote(Contract):
     bid: float = Field(gt=0)
     ask: float = Field(gt=0)
     quote_time: datetime
+    feed: str  # for example iex_realtime, sip_delayed, fixture_realtime
+    bid_size: Optional[float] = Field(default=None, ge=0)
+    ask_size: Optional[float] = Field(default=None, ge=0)
+
+    @property
+    def mid(self) -> float:
+        return (self.bid + self.ask) / 2
 
 
 class RiskContext(Contract):
@@ -183,7 +204,10 @@ class RiskContext(Contract):
     day_start_equity: Optional[float] = None
     position_value: Optional[float] = None
     cluster_value: Optional[float] = None
+    pending_position_value: Optional[float] = None  # open buy orders in this instrument
+    pending_cluster_value: Optional[float] = None  # open buy orders in its cluster
     adv20_shares: Optional[float] = None
+    in_execution_window: Optional[bool] = None
 
 
 class RiskVerdict(str, Enum):
@@ -213,6 +237,15 @@ class Fill(Contract):
     venue: Venue
     filled_at: datetime
     fill_seq: int = Field(ge=0)
+    arrival_mid: Optional[float] = Field(default=None, gt=0)  # mid quote when the order was sent
+
+    @property
+    def slippage_bps(self) -> Optional[float]:
+        """Cost against the arrival mid, positive when the fill was worse."""
+        if self.arrival_mid is None:
+            return None
+        sign = 1 if self.side is Side.BUY else -1
+        return sign * (self.price - self.arrival_mid) / self.arrival_mid * 1e4
 
     @property
     def fill_id(self) -> str:

@@ -51,4 +51,5 @@ def issue_forecast(
         calibration_status=CalibrationStatus.SIGNAL_STRENGTH_ONLY,
         evidence_refs=(),
         eligible_for_orders=True,
+        data_licenses=tuple(sorted({o.license for o in closes})),
     )

@@ -72,6 +72,16 @@ def oos_evidence(mean: float, se: float) -> Evidence:
     return Evidence("out_of_sample", mean, se**2)
 
 
+def academic_evidence(mean: float, se: float, modeled_cost: float, cfg: EdgeConfig) -> Evidence:
+    """Out-of-sample academic portfolio returns (after the selection cutoff).
+
+    They support the hypothesis but are not the tradable version, so they carry extra
+    variance (implementation_gap_factor x mean)^2 and never certify an implementation.
+    """
+    gap = cfg.implementation_gap_factor * mean
+    return Evidence("academic_oos", mean - modeled_cost, se**2 + gap**2)
+
+
 def family_prior(other_means: Sequence[float], other_ses: Sequence[float], cfg: EdgeConfig) -> Evidence:
     """Prior from the OTHER signals in the family (leave-one-out is the caller's job)."""
     means = np.asarray(other_means, dtype=float)
