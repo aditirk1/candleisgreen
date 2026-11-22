@@ -1,6 +1,6 @@
 # DATA_DICTIONARY.md
 
-Source: `SPEC.md` v3.1. Schemas marked **built** are enforced in `candleisgreen/core/schemas.py` and tested. Schemas marked **planned** are the target and are not in code yet.
+Source: `SPEC.md` v3.2. Schemas marked **built** are enforced in `candleisgreen/core/schemas.py` and tested. Schemas marked **planned** are the target and are not in code yet.
 
 Conventions:
 - All timestamps are UTC. In Python they are timezone-aware datetimes. In stores they are `BIGINT` microseconds since the epoch.
@@ -61,8 +61,10 @@ Rules enforced in code:
 | `calibration_status` | enum | `calibrated`, `signal_strength_only`, `not_available` |
 | `evidence_refs` | list of str | Claim card or experiment IDs |
 | `eligible_for_orders` | bool | False blocks any order from this forecast |
+| `record_type` | enum | `prospective` (issued before the target window started) or `retrospective` (reconstructed later) |
+| `data_licenses` | list of str | License IDs of every dataset behind the forecast |
 
-Rules enforced: exactly one of `expected_excess_return` and `signal_strength` is set. `training_cutoff` ≤ `as_of` ≤ `issued_at`. `target_start` ≥ `as_of`.
+Rules enforced: exactly one of `expected_excess_return` and `signal_strength` is set. `training_cutoff` ≤ `as_of` ≤ `issued_at`. `target_start` ≥ `as_of`. A forecast issued after `target_start` must be `retrospective`, and a retrospective forecast can never be eligible for orders. An order is built only when every license in `data_licenses` permits paper trading.
 
 ## 3. OrderIntent (built)
 
@@ -73,7 +75,7 @@ Rules enforced: exactly one of `expected_excess_return` and `signal_strength` is
 | `asset_id` | str | Instrument |
 | `side` | enum | `buy` or `sell` |
 | `quantity` | float > 0 | Shares |
-| `limit_price` | float, optional | Absent for a marketable order |
+| `limit_price` | float > 0 | Required. Orders are limit orders only |
 | `strategy_id`, `strategy_version` | str | What proposed it |
 | `session_date` | str | ISO date of the session it is for |
 | `venue` | enum | `SIMULATION` or `PAPER`. There is no live value |
@@ -81,7 +83,7 @@ Rules enforced: exactly one of `expected_excess_return` and `signal_strength` is
 
 ## 4. Quote and RiskContext (built)
 
-`Quote`: `asset_id`, `bid` > 0, `ask` > 0, `quote_time`.
+`Quote`: `asset_id`, `bid` > 0, `ask` > 0, `quote_time`, `feed` (for example `iex_realtime`, `sip_delayed`, `fixture_realtime`), optional `bid_size` and `ask_size`. Only feeds in `risk.hard_limits.execution_grade_feeds` can price an order.
 
 `RiskContext`: `now` plus the fields below. Each is optional, and a missing one blocks the order.
 
@@ -96,13 +98,15 @@ Rules enforced: exactly one of `expected_excess_return` and `signal_strength` is
 | `equity`, `day_start_equity` | float | Account equity now and at the session start |
 | `position_value` | float | Current value held in the instrument |
 | `cluster_value` | float | Current value held in the instrument's correlated cluster |
+| `pending_position_value`, `pending_cluster_value` | float | Open buy orders in the instrument and in its cluster |
+| `in_execution_window` | bool | Whether `now` is inside the configured execution window |
 | `adv20_shares` | float | 20-day average daily volume in shares |
 
 ## 5. RiskDecision, Fill, BrokerAck (built)
 
 `RiskDecision`: `risk_decision_id` (derived), `client_order_id`, `verdict` (`approved` or `blocked`), `reasons` (one line per failed check, prefixed by check name), `checks_run`, `limits_hash`, `decided_at`.
 
-`Fill`: `fill_id` (derived from client_order_id and fill_seq), `client_order_id`, `asset_id`, `side`, `quantity`, `price`, `venue`, `filled_at`, `fill_seq`.
+`Fill`: `fill_id` (derived from client_order_id and fill_seq), `client_order_id`, `asset_id`, `side`, `quantity`, `price`, `venue`, `filled_at`, `fill_seq`, `arrival_mid`, and the derived `slippage_bps` (positive when the fill was worse than the arrival mid).
 
 `BrokerAck`: `client_order_id`, `status` (`accepted`, `filled`, `partially_filled`, `rejected`, `unknown`), `venue`, `fills`, `message`.
 
@@ -170,6 +174,24 @@ Event types in use: `observation_ingested`, `forecast_issued`, `order_intent_cre
 | `calibration_reasons` | Why calibration failed, empty when calibrated |
 | `benchmarks` | Scores from the frozen-weight Composite and the equal-weight challenger, computed in the same run |
 
+## 7a. Registries in config (built)
+
+**Parameter registry** (`config/parameters.yaml`): one entry per config path with `basis` (`empirical`, `safeguard`, `provisional`, `external_fact`) and the record that basis requires: `source` for empirical, `change_policy` for safeguard, `review` for provisional, `source` and `as_of` for external facts.
+
+**License registry** (`config/licenses.yaml`): one entry per license ID with `description`, `research` and `paper_trading` (`permitted`, `not_permitted`, `unverified`) and a `note`.
+
+**Capability map** (`config/capabilities.yaml`): one entry per capability with `status`, `sources` and `reason`.
+
+## 7b. Monitoring and promotion records (built)
+
+`DeteriorationResult`: `status` (`ok`, `alert`, `insufficient_data`), `probability`, `realized_mean_annual`, `predictive_sd_annual`, `observations`.
+
+`ShadowRecord`: `trading_days`, `trades`, `expected_mean_annual`, `realized_mean_annual`, `realized_se_annual`, `band_low_annual`, `band_high_annual`, `tracking_error_annual`, `prospective`.
+
+`StrategyPromotionPolicy`: optional `min_trades` and `max_se_to_expected_ratio`, declared per strategy.
+
+`AcademicRecord`: `mean`, `se`, `modeled_cost`, `license`.
+
 ## 8. Planned schemas, from the spec
 
 **Claim card:** `claim_id`, `source_id`, `source_type`, `canonical_url`, `doi`, `title`, `author_ids`, `published_at`, `revised_at`, `ingested_at`, `first_actionable_at`, `market`, `instruments`, `target`, `horizon`, `direction`, `probability_if_stated`, `definition`, `mechanism`, `data_required`, `code_available`, `peer_review_status`, `replication_links`, `conflicts`, `license`, `test_plan_id`, `evidence_status`, `capture_hash`.
@@ -178,7 +200,13 @@ Event types in use: `observation_ingested`, `forecast_issued`, `order_intent_cre
 
 **Experiment manifest:** `experiment_id`, `question`, `null_hypothesis`, `study_type`, `universe`, `period`, `outcome`, `lookback`, `holding_period`, `scheme` (train, validation, test, embargo), `variants_tried`, `independence`, `costs`, `benchmarks`, `decision_rule`, `registered_at`, `result`, `status`.
 
-**Instrument:** `instrument_id`, `symbol_history` (symbol, exchange, valid_from, valid_to), `security_type`, `type_inferred`, `sic_code`, `industry_ff12`, `listed_at`, `delisted_at`, `tag` (`direct`, `proxy`, `research_only`).
+**Instrument:** `instrument_id`, `symbol_history` (symbol, exchange, valid_from, valid_to), `status_history` (`active`, `inactive`, `delisted`, with dates), `security_type`, `type_inferred`, `listed_at`, `delisted_at`, `tag` (`direct`, `proxy`, `research_only`). Rows are never deleted.
+
+**Corporate action:** `action_id`, `instrument_id`, `action_type` (split, dividend, merger, spin-off, symbol change, delisting), `announced_at`, `effective_date`, `ratio` or `amount`, `source`, `first_usable_at`.
+
+**Classification:** `instrument_id`, `sic_code`, `industry_ff12` or `UNKNOWN`, `classified_at`, `source_filing`, `mapping_version`, `status` (`known`, `unknown`, `ambiguous`).
+
+**Completeness flag:** `date`, `source`, `asset_list_snapshot_taken`, `snapshot_taken_at`, `missing_bars` count, `collection_mode`.
 
 Statuses for claims and signals: `DISCOVERED`, `EXTRACTED`, `NEEDS_DATA`, `REPRODUCING`, `REPRODUCED`, `FAILED`, `REPLICATED`, `OOS_PASSED`, `SHADOW`, `ELIGIBLE_FOR_REVIEW`, `PAPER`, `SUSPENDED`, `RETIRED`.
 

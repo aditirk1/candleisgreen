@@ -282,6 +282,8 @@ Vendors not reached in this pass: Intrinio, FirstRate Data, Kibot, Algoseek, Qua
 
 ## 4. Open questions for Aditi
 
+**Decided on 2026-11-22.** Aditi's decisions on these questions are in `SPEC.md`, section "Decisions register (v3.2)". Several differ from the recommendations below, most notably Q14: academic portfolio evidence supports a hypothesis but no longer passes Tier 4 on its own. The list below is kept as the original record.
+
 Each has a recommended answer. v3.1 uses the recommendation until told otherwise. The same list is in `QUESTIONS.md`.
 
 - **Q1. Survivorship-free data.** Revised on 2026-11-17 after Aditi ruled out subscriptions: the free forward recorder plus free portfolio returns built from CRSP. See `QUESTIONS.md`.

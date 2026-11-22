@@ -56,10 +56,10 @@ Each purpose uses a genuinely free dataset built for it (spec principle 11).
 
 | Purpose | Source | Enters as |
 | --- | --- | --- |
-| Historical factor research, US | Open Source Asset Pricing portfolio returns, Kenneth French library | Portfolio return series with each paper's sample period. Survivorship-free because built from CRSP |
+| Historical factor research, US | Open Source Asset Pricing portfolio returns, Kenneth French library | Portfolio return series with each paper's sample period. Built from CRSP, which includes delisted stocks. Supports hypotheses, never certifies an implementation |
 | Historical factor research, global | JKP Global Factor Data | Factor and portfolio returns, non-commercial licence |
 | Daily US market data | Alpaca consolidated history, requested at least 15 minutes after the close | Observations in the point-in-time store |
-| Forward stock-level record | The recorder: full Alpaca asset list and daily bars after each close | Observations with `collection_mode: live`, survivorship-free from day one |
+| Forward stock-level record | The recorder: full Alpaca asset list with inactive assets, daily bars and corporate actions after each close | Observations with `collection_mode: live`, the instrument master and completeness flags. Survivorship-aware, complete only where the flags say so |
 | Live quotes for risk checks | Alpaca real-time IEX feed | `Quote` objects |
 | Filings and fundamentals | SEC EDGAR submissions and XBRL, using the filed date | Observations |
 | Macro | FRED, ALFRED, BLS, BEA | Observations with vintages |
@@ -69,7 +69,7 @@ Each purpose uses a genuinely free dataset built for it (spec principle 11).
 
 What is not available is listed in `config/capabilities.yaml` and loaded by `core/capabilities.py`. `require(name)` raises `CapabilityNotAvailableError` for a capability marked `not_available`.
 
-Two evidence paths run side by side. Edge is judged on portfolio returns from the first day. Implementation is checked on the forward record in the 63-day Tier 5 shadow.
+Evidence moves in order. Academic portfolio returns support a hypothesis from the first day (Tiers 2 and 3). An executable approximation is then evaluated by the platform with realistic costs (Tier 4), and prospective validation on the forward record decides promotion (Tier 5).
 
 ## 2. Repository layout
 
@@ -81,6 +81,8 @@ pyproject.toml  Makefile
 config/
   default.yaml              all thresholds and limits, versioned
   capabilities.yaml         what is available, limited or not available, and why
+  parameters.yaml           the basis of every value in default.yaml
+  licenses.yaml             what each data license permits
 candleisgreen/
   core/                     shared contracts (built)
     timeutil.py             UTC rules
@@ -89,6 +91,8 @@ candleisgreen/
     schemas.py              Observation, Forecast, OrderIntent, RiskContext, RiskDecision, Fill, BrokerAck
     audit.py                hash-chained audit log
     capabilities.py         capability map loader, NOT AVAILABLE labels
+    parameters.py           parameter basis registry: empirical, safeguard, provisional, external fact
+    licenses.py             license registry and trading-use check
   sources/                  collectors. fixtures.py is built
   data/                     pit_store.py is built
   research/                 claim cards, evidence graph, experiment registry (planned, Phase 3)
@@ -205,7 +209,7 @@ run.daily(inputs, cfg) -> CompositeRun                            # C.10 output 
 
 ```python
 evaluate(intent: OrderIntent, ctx: RiskContext, limits: HardLimits) -> RiskDecision
-evaluate_portfolio(weights: dict, clusters: dict, limits: HardLimits) -> tuple[str, ...]   # independent check of a target book
+evaluate_portfolio(weights, clusters, limits, sectors=None, sector_cap=None) -> tuple[str, ...]   # independent check of a target book, UNKNOWN sectors pooled
 limits_hash(limits: HardLimits) -> str
 CHECKS: tuple[(name, check_function), ...]     # each returns None or a reason string
 ```
@@ -237,6 +241,8 @@ class AuditLog:
 ```
 
 ## 4. Config layout
+
+Three registries sit beside the config. `parameters.yaml` classifies every value in `default.yaml` by basis, and a test fails if a value is unclassified. `licenses.yaml` says what each data license permits. `capabilities.yaml` says what the platform can and cannot do. `ParameterRegistry.assert_tunable(path)` refuses any experiment that tries to vary a safeguard or an external fact.
 
 One file, `config/default.yaml`, validated by `core/config.py`. Unknown keys are rejected. `config_version` is bumped on every edit, and `AppConfig.config_hash` goes into every audit record.
 
@@ -290,7 +296,7 @@ SQLite appends use `BEGIN IMMEDIATE`, so two processes cannot fork the hash chai
 
 | Process | Runs | Talks to |
 | --- | --- | --- |
-| Collectors | APScheduler 3.x jobs by market session | point-in-time store |
+| Collectors | APScheduler 3.x jobs, on Oracle Cloud Always Free with a local scheduled task as fallback. Every job is safe to rerun, catches up after a gap, writes a heartbeat and copies its data back to Aditi's computer | point-in-time store |
 | Daily decision run | 16:30 ET | store, models, Composite |
 | Pre-open check | 09:00 ET, cancel only | risk service |
 | Execution slicer | 09:35 to 10:30 ET | risk service, broker adapter |

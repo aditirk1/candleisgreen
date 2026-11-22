@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-17, **128 passed, 0 failed** in about 14 seconds on Python 3.13.18.
+Latest full run: 2026-11-22 01:17 ET, **170 passed, 0 failed** in about 18 seconds on Python 3.13.18.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -42,7 +42,7 @@ Command to see it: `make phase0`. Output on this run: verdict approved, 48 share
 | --- | --- | --- |
 | `tests/test_contracts.py` | 16 | Naive datetimes rejected, daylight-saving boundary (failure fixture), ID stability, immutability, forecast rules, config unknown keys rejected, live trading cannot be enabled, hard limits equal the spec defaults |
 | `tests/test_audit.py` | 5 | Chain links, UPDATE and DELETE refused, edits and removals behind the triggers detected |
-| `tests/test_risk_and_broker.py` | 34 | 20 blocking cases including stale quote (failure fixture), halted market (failure fixture) and each hard limit, the 15 second boundary, a raising check, a property test that any missing input blocks, unapproved and duplicate submissions, attempted live order (failure fixture), non-paper endpoints refused |
+| `tests/test_risk_and_broker.py` | 44 | 20 blocking cases including stale quote (failure fixture), halted market (failure fixture) and each hard limit, the 15 second boundary, a raising check, a property test that any missing input blocks, unapproved and duplicate submissions, attempted live order (failure fixture), non-paper endpoints refused |
 
 ### Required failure fixtures from the spec
 
@@ -117,3 +117,14 @@ Result: **8 passed** (`tests/test_research_portfolio.py`). All inputs are synthe
 ## Capability map, 2026-11-17
 
 Result: **9 passed** (`tests/test_capabilities.py`). Every limited or unavailable capability states its reason. Options data, real-time consolidated quotes, intraday trading, analyst estimates, licensed news and non-US execution each raise `CapabilityNotAvailableError` when code asks for them. A capability entry without a reason is rejected at load time.
+
+## Spec v3.2 decisions, 2026-11-22
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_parameters.py` | 6 | Every config value is classified, hard limits are safeguards, research thresholds are provisional, empirical values cite sources, experiments cannot vary safeguards or external facts, each basis requires its own record |
+| `tests/test_decisions_v32.py` | 17 | Q9 retrospective and prospective records, Q3 license refusal for JKP-derived orders, Q4 execution window and delayed-quote blocks end to end, Q10 unknown sectors pooled and capped in the optimizer and the book check, Q12 module boundaries |
+| `tests/test_monitoring_promotion.py` | 9 | Q6 infrastructure pause and deterioration test with sample uncertainty, Q8 promotion requirements and per-strategy policy, Q14 academic evidence with an implementation gap and no capital without a prospective tier |
+| `tests/test_risk_and_broker.py` | 44 | Adds the execution window, quote feed, zero quote size, limit distance from mid, pending orders, resting non-marketable limits and slippage against arrival mid |
+
+Not tested yet, because the code belongs to later phases: the forward recorder and its completeness flags (Phase 1), the execution window comparison and SIC classifications (Phase 2), the clustering stability test and the experiment registry's development history (Phase 3), and the Oracle fallback and heartbeat (Phase 1). Python 3.12 has not been run.

@@ -1,6 +1,6 @@
-# CandleIsGreen Build Spec v3.1
+# CandleIsGreen Build Spec v3.2
 
-Nov 17, 2026, @Aditi. v3.1 applies the technical fixes from `REVIEW.md`. Items that need Aditi's decision are in `QUESTIONS.md` and use the recommended default until answered. Hard risk limits are unchanged from v3. The change log is at the end.
+Nov 22, 2026, @Aditi. v3.2 consolidates Aditi's decisions on the review questions into the v3.1 spec. Each decision is in the decisions register near the end, with its assumptions, implementation, validation test and failure behavior. v3.1 applied the technical fixes from `REVIEW.md`. Hard risk limit values are unchanged from v3. The change log is at the end.
 
 ## How to use this spec
 
@@ -9,7 +9,7 @@ This is the target architecture for CandleIsGreen and the order to build it in. 
 Rules for the coding model:
 
 1. Inspect the repository and environment first. Then build in small, tested steps.
-2. Every default number in this spec (thresholds, limits, windows) lives in a versioned config file, not in code. Aditi can change them without a code edit.
+2. Every number in this spec lives in a versioned config file, not in code, and is classified in `config/parameters.yaml` by its evidentiary basis (see Parameter basis). Do not turn a provisional research threshold into a hard rule. Aditi can change values without a code edit, within the change policy of their basis.
 3. Never fake a capability. A feature without data shows NOT AVAILABLE and the reason.
 4. Never say "implemented" unless the code exists and its test or screen actually ran.
 5. Every 45 to 60 minutes of work, commit to Git and update `HANDOFF.md` with the working state, exact commands, known flaws and the next atomic task.
@@ -26,7 +26,7 @@ Before Phase 0, review this spec critically and write the result to `REVIEW.md`:
 4. List each disagreement with reasoning and a proposed change. Do not change hard risk limits.
 5. The review ran on 2026-11-17 and its result is in `REVIEW.md`. Its technical fixes are applied in this v3.1. Decisions that belong to Aditi are in `QUESTIONS.md`, each with a recommended default that the build uses until she answers.
 
-These defaults are judgment calls, not sourced values, and deserve the closest review: Composite eligibility at 80% probability, cold-start family spread of 5%, publication-bias factor of 0.74 outside US equities, the ω uncertainty factor of 0.5, signal and family caps of 20% and 35%, the 25% monthly weight-change limit, IC shrinkage at 252 days, the calibration slope band of 0.5 to 1.5, impact coefficient 0.5, the 12% volatility target, universe filters of $5 and $10M, the 30-claim bar for practitioners, and every hard risk limit.
+These defaults are judgment calls, not sourced values, and deserve the closest review. Each is now classified in `config/parameters.yaml` as provisional or as a safeguard, never as empirical: Composite eligibility at 80% probability, cold-start family spread of 5%, publication-bias factor of 0.74 outside US equities, the ω uncertainty factor of 0.5, signal and family caps of 20% and 35%, the 25% monthly weight-change limit, IC shrinkage at 252 days, the calibration slope band of 0.5 to 1.5, impact coefficient 0.5, the 12% volatility target, universe filters of $5 and $10M, the 30-claim bar for practitioners, and every hard risk limit.
 
 Required repository files: `SPEC.md`, `REVIEW.md`, `QUESTIONS.md`, `README.md`, `ARCHITECTURE.md`, `DATA_DICTIONARY.md`, `SOURCE_REGISTRY.md`, `MODEL_REGISTRY.md`, `RESEARCH_PROTOCOL.md`, `RISK_POLICY.md`, `DESIGN_SYSTEM.md`, `DECISIONS.md`, `TEST_RESULTS.md`, `HANDOFF.md`.
 
@@ -47,6 +47,20 @@ CandleIsGreen is an evidence-driven quantitative research workstation that happe
 9. **Paper first.** Internal simulation and broker paper trading are the first deliverables. Real money is a separate, later project with live trading disabled by default.
 10. **Runs without a paid LLM.** AI analysis is optional, cached and budget-capped. The default budget is zero.
 11. **No subscriptions.** The platform uses only free data, free tools and free accounts. An option that needs a subscription or a monthly fee is not considered, recommended or built (Aditi, 2026-11-17). Each purpose uses a genuinely free dataset built for it, not a restricted free tier of a paid product. Unofficial scraping is never a primary dependency. A feature that has no adequate free data stays in the architecture and shows NOT AVAILABLE with the reason, read from `config/capabilities.yaml`.
+12. **Evidence, safeguards and settings are kept apart.** A number backed by published evidence, a number that limits damage and a number that is simply a starting point are labeled differently and changed under different rules (see Parameter basis).
+
+## Parameter basis
+
+Every value in `config/default.yaml` has one basis in `config/parameters.yaml`. A test fails if any value is unclassified. The basis decides how the software treats the value.
+
+| Basis | What it is | Required record | How the software treats it | Who may change it |
+| --- | --- | --- | --- | --- |
+| Empirical | A value taken from published evidence, such as the publication-bias factor δ from McLean and Pontiff | Citation | Shown as EMPIRICAL with the source. May be replaced by platform evidence with provenance, as δ is once a family has 20 signals | Aditi, with a new cited source or platform evidence in the experiment registry |
+| Safeguard | An engineering protection that limits damage: hard risk limits, concentration caps, the cost multiplier, limit-orders-only, the execution-grade feed list | Change policy | Enforced by the risk service or the optimizer. `assert_tunable` refuses any experiment, search or optimizer that tries to vary it | Aditi only. Loosening a hard limit waits `risk.loosening_delay_hours` and asks again |
+| Provisional | An initial configuration with no evidence behind the exact number: P ≥ 0.80, 252 days, the universe filters, the execution window, the monitoring alert level | What evidence would change it | Shown as PROVISIONAL wherever it decides an outcome. A gate result names the config path of each provisional threshold that decided it. Experiments may vary it, and every variant counts in the trial registry | Aditi, or proposed by an experiment and approved |
+| External fact | An official or conventional number that is not a threshold: a fee rate, the market time zone | Source and as-of date | Shown with its date. Updated when the source changes | Updated from the source |
+
+A research threshold is a provisional default unless the registry marks it empirical. Passing or failing one is a statement about the current configuration, not a proof.
 
 ## Architecture at a glance
 
@@ -63,16 +77,16 @@ Every signal, whether it came from a paper, a practitioner or the platform's own
 | 0 | Observation | Raw data: prices, filings, macro releases, fills | Feeds everything |
 | 1 | Claim | An idea with no reproduction yet: a preprint, a practitioner post, a pattern the platform's own search found | Hypothesis Factory queue |
 | 2 | Reproduced | The platform matched the original result on the original definitions and period | Independent testing |
-| 3 | Independently replicated | Holds on a different period, universe, dataset or implementation, with the independence recorded | Out-of-sample economic test |
-| 4 | Out-of-sample net | Beats its baseline out of sample, after modeled costs, under the validation protocol. The out-of-sample record may come from free portfolio returns built from a survivorship-free database (the years after the selection cutoff) or from the platform's forward record. A cross-sectional signal must pass twice: as a long-short portfolio (validity) and as its long-only implementation, the top portfolio against the market (economic value) | Composite at shadow weight |
-| 5 | Shadow-confirmed | At least 63 trading days of pre-registered live forecasts on the platform's own stock-level forward record, issued before outcomes. Realized returns sit inside the pre-registered 90% band and the stock-level version tracks its Tier 4 portfolio-level record within the config limit. This is an implementation check. The evidence of edge is the Tier 4 test | Paper capital in the Composite |
+| 3 | Independently replicated | Holds on a different period, universe, dataset or implementation, with the independence recorded. Academic portfolio returns after the selection cutoff support the hypothesis at this tier | Building and testing an executable approximation |
+| 4 | Executable approximation passes | A stock-level version the platform can actually trade is built and evaluated by the platform's own code on platform data, with realistic transaction costs, under the validation protocol. A cross-sectional signal must pass twice: as a long-short portfolio (validity) and as its long-only implementation (economic value). Academic portfolio evidence enters the edge estimate but cannot pass this tier on its own | Composite at shadow weight, and prospective shadow trading starts |
+| 5 | Prospectively validated | Pre-registered prospective forecasts on the platform's survivorship-aware forward record, issued before outcomes, for at least 63 trading days and also meeting the strategy's trade-count and precision requirements. Realized returns sit inside the pre-registered band and the executable version tracks its research record within the config limit. Retrospective results never count here | Paper capital in the Composite |
 | 6 | Paper-deployed | Trading in the paper account under governance | Eligible for a future live review |
 
-**Evidence of edge and evidence of implementation are separate.** Edge can be judged now from decades of free portfolio returns: Open Source Asset Pricing and the Kenneth French library are built from CRSP, which includes delisted stocks, and every year after a factor's selection cutoff is out of sample. Implementation needs the platform's own stock-level data, which starts the day the forward recorder starts. So research and Tiers 2 to 4 can run from the first day, and the first paper capital needs only the 63-day Tier 5 shadow on the forward record. Portfolio returns cover the whole CRSP universe, including small names the platform will not trade, so their costs are modeled conservatively and the Tier 5 tracking check confirms the tradable version behaves the same.
+**Academic evidence supports a hypothesis. It does not certify a tradable implementation.** Open Source Asset Pricing and Kenneth French portfolio returns are built from CRSP, which includes delisted stocks, and every year after a factor's selection cutoff is out of sample. So research, reproduction and replication can start on the first day. That evidence covers the whole CRSP universe, including small names the platform will not trade, with academic portfolio construction and no realistic costs. Promotion therefore also needs an executable approximation evaluated independently by the platform with realistic costs (Tier 4) and prospective validation on the platform's own forward record (Tier 5). Shadow trading starts as soon as the executable approximation is ready, so the first simulated trade does not wait for the observation period to end.
 
 Two routes reach Tier 3. A published signal gets there through replication by others or by the platform. A **new pattern** the platform discovers itself has no outside replication, so it must clear a stricter multiple-testing bar (see default decision criteria) and pass on a holdout period never touched during its search.
 
-Demotion is automatic: a signal that fails monitoring drops one tier. A signal fails monitoring when its trailing 252-day net return is below the 5th percentile of its expected distribution, or its data feed is unhealthy for 5 trading days in a row. Promotion above Tier 4 needs Aditi's approval.
+Monitoring separates two kinds of failure. **Infrastructure failure** (missing critical data, invalid prices, a failed risk check) pauses the affected trading at once, with no statistics involved. **Strategy deterioration** is judged against the strategy's forecast distribution on rolling out-of-sample evidence, and that distribution includes both the uncertainty of the edge estimate and the sampling noise of the window, so a short window needs a larger shortfall before it alerts. A deterioration alert demotes the signal one tier and opens a re-evaluation case. The window and alert level are provisional, and a strategy may declare its own. There is no universal rule such as "252 days below the 5th percentile". Promotion above Tier 4 needs Aditi's approval.
 
 ### The three scores, shown on every signal
 
@@ -90,10 +104,10 @@ The Composite is the single model CandleIsGreen trades. Each trading day it take
 
 | Term | Definition |
 | --- | --- |
-| Universe U\_t | US common stocks and ETFs on day t with price at least $5 and 20-day median dollar volume at least $10M, using point-in-time membership including later-delisted names. A member leaves only when price falls below $4 or median dollar volume below $7.5M, so names near the line do not flip daily. Leveraged and inverse ETFs are excluded. Security type comes from a licensed source. Until one exists it is inferred from SEC form types and name rules and labeled `type_inferred` |
-| Decision time | 16:30 ET each trading day. Only data with `first_usable_at` before 16:30 ET is used. Orders go out in the next regular session, sliced by the platform between 09:35 and 10:30 ET, and every slice passes the risk checks with a live quote. The opening auction is not used, because an auction order is sent while the market is closed and the safety invariants block that. A pre-open check at 09:00 ET cancels any buy in a name with an earnings release, halt or 8-K since decision time. It can cancel orders and can never add them |
+| Universe U\_t | US common stocks and ETFs on day t with price at least $5 and 20-day median dollar volume at least $10M, computed only from information available at decision time, with survivorship-aware membership that keeps historical asset IDs, inactive and later-delisted names. The $5 and $10M filters are provisional. A member leaves only when price falls below $4 or median dollar volume below $7.5M, so names near the line do not flip daily. Spread, halt and liquidity checks apply at order time. Leveraged and inverse ETFs are excluded. A separate research-only biotech universe (`universe.research_universes.biotech`) has no price or volume filter and can never receive orders. Security type comes from a licensed source. Until one exists it is inferred from SEC form types and name rules and labeled `type_inferred` |
+| Decision time | 16:30 ET each trading day. Only data with `first_usable_at` before 16:30 ET is used. Orders go out in the next regular session as paper limit orders, sliced by the platform inside a configurable window, initially 09:35 to 10:30 ET. Every slice passes the risk checks with a fresh execution-grade quote, a spread check and the participation limit. Delayed consolidated prices are used for research and end-of-day data, never to price an order. If no suitable fresh quote exists, the slice is rejected. Every fill records its slippage against the arrival mid, and alternative windows are compared on that record before a permanent default is chosen. The opening auction is not used, because an auction order is sent while the market is closed and the safety invariants block that. A pre-open check at 09:00 ET cancels any buy in a name with an earnings release, halt or 8-K since decision time. It can cancel orders and can never add them |
 | Signal s | A versioned, deterministic function that outputs a raw score x(s,i,t) for each asset i on day t. It declares a horizon h\_s in trading days, a type (cross-sectional or time-series), a family k, and an evidence tier |
-| Family k | Group of related signals. Equity factors use the 13 JKP themes. Sectors, where needed, use SEC SIC codes mapped to the Fama-French 12 industries, because GICS needs a licence. Other families: trend, reversal, earnings events, corporate actions, macro, volatility, stat arb, news, biotech events, and one family per practitioner domain |
+| Family k | Group of related signals. Equity factors use the 13 JKP themes. Sectors use SEC SIC codes mapped to the Fama-French 12 industries, with the classification date and mapping version stored. A missing or ambiguous classification is UNKNOWN, and all UNKNOWN names share one bucket under the same caps, so they cannot evade an exposure limit. Other families: trend, reversal, earnings events, corporate actions, macro, volatility, stat arb, news, biotech events, and one family per practitioner domain |
 | Selection cutoff | The last date used to design or choose the signal. Paper signals: the latest of the paper's sample end, its first public date, and the date of the platform's last design choice for the signal (horizon, sector neutrality, smoothing). Platform discoveries: the start of the untouched holdout. Only returns after this date count as out-of-sample |
 
 ### C.2 Step 1: standardize every signal
@@ -127,13 +141,14 @@ These are long-short research portfolios. The executable book is long-only, and 
 
 ### C.4 Step 3: estimate each signal's true edge
 
-Up to three independent pieces of evidence are combined by precision weighting. A piece that does not exist for a signal is left out.
+Up to four independent pieces of evidence are combined by precision weighting. A piece that does not exist for a signal is left out.
 
 | Evidence | Value | Variance |
 | --- | --- | --- |
 | Family prior | m\_k | τ\_k² |
 | Paper measurement | δ\_k × R\_paper − C\_s, where R\_paper is the paper's reported in-sample return rescaled to 10% volatility and C\_s is the platform's modeled annual cost for the signal at 10% volatility. Papers report gross returns and the out-of-sample record is net, so the cost is taken off to compare like with like | (δ\_k × SE\_paper)² + ω², with ω = 0.5 × δ\_k × R\_paper and SE\_paper rescaled the same way as R\_paper |
-| Out-of-sample record | r̄\_s | σ\_s² |
+| Academic out-of-sample record | Mean academic portfolio return after the selection cutoff, at 10% volatility, minus modeled cost | SE² + (g × mean)², where g is the provisional `implementation_gap_factor` (default 0.5), because the academic portfolio is not the tradable version |
+| Out-of-sample record of the executable approximation | r̄\_s | σ\_s² |
 
 ```latex
 \hat{\mu}_s = \frac{\sum_j \theta_j / v_j}{\sum_j 1 / v_j}, \qquad V_s = \frac{1}{\sum_j 1 / v_j}, \qquad P_s = \Phi\!\left(\frac{\hat{\mu}_s}{\sqrt{V_s}}\right)
@@ -163,8 +178,8 @@ Once a family has 20 signals with both in-sample and out-of-sample records, δ\_
 A signal enters the Composite only if all of these hold:
 
 - Evidence tier 4 or higher. Tier 4 itself needs the lower bound of the 90% interval of net return above zero at doubled costs, so this is the stricter of the two statistical gates
-- μ̂\_s above 0 and P\_s at least 0.80
-- At least 252 trading days after its selection cutoff, or at least 30 independent events for event signals
+- μ̂\_s above 0 and P\_s at least 0.80 (provisional)
+- At least 252 trading days of out-of-sample record for the executable approximation, or at least 30 independent events for event signals (both provisional)
 - Its data feed is healthy today
 
 Tier 4 signals get **shadow weight**: their weight is computed and tracked, but set to zero in the capital book. Tier 5 and above get capital weight.
@@ -192,7 +207,7 @@ Reweighting runs on the first trading day of each month, and immediately when a 
 Here σ\_i is the stock's forecast residual volatility over 21 days, and IC is the rolling out-of-sample rank correlation between S and next-21-day residual returns, shrunk toward zero as IC\_used = IC\_mean × n / (n + 252), with n the number of out-of-sample days. IC statistics use Newey-West errors with lag 21, because daily observations of 21-day returns overlap. α is clipped at three times IC × σ and scaled by the allocated share of weight, 1 − `unallocated_weight`.
 
 3. **Calibration check (monthly):** regress realized 21-day residual returns on the unshrunk forecast IC\_mean × σ × S out of sample. The shrunk α is not used here, because the shrinkage alone would put the slope at (n + 252) / n, which is above 1.5 until day 504. The Composite is `calibrated` if the slope is between 0.5 and 1.5 and IC\_mean is positive with t above 2. If not, it shows ranks only (`signal_strength`) and the optimizer runs in reduce-only mode: it opens and adds to no position and may only cut.
-4. **History for the check.** The Composite's own record is built by walk-forward backfill using only point-in-time inputs and weights, labeled as backfill, so the check does not need a year of live running.
+4. **History for the check.** The Composite's history may be reconstructed by walk-forward, using only point-in-time inputs and weights chosen without future information. The development history and the parameter-selection process are stored with it. Every reconstructed forecast carries `record_type: retrospective`, is shown separately from recorded prospective forecasts, can never be eligible for orders, and never counts as the untouched prospective test that Tier 5 requires.
 
 ### C.8 Step 7: solve for target positions
 
@@ -221,7 +236,7 @@ The optimizer's output goes to the risk service, which checks it independently b
 
 ### C.10 Output contract
 
-Each daily run writes: `composite_run_id`, `as_of`, `universe_hash`, the list of signals used with tier, μ̂\_s, P\_s and w\_s, the `unallocated_weight`, per-asset S and α, calibration status, optimizer status, target weights, ex-ante volatility, and for each position the contribution of each signal to its α. The Reasoning screen reads this record directly.
+Each daily run writes: `composite_run_id`, `as_of`, `universe_hash`, the record type (prospective or retrospective), the data licenses behind it, the list of signals used with tier, μ̂\_s, P\_s and w\_s, the reasons and config paths for every exclusion, the `unallocated_weight`, per-asset S and α, calibration status, optimizer status, target weights, ex-ante volatility, and for each position the contribution of each signal to its α. The Reasoning screen reads this record directly.
 
 ### C.11 Worked example
 
@@ -247,6 +262,9 @@ A pure-noise signal with no paper and an out-of-sample record of 0.5% (standard 
 - A failed calibration check blocks new positions.
 - The optimizer never returns a portfolio that breaks a hard limit, and the risk service rejects one that is injected deliberately.
 - Frozen-weight and champion-challenger benchmarks run every day alongside the live Composite.
+- Academic portfolio evidence alone never yields capital weight.
+- A strategy performing as forecast triggers deterioration alerts at about the stated rate, and a dead strategy triggers them more often as evidence accumulates.
+- Promotion fails without 63 prospective days, the strategy's trade count, enough precision, a result inside the band, acceptable tracking, or with a retrospective record.
 
 ## Research pipeline and Hypothesis Factory
 
@@ -268,7 +286,7 @@ Statuses: `DISCOVERED`, `EXTRACTED`, `NEEDS_DATA`, `REPRODUCING`, `REPRODUCED`, 
 
 ### Default decision criteria by study type
 
-There is no single universal threshold. The t above 3.0 hurdle from [Harvey, Liu and Zhu](https://nber.org/papers/w20592) was built for newly discovered cross-sectional factors under heavy multiple testing, so it applies to that case only. All values below are config defaults.
+There is no single universal threshold. The t above 3.0 hurdle from [Harvey, Liu and Zhu](https://nber.org/papers/w20592) was built for newly discovered cross-sectional factors under heavy multiple testing, so it applies to that case only. All values below are provisional defaults in `config/parameters.yaml`, not universal statistical laws.
 
 | Study type | Default pass rule |
 | --- | --- |
@@ -332,11 +350,29 @@ The backtester and every model read `first_usable_at`, the moment a value could 
 
 `instrument_id`, `vendor`, `raw_symbol`, `exchange`, `field`, `value`, `event_time`, `published_at`, `vendor_available_at`, `ingested_at`, `first_usable_at`, `timezone`, `currency`, `adjustment_method`, `vintage`, `missing_flag`, `license`, `collection_mode`.
 
+`license` is a license ID from `config/licenses.yaml`, and every derived result keeps the license IDs of the data behind it.
+
 `first_usable_at` is derived, never typed in. For rows collected live it is the latest of `event_time`, `published_at`, `vendor_available_at` and `ingested_at`. For backfilled history (`collection_mode: backfill`) it is the latest of the first three plus a per-source lag from config, because the ingestion time of a backfill says nothing about when the value was known.
 
 ### Forecast contract (every model and the Composite)
 
-`forecast_id`, `model_id`, `model_version`, `asset_id`, `issued_at`, `as_of`, `target_definition`, `target_start`, `target_end`, `expected_excess_return` or `signal_strength`, `quantiles` (if calibrated), `training_cutoff`, `data_snapshot_id`, `feature_snapshot_id`, `calibration_status`, `evidence_refs`, `eligible_for_orders`.
+`forecast_id`, `model_id`, `model_version`, `asset_id`, `issued_at`, `as_of`, `target_definition`, `target_start`, `target_end`, `expected_excess_return` or `signal_strength`, `quantiles` (if calibrated), `training_cutoff`, `data_snapshot_id`, `feature_snapshot_id`, `calibration_status`, `evidence_refs`, `eligible_for_orders`, `record_type` (`prospective` or `retrospective`), `data_licenses`.
+
+A forecast issued after its target window started must be `retrospective`, and a retrospective forecast can never be eligible for orders. An order is built only when every license in `data_licenses` permits paper trading. `unverified` counts as not permitted.
+
+### Instrument master and corporate actions
+
+The forward record is survivorship-aware, not automatically survivorship-free: it is only as complete as what was collected. It keeps:
+
+- a permanent `instrument_id` with its symbol, exchange and status history (`active`, `inactive`, `delisted`) and valid-from and valid-to dates
+- corporate actions (splits, dividends, mergers, spin-offs, symbol changes, delistings) with their announcement and effective dates
+- inactive and delisted securities, never deleted
+- completeness flags per day and source: whether the asset-list snapshot was taken, when it was actually taken, which bars are missing, and whether a value was collected live or backfilled
+- sector classifications with SIC code, Fama-French 12 industry, classification date, mapping version and `unknown` status
+
+### Licenses
+
+`config/licenses.yaml` records, for each license ID, whether research and paper trading are permitted. JKP data (CC BY-NC 4.0) is permitted for noncommercial academic and personal research. Its paper-trading use is `unverified` until the license interpretation is checked, so JKP-derived results stay research only. Kenneth French data and some FRED series are also `unverified` for trading use.
 
 ### Sources at launch
 
@@ -344,14 +380,14 @@ The backtester and every model read `first_usable_at`, the moment a value could 
 | --- | --- | --- |
 | US prices and paper execution | Alpaca. [Paper trading is free](https://docs.alpaca.markets/docs/paper-trading). Only the free plan is used. Real-time quotes come from the IEX exchange only and feed the risk checks. Daily bars come from consolidated (SIP) history, which is free when the request ends at least 15 minutes in the past, so end-of-day data covers all exchanges. History starts in 2016. Paper fills ignore quote size and market impact | Free |
 | US filings and fundamentals | SEC EDGAR submissions and XBRL APIs | Free |
-| Equity factor library | Open Source Asset Pricing (US), JKP Global Factor Data (93 countries). Free downloads are factor and portfolio returns, plus signal documentation with each paper's sample period. Open Source Asset Pricing also publishes stock-level signals, but they are keyed to CRSP identifiers and a stock-level backtest with them needs CRSP returns, so they are not used at the stock level. JKP data is licensed for non-commercial use | Free for returns |
+| Equity factor library | Open Source Asset Pricing (US, CC BY 4.0), JKP Global Factor Data (93 countries, CC BY-NC 4.0, tagged and kept separate by license). Free downloads are factor and portfolio returns, plus signal documentation with each paper's sample period. Open Source Asset Pricing also publishes stock-level signals, but they are keyed to CRSP identifiers and a stock-level backtest with them needs CRSP returns, so they are not used at the stock level. JKP data is licensed for non-commercial use | Free for returns |
 | Macro | FRED and ALFRED through the FRED API (v1 `series/observations` with `realtime_start` and `realtime_end` for vintages, API key required), BLS (500 queries per day with a key), BEA (100 requests per minute), central banks | Free |
 | Papers | Crossref, OpenAlex (free key with a daily usage allowance), arXiv, NBER, SSRN where its terms allow | Free |
 | Biotech events | ClinicalTrials.gov API, the FDA advisory committee calendar and FDA documents. FDA action dates come from company press releases and 8-K filings, since FDA publishes no calendar of them | Free |
 | News | Lawful RSS feeds only | Free |
-| Survivorship-free US history, forward | A Phase 1 collector records the full Alpaca asset list and daily bars for every listed US stock and ETF after each close. Every recorded day includes names that later delist, so the record is survivorship-free from its first day. For personal use only, never shared | Free |
+| Survivorship-aware US history, forward | A Phase 1 collector records the full Alpaca asset list, including inactive assets, daily consolidated bars and corporate actions for every US stock and ETF after each close, with completeness flags. It is survivorship-aware from its first day, and complete only where the flags say so. For personal use only, never shared | Free |
 | Survivorship-free US history, portfolio level | Open Source Asset Pricing portfolio returns and the Kenneth French data library, both built from CRSP, which includes delisted stocks. The Kenneth French files carry a copyright notice and no licence text, so they are used for personal research only | Free |
-| Outside research tool, optional | QuantConnect's free cloud backtesting. It is not connected to the platform, and nothing from it enters the evidence pipeline. Its terms were not verified | Free |
+| Outside research tool, optional | QuantConnect's free cloud environment, for Aditi's own exploration. It is not a dependency, nothing from it enters the evidence pipeline, and no market data is extracted from it into CandleIsGreen, because its published terms restrict exporting platform data | Free |
 
 ### Capability map
 
@@ -362,7 +398,7 @@ The backtester and every model read `first_usable_at`, the moment a value could 
 | US factor research | Available | Free portfolio returns built from CRSP |
 | Global factor research | Limited | Returns only, non-commercial licence |
 | US daily bars | Limited | From 2016, delisted coverage unconfirmed, labeled SURVIVORSHIP-BIASED |
-| US stock history with delistings | Limited | Only from the day the forward recorder starts |
+| US stock history with delistings | Limited | Survivorship-aware only from the day the forward recorder starts, and only as complete as its flags show |
 | Point-in-time fundamentals | Limited | SEC XBRL from 2009, using the filed date |
 | Macro | Available | FRED, ALFRED, BLS, BEA |
 | US paper execution | Available | Alpaca paper |
@@ -388,14 +424,18 @@ The backtester and every model read `first_usable_at`, the moment a value could 
 | Event metadata, structured news features, claim cards, experiments, decisions, orders, fills | Permanently |
 | Licensed full-text news | The shorter of the license limit and 90 days |
 | Captured social text | Summaries and hashes permanently, full text only where the terms allow |
-| Daily and 1-minute bars | Permanently, where licensed |
+| Daily and 1-minute bars, the instrument master, corporate actions and completeness flags | Permanently, where licensed |
 | Tick data | 30 days, where licensed |
 
 Views: NEWS LIVE (last 72 hours), RECENT (90 days, searchable), ARCHIVE (structured records, permanent).
 
 ### Mandatory survivorship rule
 
-Historical tests use point-in-time universes that include delisted securities. When only a current-constituents list is available, the result is labeled SURVIVORSHIP-BIASED and cannot pass any gate. Two free sources meet the rule: the forward record from the Phase 1 recorder, from its first recorded day, and portfolio returns built from a database that includes delisted stocks.
+Historical tests use point-in-time universes that include delisted securities. When only a current-constituents list is available, the result is labeled SURVIVORSHIP-BIASED. Free sources and what they can support:
+
+- **Academic portfolio returns built from CRSP** include delisted stocks. They support hypotheses (Tiers 2 and 3) and enter the edge estimate, but never certify an implementation.
+- **The forward record** is survivorship-aware from its first recorded day, as complete as its flags show. Tier 5 prospective validation runs on it.
+- **Older Alpaca history** (from 2016) is labeled SURVIVORSHIP-BIASED. A biased result never passes a gate that grants capital. It may serve as the Tier 4 executable-approximation check, with its label shown, only alongside survivorship-free academic evidence for the same hypothesis, because Tier 4 grants shadow weight and no capital.
 
 ## Model laboratory
 
@@ -451,6 +491,7 @@ Chronological out-of-sample testing is the backbone. Heavier tools are used wher
 | Reporting a Sharpe ratio after selection | [Deflated Sharpe ratio](https://papers.ssrn.com/abstract=2460551), only with the complete trial registry as input |
 | Dependent returns | Block bootstrap intervals and HAC standard errors |
 | Many hypotheses tested together | False discovery rate control across the experiment registry |
+| Walk-forward reconstruction of past decisions | Point-in-time inputs and weights only, with the development history stored. Labeled RETROSPECTIVE and never pooled with prospective forecasts |
 
 ### Experiment manifest (required for every test)
 
@@ -507,7 +548,7 @@ PAPER or SIMULATION shows on every order view. Switching modes never silently ch
 | Daily loss stop | 2% of equity, halts new orders |
 | Quote staleness | Over 15 seconds in market hours blocks the order |
 
-A correlated cluster is a group from hierarchical clustering on 252-day residual return correlation, cut at 0.5 and recomputed monthly. This defines the term only. The limit value is Aditi's.
+Exposure limits combine two classifications. **Fama-French 12 sectors** carry the provisional 25% sector cap. **Correlation clusters** (hierarchical clustering on 252-day residual return correlation, cut at 0.5, recomputed monthly) carry the 20% correlated-cluster limit, which stays configurable. A name counts in its sector and its cluster, each limit is checked separately, and neither can be used to bypass the other. Exposure includes current positions and pending orders. Names with a missing or ambiguous classification share one UNKNOWN bucket under the same limits. Cluster stability is tested monthly by comparing consecutive assignments, and an unstable clustering falls back to sector limits plus an alert. The limit value is Aditi's.
 
 ### Safety invariants
 
@@ -517,6 +558,11 @@ A correlated cluster is a group from hierarchical clustering on 252-day residual
 - Orders carry stable client IDs. After an uncertain broker response, query open orders before any retry. Never resubmit blind.
 - Reconcile positions and fills with the broker after every order and at every session close.
 - Every order shows its evidence-linked rationale and data freshness.
+- Orders are limit orders only. The limit may not sit further from mid than the spread limit allows.
+- Only execution-grade quote feeds (`risk.hard_limits.execution_grade_feeds`) can price an order. Delayed consolidated data is never on that list.
+- An order outside the configured execution window is blocked.
+- Missing critical data, invalid prices or a failed risk check pause the affected trading at once.
+- A target book is checked independently for positions, clusters, sectors and the UNKNOWN bucket before any order is built from it.
 
 ### Broker adapters
 
@@ -526,7 +572,9 @@ One adapter interface. Alpaca paper for US equities. There is no Interactive Bro
 
 | Change | Who | Guardrail |
 | --- | --- | --- |
-| Hard risk limits | Aditi only | Tightening applies now. Loosening waits 24 hours and asks again |
+| Hard risk limits and other safeguards | Aditi only | Tightening applies now. Loosening a hard limit waits 24 hours and asks again. No experiment or optimizer may vary a safeguard |
+| Empirical parameters | Aditi | Needs a new cited source or platform evidence in the experiment registry |
+| Provisional parameters | Aditi, or proposed by an experiment | Every variant tried counts in the trial registry. Changes are logged with the evidence |
 | Promote a signal to paper capital | System proposes, Aditi approves | Must hold Tier 5 with a complete experiment manifest |
 | Composite weights | System, monthly | Max 25% change per weight per month without approval, frozen benchmark always running |
 | Demote or suspend a signal | System, automatically | Logged with the evidence that triggered it |
@@ -600,6 +648,9 @@ Guide mode is separate from theme, on by default with Glass, and available with 
 - **First-run tour** of the four core screens.
 - **Plain-language commands.** The command bar also accepts phrases like "show Nvidia news" or "why didn't we buy Apple" and maps them to the coded commands.
 
+- **Parameter basis tags.** A number or decision that depends on a provisional parameter shows a PROVISIONAL tag. Hover shows the registry entry: basis, source or review note, and who may change it. Empirical values show their citation.
+- **Record type tags.** Retrospective results show RETROSPECTIVE and are never charted on the same line as prospective forecasts.
+
 Guide mode never hides risk warnings, the PAPER label or the kill switch.
 
 A persistent status strip shows mode (PAPER or SIMULATION), account, market session, feed latency, API status and the kill switch.
@@ -650,7 +701,7 @@ One stack, chosen now so the coding model does not build two.
 
 | Layer | Choice | Reason |
 | --- | --- | --- |
-| Language | Python 3.14 for backend and research, 3.12 as the minimum | Quant library ecosystem. 3.12 and 3.13 are security-only as of Nov 2026 |
+| Language | Python 3.13 for development and deployment, compatible with 3.12 where feasible. 3.14 is added only after a full dependency and test-suite check | 3.13 runs the full test suite today |
 | API | FastAPI with Pydantic v2 schemas, exact version pinned | Typed contracts between services. FastAPI ships breaking 0.x releases often |
 | Frontend | React with TypeScript on Vite, AG Grid Community for tables and TradingView Lightweight Charts | A dense multi-pane terminal with keyboard control needs a real frontend. Streamlit cannot meet the design bar |
 | Analytical store | Parquet and DuckDB | Fast local point-in-time queries |
@@ -661,7 +712,7 @@ One stack, chosen now so the coding model does not build two.
 | Brokers | `alpaca-py` for Alpaca paper. No other broker (principle 11) | `alpaca-trade-api` is archived |
 | Testing | pytest, hypothesis for invariants, recorded API fixtures | Reproducible tests |
 | Secrets | Environment variables or the OS credential store, never Git or logs | Safety |
-| Hosting | Aditi's own computer for scheduled jobs and the interface. A job that missed its time catches up on the next run and marks what it collected late | No server rental under principle 11. Global research has no live deadlines, so it does not need an always-on machine |
+| Hosting | Oracle Cloud Always Free for scheduled jobs, with local execution and a local scheduled task as the fallback. The interface runs locally. The account is never upgraded | Zero cost. Oracle documents idle reclamation, capacity shortages and fixed home regions, so every job is safe to rerun and catches up after a gap (see decision Q13) |
 
 The services:
 
@@ -672,6 +723,8 @@ The services:
 5. **Risk and execution**: separate process and permissions, broker adapters, reconciliation, audit log.
 6. **Workstation**: the interface and teaching.
 
+Module boundaries are typed and tested: research, models and the Composite never import the broker or the pipeline, the risk engine imports only shared contracts, and the data layer never imports research, risk or brokers.
+
 Agent names in the interface are roles, not separate recurring LLM calls. Document costs in `README.md`. The target is zero, and any cost that appears is a bug in the plan.
 
 ## Build phases and acceptance tests
@@ -681,23 +734,163 @@ Eight phases. Each ships only when its acceptance test passes and `HANDOFF.md` r
 | Phase | Scope | Pass when |
 | --- | --- | --- |
 | 0. Repository and contracts | Directories (`sources/`, `data/`, `research/`, `models/`, `composite/`, `backtests/`, `risk/`, `broker/`, `ui/`, `tests/`), typed schemas, UTC rules, config file, audit log, fixtures, CI command | One offline event flows end to end with immutable IDs. A planted lookahead leak is caught |
-| 1. US paper vertical slice | Daily data from fixtures or Alpaca, the forward recorder of the full US asset list and daily bars (started as early as possible, because every day it runs adds clean history), one Level A trend baseline, candidate trade, risk check, approval or auto-simulation, journal, minimal Overview and Execution screens | Approval, rejection, fill, stale-feed block and kill switch all verified end to end |
-| 2. Broker paper and filings | Alpaca paper adapter, reconciliation, SEC filing timestamps and XBRL facts, earnings scorecard | A duplicate submission is not repeated. Every financial figure traces to an SEC filing. No "beat" without a consensus estimate |
-| 3. Research engine and the first Composite | Claim cards, evidence graph, experiment registry, two published factor reproductions (one passing, one expected to fail), Composite v0 over three Level A signals with shrinkage and frozen-weight benchmark. Reproductions, replications and the Tier 4 out-of-sample test use free portfolio returns built from CRSP, so they can run as soon as this phase starts. Stock-level work runs on fixtures and synthetic data until the forward record exists, and results on older Alpaca history stay labeled SURVIVORSHIP-BIASED at Tier 1 | Full evidence chain shown in the UI. Negative result stored and visible. Composite output traces to each signal's weight and evidence |
+| 1. US paper vertical slice | Daily data from fixtures or Alpaca, the survivorship-aware forward recorder of the full US asset list with inactive assets, daily bars, corporate actions and completeness flags (started as early as possible, because every day it runs adds history), one Level A trend baseline, candidate trade, risk check, approval or auto-simulation, journal, minimal Overview and Execution screens | Approval, rejection, fill, stale-feed block and kill switch all verified end to end |
+| 2. Broker paper and filings | Alpaca paper adapter with limit orders, reconciliation, slippage measurement against the arrival mid and a comparison of alternative execution windows, SEC filing timestamps and XBRL facts, SIC classifications with dates and mapping versions, earnings scorecard | A duplicate submission is not repeated. Every financial figure traces to an SEC filing. No "beat" without a consensus estimate |
+| 3. Research engine and the first Composite | Claim cards, evidence graph, experiment registry, two published factor reproductions (one passing, one expected to fail), Composite v0 over three Level A signals with shrinkage and frozen-weight benchmark. Reproductions and replications use free portfolio returns built from CRSP, so they can run as soon as this phase starts. Executable approximations are tested on platform data with realistic costs, and prospective shadow trading starts as soon as one is ready. Results on older Alpaca history keep their SURVIVORSHIP-BIASED label | Full evidence chain shown in the UI. Negative result stored and visible. Composite output traces to each signal's weight and evidence |
 | 4. News and teaching | Lawful RSS ingestion, event clustering, Reasoning screen, predict first, one full historical replay | Replay cannot see later news or prices at earlier timestamps |
 | 5. Hypothesis Factory and model levels B and C | Daily research loop, decision criteria by study type, champion and challenger, calibration, drift monitoring, practitioner claim scoring | A model update never changes risk limits or permissions. A contradicting paper opens a re-evaluation case |
 | 6. Global research | JKP global factor returns, instrument taxonomy, exchange calendars, market rule table, FX split. No non-US execution (principle 11) | Every non-US instrument is `research_only` and cannot receive orders. A week of global research jobs runs with no manual step |
 | 7. Live trading (separate project) | Threat model, independent review, broker permissions, capped manual-approval prototype | Not started without a separate written decision from Aditi |
 
+## Decisions register (v3.2)
+
+Aditi's decisions of 2026-11-22 on the review questions. Each lists its assumptions, implementation, validation test and failure behavior. "Built" means code and a passing test exist. "Planned" names the phase. The zero-subscription constraint (principle 11) holds for all of them.
+
+### Q1. Data for research and implementation
+
+| Item | Content |
+| --- | --- |
+| Decision | Three free sources: academic portfolio returns (Open Source Asset Pricing, Kenneth French), the platform's forward-collected universe, and older Alpaca history. The forward universe is survivorship-aware, not automatically survivorship-free. Academic portfolio evidence never substitutes for stock-level implementation tests |
+| Assumptions | Alpaca's free plan lists inactive assets and serves daily consolidated bars once 15 minutes have passed. Whether it serves bars for delisted symbols is unconfirmed and is checked when the recorder is built |
+| Implementation | Planned, Phase 1: the recorder stores the instrument master with status history, corporate actions, inactive and delisted securities and per-day completeness flags (see Instrument master). Built: the observation contract with `collection_mode`, the capability map entry, and the rule that academic evidence alone never grants capital |
+| Validation test | Built: `test_academic_evidence_cannot_grant_capital_without_prospective_tier`. Planned: a delisted name stays in the instrument master with its delisting date, a missed day sets a completeness flag, and a ticker change keeps one `instrument_id` |
+| Failure behavior | A day with no asset-list snapshot is flagged incomplete, never silently filled. A test on data with incomplete delisting coverage carries the SURVIVORSHIP-BIASED label |
+
+### Q3. JKP license
+
+| Item | Content |
+| --- | --- |
+| Decision | JKP data is used for noncommercial academic and personal research. The dataset and everything derived from it stay tagged by license. Paper or real-money use is not assumed authorized until the license interpretation is checked |
+| Assumptions | JKP data is CC BY-NC 4.0 (verified on jkpfactors.com, 2026-11-17) |
+| Implementation | Built: `config/licenses.yaml` marks `cc_by_nc_4_0` paper trading as `unverified`. Observations carry a license ID, forecasts carry `data_licenses`, and the pipeline refuses to build an order unless every license permits paper trading |
+| Validation test | Built: `test_noncommercial_data_is_research_only_until_checked`, `test_a_jkp_derived_forecast_cannot_become_an_order` |
+| Failure behavior | An unknown, missing or unverified license blocks the order and names the license |
+
+### Q4. Execution timing and quality
+
+| Item | Content |
+| --- | --- |
+| Decision | Next-session execution by default, inside a configurable window, initially 09:35 to 10:30 ET. Paper limit orders, quote-quality checks, spread limits and participation limits. Execution is rejected when suitable fresh data is unavailable. Delayed consolidated prices are never execution-grade. Slippage is measured and alternative windows compared before a permanent default is chosen |
+| Assumptions | The free real-time IEX feed is the only execution-grade quote available at zero cost. Paper fills contain no market impact, so window comparisons on paper fills measure spread and quote quality, not impact |
+| Implementation | Built: the window, feed, quote-size and limit-price checks in `risk/engine.py`, limit-order-only intents, a simulator that fills only marketable limits, and `slippage_bps` on every fill. Planned, Phase 2: the window comparison report |
+| Validation test | Built: tests for an order outside the window, a delayed consolidated quote, a quote with no size, a limit too far from mid, a resting non-marketable limit, and slippage against arrival mid |
+| Failure behavior | Any missing, stale, delayed or zero-size quote blocks the slice. A non-marketable limit rests unfilled and is never chased with a market order |
+
+### Q5. Universe
+
+| Item | Content |
+| --- | --- |
+| Decision | Provisional tradable filters of $5 minimum price and $10M median daily dollar volume, computed from information available at decision time, plus spread, halt and liquidity checks. A separate research-only biotech universe without these filters |
+| Assumptions | SIC codes 2834, 2835, 2836 and 8731 cover biotech closely enough for research. This list is provisional |
+| Implementation | Built: the filter values and the research universe in config, classified as provisional, and the spread, halt and participation checks in the risk engine. Planned, Phase 1: the universe builder |
+| Validation test | Built: the risk tests for spread, halts and participation. Planned: the universe on day t uses no data with `first_usable_at` on or after decision time, and a research-universe name can never produce an order intent |
+| Failure behavior | A name with an unknown price or volume at decision time is left out of the tradable universe. A research-universe order is refused |
+
+### Q6. Monitoring
+
+| Item | Content |
+| --- | --- |
+| Decision | Infrastructure failure and strategy deterioration are separate. Missing critical data, invalid prices or failed risk checks pause affected trading at once. Strategy performance is monitored against its forecast distribution on rolling out-of-sample evidence that accounts for sample uncertainty. The 252-day 5th-percentile rule is not a universal test |
+| Assumptions | Returns over the window are approximately normal after Newey-West correction, and the edge estimate's variance V\_s is a fair measure of its uncertainty |
+| Implementation | Built: `composite/monitoring.py` with `infrastructure_check` and `deterioration_test`, which compares the realized mean with a predictive distribution of variance V\_s plus the window's sampling variance. Window and alert level are provisional and per-strategy |
+| Validation test | Built: a strategy performing as forecast alerts at about the stated rate, a dead strategy alerts more as evidence grows, short records are not judged, and edge uncertainty widens the distribution |
+| Failure behavior | Infrastructure failure pauses trading in the affected names at once. A deterioration alert demotes one tier and opens a re-evaluation case. Below the minimum observation count the status is `insufficient_data`, not a pass |
+
+### Q7. Exposure limits
+
+| Item | Content |
+| --- | --- |
+| Decision | Fama-French sector limits plus correlation-based clusters. The 20% cluster cap stays configurable. Cluster stability is tested, exposure includes current positions and pending orders, and overlapping classifications cannot bypass aggregate limits |
+| Assumptions | Monthly clustering on 252 days of residual returns is stable enough to be useful. If not, sector limits carry the load |
+| Implementation | Built: pending orders in the position and cluster checks, separate sector and cluster checks in `evaluate_portfolio`, an UNKNOWN bucket in the optimizer and the book check. Planned, Phase 3: the clustering job and its stability test |
+| Validation test | Built: tests for pending buys pushing a position or cluster over its limit, sector and cluster counted separately, and unknown sectors pooled. Planned: a stability score between consecutive monthly clusterings below its provisional threshold triggers the sector-only fallback |
+| Failure behavior | Unknown pending orders or cluster membership block the order. An unstable clustering falls back to sector limits and raises an alert |
+
+### Q8. Shadow period and promotion
+
+| Item | Content |
+| --- | --- |
+| Decision | A 63-trading-day minimum shadow period, plus trade-count and precision requirements appropriate to each strategy. Shadow trading starts when the implementation is ready, and the first simulated trade does not wait for the period to end |
+| Assumptions | 63 trading days is a floor, not a sufficient sample. Low-turnover strategies need more time to reach their trade count |
+| Implementation | Built: `promotion_check` in `composite/eligibility.py` with a per-strategy `StrategyPromotionPolicy`. The 63-day minimum cannot be lowered by a strategy |
+| Validation test | Built: promotion fails without 63 days, the trade count, enough precision, a result in band, acceptable tracking, or with a retrospective record. A strategy may declare its own trade count but not fewer days |
+| Failure behavior | A strategy that does not meet its requirements stays at Tier 4 in shadow. It is never promoted on time served alone |
+
+### Q9. Walk-forward reconstruction
+
+| Item | Content |
+| --- | --- |
+| Decision | Historical walk-forward reconstruction of the Composite is allowed with point-in-time inputs and weights chosen without future information. The development history and parameter-selection process are stored. Retrospective results are labeled separately and never treated as equivalent to an untouched prospective test |
+| Assumptions | Point-in-time inputs remove data lookahead but not researcher lookahead, because the method was designed after seeing history |
+| Implementation | Built: `record_type` on every forecast. A forecast issued after its target window started must be retrospective, and a retrospective forecast can never be eligible for orders. Planned, Phase 3: the experiment registry stores the development history and every parameter variant tried |
+| Validation test | Built: `test_late_forecast_cannot_be_labeled_prospective`, `test_retrospective_forecast_can_never_trade`, and promotion refusing a retrospective record |
+| Failure behavior | A mislabeled forecast fails validation and is not stored |
+
+### Q10. Sector classification
+
+| Item | Content |
+| --- | --- |
+| Decision | SEC SIC codes mapped to Fama-French 12 industries, with classification dates and mapping versions. Missing or ambiguous classifications are UNKNOWN and cannot evade exposure limits |
+| Assumptions | The Fama-French 12 SIC mapping from the Kenneth French library is usable for personal research. Its license text was not found |
+| Implementation | Built: the UNKNOWN bucket in the optimizer and the book check. Planned, Phase 2: classification records from EDGAR with SIC code, industry, date and mapping version |
+| Validation test | Built: `test_unknown_sectors_share_one_capped_bucket`, `test_optimizer_caps_the_unknown_bucket` and the sector book check |
+| Failure behavior | An unmapped SIC code becomes UNKNOWN and is capped with the other unknowns |
+
+### Q11. Python version
+
+| Item | Content |
+| --- | --- |
+| Decision | Develop and deploy on Python 3.13. Keep 3.12 compatibility where feasible. Add 3.14 only after a full dependency and test-suite check |
+| Assumptions | Every pinned library publishes 3.13 wheels, which held when the suite ran |
+| Implementation | Built: `.python-version` is 3.13 and `requires-python` is 3.12 or later |
+| Validation test | Built: the full suite on 3.13. Planned: a 3.12 run when an interpreter is available |
+| Failure behavior | A library without 3.13 wheels is not adopted |
+
+### Q12. Package layout
+
+| Item | Content |
+| --- | --- |
+| Decision | The `candleisgreen` package layout is accepted, with clear module boundaries and typed interfaces between research, execution, risk, data and the UI |
+| Assumptions | None beyond the layout in `ARCHITECTURE.md` |
+| Implementation | Built: the package, Pydantic contracts and a boundary test that parses every import |
+| Validation test | Built: `test_module_boundaries_hold` |
+| Failure behavior | A forbidden import fails the build |
+
+### Q13. Hosting
+
+| Item | Content |
+| --- | --- |
+| Decision | Prefer Oracle Cloud Always Free, with local execution and a local scheduled task as the fallback when free cloud capacity is unavailable |
+| Assumptions | Checked on Oracle's pages, 2026-11-22. Always Free is zero cost while the account is never upgraded, and upgrading cannot be undone. Signup needs a credit card. Oracle may reclaim an Always Free instance idle for 7 days (95th-percentile CPU, network and, on Ampere, memory all under 20%), and a daily job would likely look idle. Accounts idle for 30 days may be suspended. Free capacity in the home region can run out for days, and the home region cannot be changed |
+| Implementation | Planned, Phase 1: every job is safe to rerun and catches up after a gap, writes a heartbeat after each run, and copies recorded data back to Aditi's computer after each run. The local scheduled task runs the same command when the heartbeat is missing. No artificial load is generated to avoid the idle rule. The account is never upgraded |
+| Validation test | Planned: running a job twice gives the same stored result, a missing heartbeat triggers the local run, and a skipped day is caught up and flagged |
+| Failure behavior | If the instance is reclaimed or capacity is unavailable, the local fallback runs. If both miss a day, daily bars are backfilled later as `backfill` and the missing asset-list snapshot stays flagged |
+
+### Q14. Academic evidence and promotion
+
+| Item | Content |
+| --- | --- |
+| Decision | Portfolio-level academic evidence supports a research hypothesis. It does not certify the tradable implementation. Promotion needs an independently evaluated executable approximation, realistic transaction costs and prospective validation |
+| Assumptions | Academic portfolios use the full CRSP universe and academic weighting, so their returns overstate what the tradable version earns |
+| Implementation | Built: academic evidence enters C.4 with the extra variance (g × mean)², capital needs Tier 5, and Tier 5 needs a prospective record. Tiers 4 and 5 are redefined above |
+| Validation test | Built: `test_academic_evidence_supports_but_never_dominates`, `test_academic_evidence_cannot_grant_capital_without_prospective_tier` |
+| Failure behavior | A signal with academic support and no executable approximation stays at Tier 3 |
+
+### Q15. QuantConnect
+
+| Item | Content |
+| --- | --- |
+| Decision | QuantConnect is optional, for outside exploration only. It is never a dependency, and no proprietary market data is extracted from it into CandleIsGreen |
+| Assumptions | QuantConnect's published terms restrict exporting platform data. Aditi stated this, and it was not re-verified here |
+| Implementation | Nothing to build. No code path reads from QuantConnect |
+| Validation test | Not applicable |
+| Failure behavior | Not applicable |
+
 ## Open decisions for Aditi
 
 - [ ] Hard limit values in the risk table (defaults are placeholders)
-- [x] Survivorship-free US data: free only. The forward recorder and free portfolio-level returns, as in `QUESTIONS.md` Q1. CRSP through a university WRDS account is for academic research only, so it is not used
-- [x] News provider: lawful RSS only
-- [x] Hosting: Aditi's own computer (`QUESTIONS.md` Q13)
-- [x] AI budget: zero
-- [x] Non-US markets: research only, no execution
 - [ ] Tax professional review before any foreign fund or non-US holding
+- [x] Every review question Q1 to Q15, decided 2026-11-22 (decisions register above)
 
 ## Change log, v3 to v3.1
 
@@ -723,6 +916,18 @@ Amendment, 2026-11-17, from Aditi: no subscription-based platform and no monthly
 
 Amendment 2, 2026-11-17, from Aditi: free datasets by purpose. Edge is judged on free portfolio returns from day one, and the forward stock record is needed only for the 63-day Tier 5 implementation check. Daily bars come from Alpaca's delayed consolidated history. Added the capability map. Options flow, intraday trading, real-time consolidated quotes and analyst estimates are NOT AVAILABLE and stay in the architecture. Language models are optional and local. QuantConnect is an optional outside tool, not connected.
 
+Version 3.2, 2026-11-22, from Aditi's decisions on the review questions:
+
+- Parameter basis: every config value is classified as empirical, safeguard, provisional or external fact, and research thresholds are provisional defaults, not hard rules (new section and principle 12).
+- Tiers: Tier 4 is the independently evaluated executable approximation with realistic costs, and Tier 5 is prospective validation with per-strategy trade-count and precision requirements (Q8, Q14). Academic evidence supports hypotheses and enters C.4 with an implementation gap (Q14).
+- Monitoring: infrastructure failure and strategy deterioration are separate, and deterioration is judged against the forecast distribution (Q6).
+- C.1: survivorship-aware universe from decision-time information, research-only biotech universe (Q1, Q5). Limit orders, execution-grade quotes, configurable window and slippage measurement (Q4). Classification dates, mapping versions and the UNKNOWN bucket (Q10).
+- C.7 and the forecast contract: retrospective and prospective records kept apart (Q9). License tags on data and derived results (Q3).
+- Data: instrument master, corporate actions and completeness flags (Q1). License registry (Q3).
+- Risk: sector and cluster limits checked separately, pending orders counted, unknowns pooled (Q7).
+- Stack: Python 3.13 (Q11). Oracle Cloud Always Free with local fallback (Q13). Module boundaries tested (Q12). QuantConnect outside only (Q15).
+- Hard risk limit values: no change. The execution-grade feed list was added as a safeguard.
+
 ## Sources
 
 - [Harvey, Liu and Zhu, ...and the Cross-Section of Expected Returns](https://nber.org/papers/w20592)
@@ -738,3 +943,5 @@ Amendment 2, 2026-11-17, from Aditi: free datasets by purpose. Edge is judged on
 - [Interactive Brokers fact sheet](https://www.interactivebrokers.com.hk/en/general/about/ibkr-fact-sheet.php)
 - SEC EDGAR APIs, https://www.sec.gov/search-filings/edgar-application-programming-interfaces
 - FRED and ALFRED, https://fred.stlouisfed.org and https://alfred.stlouisfed.org
+- Jacobs and Müller (2020), Anomalies across the globe: Once public, no longer existent?, Journal of Financial Economics, https://doi.org/10.1016/j.jfineco.2019.06.004
+- Oracle Cloud Always Free resources, https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm

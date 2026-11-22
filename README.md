@@ -2,7 +2,7 @@
 
 An evidence-driven quantitative research workstation. Paper trading only. No code path can place a live order.
 
-Start with `SPEC.md` (v3.1). The review that produced v3.1 is `REVIEW.md`. Decisions waiting for Aditi are in `QUESTIONS.md`. Current state and the next step are in `HANDOFF.md`.
+Start with `SPEC.md` (v3.2). The review that produced v3.1 is `REVIEW.md`. Decisions waiting for Aditi are in `QUESTIONS.md`. Current state and the next step are in `HANDOFF.md`.
 
 ## Run it
 
@@ -43,9 +43,9 @@ Zero. No subscription or monthly fee is used, ever (spec principle 11).
 
 | Item | Choice | Cost |
 | --- | --- | --- |
-| Hosting | Aditi's own computer | Free |
+| Hosting | Oracle Cloud Always Free, never upgraded, with a local fallback | Free |
 | US prices and paper trading | Alpaca free plan | Free |
-| US history with delisted stocks | Forward recorder from Phase 1, plus free portfolio returns built from CRSP | Free |
+| US history with delisted stocks | Survivorship-aware forward recorder from Phase 1, plus free portfolio returns built from CRSP for research | Free |
 | Filings, macro, papers | SEC EDGAR, FRED, BLS, BEA, Crossref, OpenAlex free key, arXiv | Free |
 | News | Lawful RSS feeds | Free |
 | AI | Optional local open-weight model, off by default | Free |

@@ -1,6 +1,6 @@
 # HANDOFF.md
 
-Last updated: 2026-11-17 09:31 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
+Last updated: 2026-11-22 01:18 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
 
 ## Timeline note
 
@@ -14,7 +14,9 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 4. **Phase 0.** Both acceptance tests pass: one offline event flows end to end with immutable IDs, and a planted lookahead leak is caught.
 5. **Composite module.** `candleisgreen/composite/` covers all of spec section C: research portfolios and the cost model (C.3), standardization (C.2), edge estimation (C.4), eligibility with the Tier 3 and Tier 4 gates (C.5), weights (C.6), score, α and calibration (C.7), factor model and optimizer (C.8), and the daily run record (C.10). `risk.engine.evaluate_portfolio` gives the independent book check. Every C.12 test passes on synthetic inputs.
 
-Full suite: 119 passed. Details in `TEST_RESULTS.md`.
+6. **Spec v3.2.** Aditi's decisions on Q1 to Q15 are consolidated into `SPEC.md`, each in the decisions register with assumptions, implementation, validation test and failure behavior. Every config value is classified by basis in `config/parameters.yaml`. The code for the decisions that touch existing modules is built: limit orders, execution-grade quotes, the execution window, pending orders, license tags, record types, the UNKNOWN sector bucket, deterioration monitoring, the promotion check and academic evidence with an implementation gap.
+
+Full suite: 170 passed. Details in `TEST_RESULTS.md`.
 
 ## Half done
 
@@ -51,6 +53,6 @@ make phase0
 
 ## Exact next step
 
-Start Phase 1 (US paper vertical slice) per `SPEC.md`. The first atomic task: write `candleisgreen/models/ts_momentum.py`, the Level A trend baseline `ts_momentum_252_21` from `MODEL_REGISTRY.md` section 4. It reads daily closes through `PointInTimeStore.as_of`, outputs `signal_strength` per asset, and calls `assert_no_lookahead`. Test it on a new multi-day fixture in `tests/fixtures/`, then route its forecast through the existing `pipeline.py` path in place of `fixture_baseline`. Alpaca stays out until the fixture path passes, and only paper endpoints are allowed.
+Start Phase 1 (US paper vertical slice). First atomic task: the survivorship-aware forward recorder, because every day it runs adds prospective history. Build `candleisgreen/sources/alpaca_recorder.py` against recorded API fixtures first, with no network: it stores the full asset list including inactive assets, daily consolidated bars requested at least 15 minutes after the close, and corporate actions, and writes a completeness flag per day. Tests: a delisted name stays in the instrument master with its date, a missed day is flagged, a ticker change keeps one `instrument_id`, and running the job twice stores the same result. While building it, check whether Alpaca serves bars for delisted symbols (spec decision Q1 assumption). Then the Oracle heartbeat and local fallback (Q13), then the Level A trend baseline.
 
-Phase 1 should also start the forward recorder early (spec Phase 1 scope, `QUESTIONS.md` Q1). Edge is judged on free portfolio returns from day one, and the recorder feeds the 63-day Tier 5 shadow that comes before any paper position. Daily bars come from Alpaca's consolidated history, requested at least 15 minutes after the close. Check `config/capabilities.yaml` before building anything that touches options, intraday data or analyst estimates: those are NOT AVAILABLE. Standing rule: no subscription or monthly fee, ever. Before Phase 1, Aditi should skim `QUESTIONS.md`. Q1 (free data plan), Q4 (execution timing), Q13 (jobs on her computer) and D-009 in `DECISIONS.md` (daily loss stop and sells) change what Phase 1 builds.
+Alpaca paper keys are needed for any live call. They come from environment variables only, and only the paper endpoint is allowed.

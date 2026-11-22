@@ -1,6 +1,6 @@
 # MODEL_REGISTRY.md
 
-Source: `SPEC.md` v3.1, sections "The Composite", "Model laboratory" and "Evidence tiers". This file defines what a registry entry holds, lists every model and signal the platform knows about, and gives each one's honest status.
+Source: `SPEC.md` v3.2, sections "The Composite", "Model laboratory" and "Evidence tiers". This file defines what a registry entry holds, lists every model and signal the platform knows about, and gives each one's honest status.
 
 Nothing in this registry holds an evidence tier above 1 today. No real signal has been tested yet. Published factors can be taken to Tier 4 on free portfolio returns once the Phase 3 research engine exists (`QUESTIONS.md` Q1 and Q14).
 
@@ -30,6 +30,10 @@ Every model or signal registers these fields before it can issue a forecast.
 | `code_path` | Module that implements it |
 | `data_labels` | For example SURVIVORSHIP-BIASED |
 | `approved_by`, `approved_at` | Set when Aditi approves a promotion above Tier 4 |
+| `promotion_policy` | The strategy's own shadow trade count and precision requirement, or the defaults |
+| `monitoring_policy` | The strategy's own deterioration window and alert level, or the defaults |
+| `data_licenses` | License IDs of the data it uses. Any license that does not permit paper trading keeps it research only |
+| `parameters_varied` | Config paths its experiments varied. Only provisional and empirical paths are allowed |
 
 Rules:
 - A forecast carries `model_id` and `model_version`, and the audit log stores both. Rollback to a prior version is one config change.
@@ -45,8 +49,8 @@ Rules:
 | 1 | Claim | An idea with no reproduction | Hypothesis Factory queue |
 | 2 | Reproduced | Same sign, and effect inside the paper's interval or at least half its size, on the original definitions and period | Independent testing |
 | 3 | Independently replicated | Same sign and significant at 5% on new data, independence recorded. A platform discovery needs t above 3.0 and FDR under 5% (Benjamini-Yekutieli) and a pass on an untouched holdout | Out-of-sample economic test |
-| 4 | Out-of-sample net | Lower bound of the block-bootstrap 90% interval of net excess return above zero at doubled costs. The record may be free survivorship-free portfolio returns after the selection cutoff, or the forward record. Cross-sectional signals pass twice: long-short, and long-only top portfolio against the market | Composite at shadow weight |
-| 5 | Shadow-confirmed | 63 trading days of pre-registered forecasts on the stock-level forward record, realized returns inside the 90% band, and tracking of the Tier 4 portfolio-level record within the limit | Paper capital in the Composite |
+| 4 | Executable approximation passes | The tradable stock-level version, evaluated by the platform on platform data with realistic costs: lower bound of the block-bootstrap 90% interval of net excess return above zero at doubled costs (provisional level). Cross-sectional signals pass twice: long-short, and long-only. Academic evidence enters the edge estimate but cannot pass this tier alone | Composite at shadow weight, prospective shadow trading starts |
+| 5 | Prospectively validated | `promotion_check`: at least 63 prospective trading days, the strategy's trade count and precision, realized return inside the band, tracking within the limit. Retrospective records never count | Paper capital in the Composite |
 | 6 | Paper-deployed | Trading in the paper account under governance | Eligible for a future live review |
 
 A result on data without delisted securities is labeled SURVIVORSHIP-BIASED and cannot pass any gate.

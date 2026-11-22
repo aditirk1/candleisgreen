@@ -19,7 +19,7 @@ capabilities:
   us_stock_history_with_delistings:
     status: limited
     sources: [forward_recorder]
-    reason: Exists only from the day the forward recorder starts
+    reason: Survivorship-aware only from the day the forward recorder starts, and complete only where its flags say so
   us_fundamentals_point_in_time:
     status: limited
     sources: [sec_edgar_xbrl]

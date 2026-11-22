@@ -176,3 +176,20 @@ def test_module_boundaries_hold(package):
     for path in (PKG / package).rglob("*.py"):
         bad = _imports(path) & FORBIDDEN[package]
         assert not bad, f"{path.relative_to(PKG)} imports {bad}"
+
+
+def test_risk_check_counts_sectors_and_clusters_separately_and_pools_unknowns():
+    from candleisgreen.core.config import load_config
+    from candleisgreen.risk.engine import evaluate_portfolio
+
+    cfg = load_config()
+    limits, cap = cfg.risk.hard_limits, cfg.composite.optimizer.sector_cap
+    weights = {f"a{i}": 0.045 for i in range(6)}  # 27% in total
+    clusters = {f"a{i}": f"c{i}" for i in range(6)}  # every cluster is small
+    one_sector = {f"a{i}": "Hlth" for i in range(6)}
+    assert any("sector Hlth" in r for r in evaluate_portfolio(weights, clusters, limits, one_sector, cap))
+    unknown = {f"a{i}": (None if i % 2 else "") for i in range(6)}
+    assert any("sector UNKNOWN" in r for r in evaluate_portfolio(weights, clusters, limits, unknown, cap))
+    spread = {f"a{i}": f"s{i}" for i in range(6)}
+    assert evaluate_portfolio(weights, clusters, limits, spread, cap) == ()
+    assert evaluate_portfolio(weights, clusters, limits, spread, None) == ("sector cap not supplied",)

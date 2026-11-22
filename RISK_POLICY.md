@@ -1,6 +1,6 @@
 # RISK_POLICY.md
 
-Source: `SPEC.md` v3.1, section "Risk, execution and governance". The limit values here are Aditi's. No code, model or document change may loosen them. This file restates them and says how each is enforced.
+Source: `SPEC.md` v3.2, section "Risk, execution and governance" and decisions Q4, Q6, Q7 and Q10. The limit values here are Aditi's. No code, model or document change may loosen them. This file restates them and says how each is enforced.
 
 ## 1. Scope
 
@@ -20,6 +20,9 @@ Values live in `config/default.yaml` under `risk.hard_limits`. A test (`test_har
 | Max bid-ask spread to trade | 0.5% | `max_spread_pct` | `spread`: (ask − bid) / mid |
 | Daily loss stop | 2% of equity, halts new orders | `daily_loss_stop_pct_equity` | `daily_loss`: blocks buys when the loss from session start reaches the limit |
 | Quote staleness | Over 15 seconds blocks the order | `max_quote_age_seconds` | `quote_fresh`: `now` − `quote_time` |
+| Execution-grade feeds | IEX real time (and the fixture feed in tests). Delayed consolidated data may never be added | `execution_grade_feeds` | `quote_feed` |
+
+Every value here is classified as a safeguard in `config/parameters.yaml`, so no experiment, search or optimizer can vary it.
 
 A correlated cluster is defined in the spec as a hierarchical cluster on 252-day residual return correlation, cut at 0.5 and recomputed monthly (`QUESTIONS.md` Q7). The cluster mapping is planned. Until it exists the caller must supply `cluster_value`, and a missing value blocks the order.
 
@@ -30,17 +33,24 @@ A correlated cluster is defined in the spec as a hierarchical cluster on 252-day
 1. `venue`: must be SIMULATION or PAPER
 2. `kill_switch`: must be known and off
 3. `market_open`: session must be known, open and not halted
-4. `broker`: connection must be known and up
-5. `account`: account state known, equity positive
-6. `instrument`: symbol mapping certain
-7. `quote_fresh`: quote present, for this instrument, not older than the limit, not from the future
-8. `spread`: not crossed, not wider than the limit
-9. `daily_loss`: loss from session start under the stop (sells that reduce risk stay allowed)
-10. `position_size`: no short positions, position within the limit after the order
-11. `cluster`: cluster within the limit after the order
-12. `order_vs_adv`: order within the volume limit
+4. `execution_window`: inside the configured window, initially 09:35 to 10:30 ET
+5. `broker`: connection must be known and up
+6. `account`: account state known, equity positive
+7. `instrument`: symbol mapping certain
+8. `quote_fresh`: quote present, for this instrument, not older than the limit, not from the future
+9. `quote_feed`: the feed is execution grade and neither side has zero size
+10. `limit_price`: the limit is no further from mid than the spread limit
+11. `spread`: not crossed, not wider than the limit
+12. `daily_loss`: loss from session start under the stop (sells that reduce risk stay allowed)
+13. `position_size`: no short positions, position plus pending buys within the limit after the order
+14. `cluster`: cluster plus pending buys within the limit after the order
+15. `order_vs_adv`: order within the participation limit
 
 ## 4. Fail-closed rules
+
+- Orders are limit orders only (`execution.order_type: limit`). The simulator fills a limit only when it is marketable, and a resting limit is never converted to a market order.
+- Infrastructure failure (missing critical data, invalid prices, a failed risk check) pauses the affected trading at once. Strategy deterioration is a separate, statistical question handled by monitoring (spec decision Q6).
+- `evaluate_portfolio` checks the target book's sectors and clusters separately, so a name counts in both and neither can bypass the other. Names with a missing or blank sector share one UNKNOWN bucket under the sector cap.
 
 - The optimizer's target book is checked by `evaluate_portfolio` before any order is built from it. Short positions, leverage, a position over its limit, a cluster over its limit, a name with no cluster mapping and a non-number weight each block the book. This is tested with a deliberately injected book.
 

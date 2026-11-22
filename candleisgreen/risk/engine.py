@@ -187,11 +187,18 @@ CHECKS: tuple[tuple[str, Check], ...] = (
 FLOAT_TOLERANCE = 1e-9  # numeric round-off only, not a risk threshold
 
 
-def evaluate_portfolio(weights: dict[str, float], clusters: dict[str, str], limits: HardLimits) -> tuple[str, ...]:
+UNKNOWN_GROUP = "UNKNOWN"
+
+
+def evaluate_portfolio(weights: dict[str, float], clusters: dict[str, str], limits: HardLimits,
+                       sectors: Optional[dict[str, Optional[str]]] = None,
+                       sector_cap: Optional[float] = None) -> tuple[str, ...]:
     """Independent check of a proposed target book. Returns reasons, empty when it passes.
 
     This runs before any order is built from the optimizer's output. A name with no
-    cluster mapping blocks the book.
+    cluster mapping blocks the book. Sector and cluster limits are checked separately, so
+    a name counts in both and neither classification can be used to bypass the other.
+    Names with a missing or blank sector share one UNKNOWN bucket under the same cap.
     """
     reasons: list[str] = []
     if any(w != w for w in weights.values()):
@@ -212,6 +219,17 @@ def evaluate_portfolio(weights: dict[str, float], clusters: dict[str, str], limi
     for cluster, total in totals.items():
         if total > limits.max_cluster_pct_equity + FLOAT_TOLERANCE:
             reasons.append(f"cluster {cluster} at {total:.2%} over limit {limits.max_cluster_pct_equity:.2%}")
+    if sectors is not None:
+        if sector_cap is None:
+            reasons.append("sector cap not supplied")
+        else:
+            by_sector: dict[str, float] = {}
+            for asset, weight in weights.items():
+                label = (sectors.get(asset) or "").strip() or UNKNOWN_GROUP
+                by_sector[label] = by_sector.get(label, 0.0) + weight
+            for sector, total in by_sector.items():
+                if total > sector_cap + FLOAT_TOLERANCE:
+                    reasons.append(f"sector {sector} at {total:.2%} over cap {sector_cap:.2%}")
     return tuple(reasons)
 
 
