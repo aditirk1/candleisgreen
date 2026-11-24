@@ -31,3 +31,18 @@ td.num, th.num { text-align: right; font-family: var(--font-num); }
 .na { color: var(--muted); font-style: normal; }
 .grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: var(--gap); }
 @media (max-width: 900px) { .grid2, .kpis { grid-template-columns: 1fr; } }
+.field { font: inherit; background: transparent; color: var(--text); border: var(--panel-border); border-radius: var(--radius); padding: 4px 8px; }
+.cmd { display: flex; gap: var(--gap); align-items: center; padding: var(--gap) var(--gap) 0; }
+.cmd .field { flex: 1; max-width: 640px; }
+.tour { display: flex; gap: var(--gap); align-items: center; margin: 0 var(--gap) var(--gap); border-color: var(--accent); }
+.tour .spacer { flex: 1; }
+.explain { margin: 0 var(--gap) var(--gap); }
+.explain p { margin: 4px 0; }
+tr.selected td { color: var(--accent); }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: var(--gap) 0; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+.term { border-bottom: 1px dotted var(--muted); cursor: help; }
+th button { border: none; padding: 0; color: inherit; }
+.scroll { max-height: 520px; overflow-y: auto; }
+.scroll thead th { position: sticky; top: 0; background: var(--panel-solid, var(--panel)); }

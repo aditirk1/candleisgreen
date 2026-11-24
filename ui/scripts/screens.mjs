@@ -17,6 +17,8 @@ const check = (cond, msg) => { if (!cond) { console.error("FAIL " + msg); proces
 
 await page.goto(base + "/#overview");
 await page.getByText("Account value (USD)").waitFor();
+check(await page.getByRole("dialog", { name: "First-run tour" }).isVisible(), "first-run tour shown on first visit");
+await page.getByRole("button", { name: "Skip tour" }).click();
 check(await page.getByText("SIMULATION").first().isVisible(), "SIMULATION label visible on Overview");
 check((await page.locator("table").count()) >= 1, "positions table rendered");
 check(await page.locator("[aria-label='Equity curve'] canvas").first().isVisible(), "equity curve drawn");
@@ -114,7 +116,88 @@ check(await page.getByText("DEXUSEU").isVisible(), "FX rates from FRED shown");
 check(await page.getByText(/NOT AVAILABLE\. No free source of historical or real-time options data/).isVisible(), "entitlement map shows options as NOT AVAILABLE");
 await page.screenshot({ path: `${out}/global-terminal.png`, fullPage: true });
 
-const text = await page.locator("body").innerText();
+const texts = [await page.locator("body").innerText()];
+
+await page.getByRole("button", { name: "Opportunities" }).click();
+await page.getByText(/Proposed positions for/).waitFor();
+check((await page.locator("tbody tr").count()) >= 2, "Opportunities lists proposed positions");
+check(await page.getByText(/NOT AVAILABLE\. The model is not calibrated/).isVisible(), "expected return NOT AVAILABLE until calibration");
+await page.screenshot({ path: `${out}/opportunities-terminal.png`, fullPage: true });
+texts.push(await page.locator("body").innerText());
+await page.getByRole("button", { name: /Open reasoning for/ }).click();
+await page.getByText("Data freshness").waitFor();
+check(true, "Opportunities opens Reasoning for the selected ticker");
+
+await page.getByRole("button", { name: "Markets" }).click();
+await page.getByLabel("Search instruments").fill("UPCO");
+await page.locator("tbody tr").first().click();
+await page.locator("[aria-label='Price chart'] canvas").first().waitFor();
+check(await page.getByText("UPCO closes, as recorded").waitFor({ timeout: 5000 }).then(() => true, () => false), "Markets charts a selected instrument");
+await page.getByRole("button", { name: "Add UPCO to watchlist" }).click();
+check(await page.getByRole("button", { name: "Remove UPCO from watchlist" }).isVisible(), "watchlist add works");
+await page.screenshot({ path: `${out}/markets-terminal.png`, fullPage: true });
+texts.push(await page.locator("body").innerText());
+
+await page.getByRole("button", { name: "Backtests" }).click();
+await page.getByText(/Trials recorded/).waitFor();
+check((await page.getByText("xs_momentum_12_1").count()) > 0 && (await page.getByText("Sharpe", { exact: true }).count()) > 0, "Backtests shows each signal with a Sharpe ratio");
+check(await page.getByRole("columnheader", { name: "Trials" }).isVisible(), "trial count beside every Sharpe");
+await page.screenshot({ path: `${out}/backtests-terminal.png`, fullPage: true });
+texts.push(await page.locator("body").innerText());
+
+await page.getByRole("button", { name: "Experts" }).click();
+await page.getByText("Source registry").waitFor();
+check((await page.getByText("CC BY-NC 4.0", { exact: false }).count()) > 0 || (await page.locator("tbody tr").count()) >= 3, "Experts lists sources with licenses");
+await page.screenshot({ path: `${out}/experts-terminal.png`, fullPage: true });
+texts.push(await page.locator("body").innerText());
+
+await page.getByRole("button", { name: "Audit and Rules" }).click();
+await page.getByText("Hash chain verified").waitFor();
+await page.getByLabel("New value for max_position_pct_equity").fill("0.04");
+await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("button", { name: "Request" }).click();
+await page.getByText(/Applied now/).waitFor();
+check(true, "tightening a hard limit applies at once");
+await page.getByLabel("New value for max_position_pct_equity").fill("0.5");
+await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("button", { name: "Request" }).click();
+await page.getByText(/needs confirmation/).waitFor();
+await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("button", { name: "Confirm" }).click();
+await page.getByText(/Not confirmed/).waitFor();
+check(true, "loosening waits and cannot be confirmed early");
+check((await page.getByText("PROVISIONAL", { exact: false }).count()) > 0, "parameters listed with their basis");
+await page.screenshot({ path: `${out}/rules-terminal.png`, fullPage: true });
+texts.push(await page.locator("body").innerText());
+
+await page.getByRole("button", { name: "Settings" }).click();
+await page.getByText("Credentials and providers").waitFor();
+check(await page.getByText("APCA_API_KEY_ID").isVisible(), "credential status listed");
+check(await page.getByText("Live trading").isVisible(), "live trading shown as not built");
+await page.screenshot({ path: `${out}/settings-terminal.png`, fullPage: true });
+texts.push(await page.locator("body").innerText());
+
+await page.getByLabel("Command").fill("UPCO NEWS");
+await page.getByLabel("Command").press("Enter");
+await page.getByText("UPCO only").waitFor();
+check(true, "command UPCO NEWS opens News for one ticker");
+await page.getByLabel("Command").fill("why didn't we buy DNCO");
+await page.getByLabel("Command").press("Enter");
+await page.getByText("Why not?").waitFor();
+check(await page.getByText(/not positive/).first().isVisible(), "plain phrase opens Why not for DNCO");
+await page.getByLabel("Command").fill("RULES");
+await page.getByLabel("Command").press("Enter");
+await page.getByText("Hard limits").waitFor();
+check(true, "command RULES opens Audit and Rules");
+
+await page.getByRole("button", { name: "GUIDE OFF" }).click();
+await page.getByRole("button", { name: "Opportunities" }).click();
+await page.getByText(/How strongly the model leans/).first().waitFor();
+check(true, "Guide mode shows plain labels with the technical term");
+await page.getByRole("button", { name: "Explain this screen" }).click();
+check(await page.getByText("About this screen").isVisible(), "Explain this screen opens");
+check(await page.getByText("KILL", { exact: false }).first().isVisible() && await page.getByText("SIMULATION").first().isVisible(), "Guide mode keeps the venue label and kill switch");
+await page.screenshot({ path: `${out}/opportunities-guide.png`, fullPage: true });
+texts.push(await page.locator("body").innerText());
+
+const text = texts.join("\n");
 check(!/[—–;·]/.test(text), "no em dashes, semicolons or middle dots in visible text");
 check(!/manual_simulation|auto_simulation/.test(text), "modes shown in plain words");
 check(errors.length === 0, `no page errors (${errors.join(" | ")})`);

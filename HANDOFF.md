@@ -1,6 +1,6 @@
 # HANDOFF.md
 
-Last updated: 2026-11-24 01:35 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
+Last updated: 2026-11-24 01:50 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
 
 ## Timeline note
 
@@ -27,7 +27,10 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 11. **Phase 5, Hypothesis Factory and model levels B and C.** Acceptance test passed. Daily factory with duplicate, novelty and data checks and a digest, decision rules by study type, re-evaluation cases, Aditi-only promotion above Tier 4, drift monitoring, practitioner scoring, and ridge and boosted-tree models compared out of sample.
 12. **Phase 6, global research.** Acceptance test passed. Instrument taxonomy with a risk check that blocks non-US instruments, a market rule table from official sources, the NYSE calendar, FRED FX with the local and FX split, JKP momentum evidence by market, follow-the-sun scheduling on APScheduler, and the Global screen.
 
-Full suite: 274 passed. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+13. **Safety extras.** Hard-limit changes through the risk service (tighten now, loosen after 24 hours with Aditi's confirmation) and a pre-open check that only cancels risky buys.
+14. **All fifteen screens.** Opportunities, Markets, Experts, Backtests, Audit and Rules, and Settings join the earlier nine. Command bar with coded commands and plain phrases, Guide mode with plain labels and hover definitions, Explain this screen, and a first-run tour.
+
+Full suite: 281 passed. Playwright: 59 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 
@@ -36,8 +39,13 @@ Full suite: 274 passed. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is 
 
 ## Not started
 
-- Phase 1 and later. No network call, broker account or UI exists.
-- `SOURCE_REGISTRY.md`, `RESEARCH_PROTOCOL.md`, `DESIGN_SYSTEM.md`.
+- Phase 7 (live trading). Needs a separate written decision from Aditi.
+- Research Capture Inbox.
+- Macro ingestion from FRED and ALFRED vintages. Biotech ingestion from ClinicalTrials.gov.
+- Teaching: crisis library (shows NOT AVAILABLE until data covers the dates), counterfactual, market autopsy, spaced review, concept map.
+- Correlation clustering job with its stability test. Callers still supply cluster labels and a missing one blocks the book.
+- The pre-open check is not yet a scheduled job.
+- Tier 5 shadow tracking process for a Composite signal that reaches Tier 4.
 
 ## Commands
 
@@ -50,29 +58,22 @@ make ci
 ```
 
 ```bash
-make phase0
+make demo
+```
+
+```bash
+make screens
 ```
 
 ## Known flaws
 
-- The risk engine runs in-process. The spec wants a separate process. The message types are ready for that move (DECISIONS D-007).
 - The daily loss stop blocks buys and allows sells that reduce risk (DECISIONS D-009). Aditi should confirm.
-- The cluster mapping for the 20% limit does not exist. Callers supply cluster labels, and a missing one blocks the book.
 - The optimizer has only been run on books of 40 to 60 names. Speed at about 3,000 names is unknown.
-- The Composite's volatility bisection stops within 1% under the target, and HRP uses single linkage. Both are reasonable defaults and neither is in config yet.
+- The Composite's volatility bisection stops within 1% under the target, and HRP uses single linkage. Neither is in config yet.
+- The watchlist lives in browser storage only.
 - Tests ran on Python 3.13 only.
 - Some review facts are still unverified. They are listed in `REVIEW.md` section 5.
 
 ## Exact next step
 
-Phase 5 (Hypothesis Factory and model levels B and C). First atomic task: `candleisgreen/research/factory.py`, the daily research loop that turns new claim cards into pre-registered experiments, checks novelty against the signal library, marks NEEDS_DATA with the missing dataset, and publishes a daily digest. Then champion and challenger tracking, drift monitoring wired to the deterioration test, practitioner claim scoring, and a re-evaluation case when a new paper contradicts an active signal. Acceptance: a model update never changes risk limits or permissions, and a contradicting paper opens a re-evaluation case.
-
-Commands:
-
-```bash
-make ci
-```
-
-```bash
-make demo
-```
+Schedule the pre-open check in `candleisgreen/jobs.py` before the execution window, then build the correlation clustering job (spec decision Q7) with its stability test, so the 20% cluster cap no longer depends on caller labels. After that, the Research Capture Inbox and the macro and biotech ingestion.

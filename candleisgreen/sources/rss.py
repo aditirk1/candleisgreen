@@ -19,6 +19,7 @@ from typing import Iterable, Optional
 
 from defusedxml import ElementTree as SafeET
 
+from ..core.sqlite_shared import connect as sqlite_connect
 from ..core.config import AppConfig, FeedConfig
 from ..core.ids import make_id
 from ..core.timeutil import ensure_utc, from_micros, to_micros
@@ -94,7 +95,7 @@ def similarity(a: str, b: str) -> float:
 
 class NewsStore:
     def __init__(self, path: str | Path, shared_across_threads: bool = False):
-        self.conn = sqlite3.connect(str(path), isolation_level=None, check_same_thread=not shared_across_threads)
+        self.conn = sqlite_connect(path, shared_across_threads)
         self.conn.executescript(_SCHEMA)
 
     def close(self) -> None:

@@ -78,3 +78,22 @@ def test_preopen_cancels_risky_buys_and_never_adds(tmp_path):
     assert {c["proposal_id"] for c in out} == {target.proposal_id, props[1].proposal_id}
     assert env.journal.proposal(target.proposal_id).status == "cancelled"
     assert len(env.journal.proposals(SESSION_DATE)) == count  # nothing added
+
+
+def test_shared_store_survives_concurrent_requests(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from candleisgreen.core.sqlite_shared import connect
+
+    conn = connect(tmp_path / "s.sqlite", shared_across_threads=True)
+    conn.execute("CREATE TABLE t (k INTEGER PRIMARY KEY, v TEXT)")
+    for i in range(200):
+        conn.execute("INSERT INTO t VALUES (?, ?)", (i, str(i)))
+
+    def read(i):
+        row = conn.execute("SELECT v FROM t WHERE k = ?", (i % 200,)).fetchone()
+        assert row == (str(i % 200),)
+        return len(conn.execute("SELECT * FROM t").fetchall())
+
+    with ThreadPoolExecutor(16) as pool:
+        assert set(pool.map(read, range(2000))) == {200}

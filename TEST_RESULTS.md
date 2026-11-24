@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24 01:33 ET, **274 passed, 0 failed** in about 135 seconds on Python 3.13 (the one registry failure in that run was fixed and its file rerun).
+Latest full run: 2026-11-24 01:45 ET, **281 passed, 0 failed** in about 144 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -209,3 +209,14 @@ Acceptance test: **passed**. Every non-US instrument is research only and cannot
 | `tests/test_phase6.py` | 12 | FX split adds up, real FRED rates with yen inversion, missing FX rate never filled (spec failure fixture), only direct and proxy instruments receive orders, taxonomy tags, NYSE calendar from the rule table, every non-US exchange research only, JKP momentum evidence by market tagged noncommercial and refused for trading, the follow-the-sun week |
 
 Interface check, 2026-11-24 01:26 ET: all 39 Playwright checks passed across nine screens, now including the research digest, re-evaluation cases, model comparisons, Aditi-only promotion decisions, and the Global screen.
+
+## Safety extras and the remaining screens, 2026-11-24
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_safety_extras.py` | 6 | Tightening a hard limit applies at once, loosening waits 24 hours and needs Aditi's confirmation, only Aditi can act and values are checked, the risk service enforces changed limits, the pre-open check cancels risky buys and never adds, a shared store survives 2,000 concurrent reads |
+| `tests/test_api.py` | 4 | Adds Opportunities, Markets (no price after the clock), Backtests, Experts, Audit and Rules with the limit workflow through the risk service and its refusal reason, and Settings (credential status only, monthly cost 0) |
+
+Interface check, 2026-11-24 01:44 ET: all 59 Playwright checks passed across fifteen screens on fresh demo data, with no server errors. New checks cover the first-run tour, Opportunities with its evidence pane, Markets with a chart and watchlist, Backtests with trial counts beside every Sharpe, Experts, hard-limit changes on Audit and Rules, Settings, the command bar (`UPCO NEWS`, `RULES`, a plain "why didn't we buy" phrase) and Guide mode (plain labels, Explain this screen, venue label and kill switch still shown).
+
+A first run found a real bug: two simultaneous requests shared one SQLite connection without a lock and one returned an error. Shared connections now go through `candleisgreen/core/sqlite_shared.py`, which runs and fetches each statement under a lock.

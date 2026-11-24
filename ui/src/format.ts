@@ -25,3 +25,8 @@ export function signed(n: number | null | undefined, f: (x: number) => string): 
   if (n < 0) return { text: `▼ ${f(n)}`, cls: "loss" };
   return { text: `${f(n)}`, cls: "" };
 }
+
+export const MODE_LABELS: Record<string, string> = {
+  research: "Research", teaching: "Teaching and market watch", manual_simulation: "Manual simulation",
+  auto_simulation: "Auto simulation", broker_paper_approval: "Broker paper, approval", broker_paper_auto: "Broker paper, auto",
+};

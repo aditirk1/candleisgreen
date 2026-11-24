@@ -5,13 +5,18 @@ import { pct, signed, timeET } from "../format";
 type Row = { period_end: string; eps_diluted: number; eps_yoy_change: number | null; revenue: number | null; revenue_yoy_pct: number | null; filed_at: string; source: string; vs_consensus: string };
 type Data = { status: string; reason?: string; issuers: { cik: string; instrument_id: string; ticker: string | null; industry: string }[]; instrument_id?: string; rows: Row[]; consensus?: string };
 
-export function EarningsScreen({ tick }: { tick: number }) {
+export function EarningsScreen({ tick, ticker }: { tick: number; ticker?: string }) {
   const [sel, setSel] = useState<string | null>(null);
   const [data, setData] = useState<Data | null>(null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     getJSON<Data>(`/api/earnings${sel ? `?instrument_id=${encodeURIComponent(sel)}` : ""}`).then(setData).catch((e) => setErr(String(e)));
   }, [tick, sel]);
+  useEffect(() => {
+    if (!ticker || !data) return;
+    const hit = data.issuers.find((i) => i.ticker === ticker);
+    if (hit && hit.instrument_id !== data.instrument_id) setSel(hit.instrument_id);
+  }, [ticker, data]);
   if (err) return <div className="panel loss">{err}</div>;
   if (!data) return <div className="panel muted">Loading</div>;
   if (data.status !== "OK") return <div className="panel na">{data.status}. {data.reason}</div>;

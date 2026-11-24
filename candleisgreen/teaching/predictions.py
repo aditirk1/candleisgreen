@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+from ..core.sqlite_shared import connect as sqlite_connect
 from ..core.ids import make_id
 from ..core.timeutil import ensure_utc, from_micros, to_micros
 from ..data.instruments import InstrumentMaster
@@ -38,7 +39,7 @@ class Calibration:
 
 class Predictions:
     def __init__(self, path: str | Path, shared_across_threads: bool = False):
-        self.conn = sqlite3.connect(str(path), isolation_level=None, check_same_thread=not shared_across_threads)
+        self.conn = sqlite_connect(path, shared_across_threads)
         self.conn.executescript(_SCHEMA)
 
     def add(self, user: str, symbol: str, master: InstrumentMaster, direction: str, horizon_days: int,

@@ -85,7 +85,8 @@ def test_workstation_screens_through_the_api(tmp_path):
         assert changed["status"] == "APPLIED"
         waiting = api.post("/api/limits/request", json={"key": key, "value": current}).json()
         assert waiting["status"] == "WAITING"
-        assert api.post("/api/limits/confirm", json={"key": key}).status_code == 400
+        early = api.post("/api/limits/confirm", json={"key": key})
+        assert early.status_code == 400 and "waits until" in early.json()["detail"]
         st = api.get("/api/settings").json()
         assert st["monthly_cost_usd"] == 0 and {c["name"] for c in st["credentials"]} >= {"APCA_API_KEY_ID"}
         assert all(c["status"] in ("SET", "NOT SET") for c in st["credentials"])

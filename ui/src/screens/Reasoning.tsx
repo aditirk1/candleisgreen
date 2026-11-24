@@ -13,9 +13,10 @@ type R = {
   why_not: string | null;
 };
 
-export function ReasoningScreen({ tick }: { tick: number }) {
-  const [symbol, setSymbol] = useState("UPCO");
-  const [query, setQuery] = useState("UPCO");
+export function ReasoningScreen({ tick, initial }: { tick: number; initial?: string }) {
+  const [symbol, setSymbol] = useState(initial ?? "UPCO");
+  const [query, setQuery] = useState(initial ?? "UPCO");
+  useEffect(() => { if (initial) { setSymbol(initial); setQuery(initial); } }, [initial]);
   const [data, setData] = useState<R | null>(null);
   useEffect(() => { getJSON<R>(`/api/reasoning?symbol=${encodeURIComponent(query)}`).then(setData); }, [tick, query]);
   return (

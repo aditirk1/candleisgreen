@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from ..core.sqlite_shared import connect as sqlite_connect
 from ..core.audit import AuditLog
 from ..core.ids import canonical_json, make_id, sha256_hex
 from ..core.parameters import ParameterRegistry, load_registry
@@ -92,7 +93,7 @@ def _rows(cur) -> list[dict]:
 class ResearchRegistry:
     def __init__(self, path: str | Path, audit: AuditLog, params: Optional[ParameterRegistry] = None,
                  shared_across_threads: bool = False):
-        self.conn = sqlite3.connect(str(path), isolation_level=None, check_same_thread=not shared_across_threads)
+        self.conn = sqlite_connect(path, shared_across_threads)
         self.conn.executescript(_SCHEMA)
         self.audit = audit
         self.params = params or load_registry()

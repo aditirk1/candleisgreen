@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from .core.audit import AuditLog
+from .core.sqlite_shared import connect as sqlite_connect
 from .core.ids import make_id
 from .core.schemas import Fill, OrderIntent, RiskDecision
 from .core.timeutil import ensure_utc, iso_utc
@@ -65,7 +66,7 @@ class Proposal:
 class Journal:
     def __init__(self, path: str | Path, audit: AuditLog, starting_cash: float, strategy_version: str,
                  shared_across_threads: bool = False):
-        self.conn = sqlite3.connect(str(path), isolation_level=None, check_same_thread=not shared_across_threads)
+        self.conn = sqlite_connect(path, shared_across_threads)
         self.conn.executescript(_SCHEMA)
         self.audit = audit
         self.strategy_version = strategy_version

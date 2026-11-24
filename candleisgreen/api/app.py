@@ -5,6 +5,8 @@ the risk service. It never talks to a broker.
 """
 from __future__ import annotations
 
+import json
+
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -40,6 +42,17 @@ class KillSwitchBody(BaseModel):
 
 class RejectBody(BaseModel):
     reason: str = "rejected by user"
+
+
+def _refusal(exc: Exception) -> str:
+    """The risk service's own reason for refusing, or that it could not be reached."""
+    import urllib.error
+    if isinstance(exc, urllib.error.HTTPError):
+        try:
+            return str(json.loads(exc.read().decode("utf-8")).get("error", exc.reason))
+        except Exception:
+            return str(exc.reason)
+    return f"Risk service unreachable ({type(exc).__name__})"
 
 
 class LimitBody(BaseModel):
@@ -374,10 +387,18 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
     @app.get("/api/backtests")
     def backtests():
         run_rec = research.latest_run() or {}
-        rows = [{"signal_id": s["signal_id"], "platform": s.get("platform"), "data_labels": s.get("data_labels"),
-                 "record_type": s.get("record_type"), "economic": s["scores"]["economic"]} for s in run_rec.get("signals", [])]
+        vt = cfg.composite.research_portfolio.vol_target_annual
+        rows = []
+        for s in run_rec.get("signals", []):
+            p = s.get("platform") or {}
+            mean = p.get("mean_annual")
+            rows.append({"signal_id": s["signal_id"], "days": p.get("days"), "mean_annual": mean, "se_annual": p.get("se_annual"),
+                         "sharpe": (mean / vt) if mean is not None and p.get("days", 0) > 30 else None,
+                         "lower_90_double_cost": p.get("economic_lower_90"), "economic_pass": p.get("economic_pass"),
+                         "data_labels": s.get("data_labels"), "record_type": s.get("record_type"), "summary": s["scores"]["economic"]})
         return {"trial_count": research.variant_count(), "rows": rows,
-                "method": "Walk-forward research portfolios, costs from the cost model, economic test at double costs"}
+                "method": f"Walk-forward research portfolios scaled to {vt * 100:.0f}% annual volatility, net of modeled costs. The lower bound uses double costs",
+                "holdout": "NOT AVAILABLE. No holdout period has been reserved yet"}
 
     @app.get("/api/experts")
     def experts():
@@ -408,14 +429,14 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         try:
             return risk._call("POST", "/limits/request", {"key": body.key, "value": body.value, "actor": USER})
         except Exception as exc:
-            raise HTTPException(400, f"risk service refused ({type(exc).__name__})")
+            raise HTTPException(400, _refusal(exc))
 
     @app.post("/api/limits/confirm")
     def limit_confirm(body: LimitBody):
         try:
             return risk._call("POST", "/limits/confirm", {"key": body.key, "actor": USER})
         except Exception as exc:
-            raise HTTPException(400, f"risk service refused ({type(exc).__name__})")
+            raise HTTPException(400, _refusal(exc))
 
     @app.get("/api/settings")
     def settings():

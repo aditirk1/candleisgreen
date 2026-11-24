@@ -69,3 +69,7 @@ Choices made where the spec was silent, or where the review changed it. Newest l
 | D-063 | 2026-11-24 | The pre-open check only cancels buys (halt, corporate action, 8-K since the decision) and never adds orders | Spec Phase 2 pre-open recheck. A failed recheck must reduce risk, never increase it |
 | D-064 | 2026-11-24 | Opportunities shows expected return as NOT AVAILABLE until a model is calibrated | Spec principle 8. No invented numbers |
 | D-065 | 2026-11-24 | Settings shows only whether each credential is set, never its value | Secrets come from environment variables only |
+| D-066 | 2026-11-24 | Shared SQLite connections run and fetch each statement under a lock | Found by the interface check: two simultaneous requests broke a shared connection |
+| D-067 | 2026-11-24 | The command bar parses coded commands and a small set of plain phrases with fixed patterns, no language model | Simplest method that meets the spec examples. Unknown text is refused with a message |
+| D-068 | 2026-11-24 | Backtests show Sharpe as net annual return divided by the research portfolio's volatility target, with the trial count beside it. Holdout shows NOT AVAILABLE until one is reserved | Research portfolios are scaled to that target. No number is invented |
+| D-069 | 2026-11-24 | Guide mode is on by default with Glass, off with Terminal, and remembered per browser | Spec Guide mode |
