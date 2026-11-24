@@ -85,9 +85,10 @@ def build(z: np.ndarray, signal_type: str, market: MarketInputs, cfg: CompositeC
             continue
         raw = _raw_weights(z[t], signal_type)
         vol = float(np.std(r[lo:t] @ raw, ddof=1)) * np.sqrt(days)
-        if not vol > 0:
+        gross = float(np.abs(raw).sum())
+        if not vol > 0 or not gross > 0:
             continue
-        scale[t] = target / vol
+        scale[t] = min(target / vol, cfg.research_portfolio.max_gross_leverage / gross)
         weights[t] = raw * scale[t]
         active[t] = True
     gross = (weights * r).sum(axis=1)

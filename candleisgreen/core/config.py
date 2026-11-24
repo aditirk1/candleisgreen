@@ -55,6 +55,7 @@ class StandardizeConfig(_Section):
 
 
 class ResearchPortfolioConfig(_Section):
+    max_gross_leverage: float = Field(gt=0)
     vol_target_annual: float
     research_nav_usd: float
     newey_west_max_lag_days: int
@@ -254,6 +255,18 @@ class SizingConfig(_Section):
     min_trade_value_usd: float = Field(ge=0)
 
 
+class ReproductionConfig(_Section):
+    min_fraction_of_paper: float = Field(gt=0, le=1)
+    interval_z: float = Field(gt=0)
+
+
+class ResearchConfig(_Section):
+    reproduction: ReproductionConfig
+    default_half_spread: float = Field(ge=0)
+    monthly_hac_lag: int = Field(ge=0)
+    osap_release: str
+
+
 class AppConfig(_Section):
     config_version: str
     spec_version: str
@@ -265,6 +278,7 @@ class AppConfig(_Section):
     sources: SourcesConfig
     models: ModelsConfig
     sizing: SizingConfig
+    research: ResearchConfig
 
     @model_validator(mode="after")
     def _sizing_inside_hard_limits(self) -> "AppConfig":

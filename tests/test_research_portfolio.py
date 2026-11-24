@@ -83,6 +83,16 @@ def test_borrow_is_charged_only_on_short_legs(comp):
     assert (ts.weights >= 0).all()
 
 
+def test_volatility_scaling_respects_the_leverage_cap(comp):
+    rng = np.random.default_rng(39)
+    z = rng.normal(size=(300, 40))
+    market = rp.MarketInputs(returns=rng.normal(0, 1e-6, (300, 40)), half_spread=np.zeros((300, 40)),
+                             sigma_daily=np.zeros((300, 40)), adv_usd=np.full((300, 40), 5e7), price=np.full((300, 40), 50.0))
+    out = rp.build(z, "cross_sectional", market, comp)
+    gross = np.abs(out.weights[out.active]).sum(axis=1)
+    assert gross.max() <= comp.research_portfolio.max_gross_leverage + 1e-9
+
+
 def test_long_only_series_and_vol_scale(comp):
     rng = np.random.default_rng(36)
     z, market = _market(1500, 90, rng, edge=0.0002)

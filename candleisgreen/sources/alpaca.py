@@ -117,6 +117,7 @@ class AlpacaData:
         self.t = transport
         self.cfg = cfg
         self.close_hhmm = close_hhmm
+        self.synthetic = bool(getattr(transport, "synthetic", False))
 
     def assets(self, status: str) -> list[dict]:
         if status not in ("active", "inactive"):

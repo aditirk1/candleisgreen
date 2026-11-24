@@ -22,6 +22,7 @@ from ..earnings import consensus_label, scorecard
 from ..execution_quality import by_window
 from ..jobs import heartbeat_stale, read_heartbeat
 from ..journal import Journal
+from ..research.registry import ResearchRegistry
 from ..risk.client import RiskClient
 
 USER = "user:aditi"
@@ -43,6 +44,7 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
     journal = Journal(workdir / "journal.sqlite", audit, cfg.execution.simulator_starting_equity_usd,
                       f"config:{cfg.config_version}:{cfg.config_hash}", shared_across_threads=True)
     risk = RiskClient(risk_url, timeout=2.0)
+    research = ResearchRegistry(workdir / "research.sqlite", audit, shared_across_threads=True)
     app = FastAPI(title="CandleIsGreen workstation", docs_url=None, redoc_url=None)
     venue = "SIMULATION" if "simulation" in cfg.execution.mode else "PAPER"
 
@@ -161,6 +163,26 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
                     "consensus": consensus_label()}
         finally:
             store.close()
+
+    @app.get("/api/research")
+    def research_overview():
+        claims = research.claims()
+        for c in claims:
+            c["tier"] = research.tier(c["signal_id"])[0] if c.get("signal_id") else None
+        return {"claims": claims, "experiments": research.experiments(), "failures": research.failures(),
+                "trial_count": research.variant_count()}
+
+    @app.get("/api/research/chain/{claim_id}")
+    def research_chain(claim_id: str):
+        try:
+            return research.chain(claim_id)
+        except KeyError:
+            raise HTTPException(404, "unknown claim")
+
+    @app.get("/api/composite")
+    def composite():
+        run = research.latest_run()
+        return run or {"status": "NOT AVAILABLE", "reason": "No Composite run has been recorded"}
 
     @app.post("/api/proposals/{pid}/approve")
     def approve(pid: str):

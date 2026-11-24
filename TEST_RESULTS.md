@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24 00:55 ET, **230 passed, 0 failed** in about 103 seconds on Python 3.13.
+Latest full run: 2026-11-24 01:10 ET, **237 passed, 0 failed** in about 106 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -164,3 +164,16 @@ SEC fixtures are trimmed real EDGAR responses for Apple, fetched 2026-11-24 (`te
 Interface check, 2026-11-24 00:51 ET: all 14 Playwright checks passed, now including the Earnings screen (industry shown, every row links to its filing, no beat or miss).
 
 Not tested: a live Alpaca paper account (no keys) and a live SEC pull with a real User-Agent.
+
+## Phase 3, research engine and the first Composite, 2026-11-24
+
+Acceptance test: **passed**. The full evidence chain is shown in the interface, a negative result is stored and visible, and the Composite output traces to each signal's weight and evidence.
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_phase3.py` | 6 | Momentum (Jegadeesh and Titman 1993) reproduces at 1.28% a month against the paper's 1.31% and replicates after 1993 (t 1.97). Betting against beta fails reproduction and stays in the failure archive with its selection note. Academic evidence stops at Tier 3. The evidence chain links claim, experiments and results. Registry rules: no conclusion without a recorded variant, no varying a safeguard, no plan change after registration, no variants after completion. Composite v0 traces every signal's weight to its evidence, labels synthetic and retrospective results, and allocates nothing |
+| `tests/test_research_portfolio.py` | 9 | Adds the gross leverage cap |
+
+Academic data: trimmed real Open Source Asset Pricing files, release 2026.10, CC BY 4.0 (`tests/fixtures/osap/`).
+
+Interface check, 2026-11-24 01:12 ET: all 21 Playwright checks passed, now including the Composite screen (every signal listed, RETROSPECTIVE and SYNTHETIC labels, PROVISIONAL and SAFEGUARD tags on exclusion reasons) and the Research screen (evidence chain opened from the Composite screen, failure archive, negative result visible).

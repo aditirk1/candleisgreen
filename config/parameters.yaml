@@ -153,3 +153,10 @@ parameters:
   sources.sec.user_agent_env: {basis: safeguard, change_policy: Contact details stay in the environment and never enter the repository}
   sources.sec.filed_date_fallback_time_local: {basis: external_fact, source: "EDGAR filing-date cutoff of 17:30 ET. Checked on 2026-11-24 that acceptanceDateTime in the submissions API is UTC (index page 18:30:21 ET, API 23:30:21Z)", as_of: "2026-11-24"}
   sources.sec.concepts: {basis: provisional, review: XBRL concepts collected for the scorecard and fundamental factors. Extend per signal}
+
+  research.reproduction.min_fraction_of_paper: {basis: provisional, review: "Spec decision criteria for reproductions. At least half the published effect"}
+  research.reproduction.interval_z: {basis: provisional, review: Width of the paper's reported interval used by the reproduction rule}
+  research.monthly_hac_lag: {basis: provisional, review: Newey-West lag for monthly returns}
+  research.osap_release: {basis: external_fact, source: "Open Source Asset Pricing data release, https://www.openassetpricing.com", as_of: "2026-11-24"}
+  research.default_half_spread: {basis: provisional, review: Replace with measured spreads from recorded quotes once enough exist}
+  composite.research_portfolio.max_gross_leverage: {basis: safeguard, change_policy: "Aditi approves. Stops volatility scaling from levering without limit when measured volatility is near zero"}

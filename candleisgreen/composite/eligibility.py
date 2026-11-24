@@ -121,6 +121,8 @@ def is_eligible(state: SignalState, edge: Optional[EdgeEstimate], cfg: Eligibili
     reasons: list[str] = []
     if "SURVIVORSHIP-BIASED" in state.data_labels:
         reasons.append("result is SURVIVORSHIP-BIASED and cannot pass any gate")
+    if "SYNTHETIC" in state.data_labels:
+        reasons.append("result is on SYNTHETIC data and is not evidence")
     if state.tier < cfg.min_tier:
         reasons.append(f"tier {state.tier} below {cfg.min_tier} [composite.eligibility.min_tier]")
     if edge is None:

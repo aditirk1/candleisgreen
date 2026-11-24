@@ -3,7 +3,7 @@
 # config/parameters.yaml as empirical, safeguard, provisional or external_fact,
 # and that basis decides who may change it and how it is shown.
 # Bump config_version on every edit. The loader rejects unknown keys.
-config_version: "3.2.2"
+config_version: "3.2.3"
 spec_version: "3.2"
 
 time:
@@ -37,6 +37,8 @@ composite:
     ts_clip: 3.0
     ema_halflife_fraction_of_horizon: 0.5
   research_portfolio:
+    # Volatility scaling never levers a research portfolio beyond this gross exposure.
+    max_gross_leverage: 4.0
     vol_target_annual: 0.10
     research_nav_usd: 1000000
     newey_west_max_lag_days: 63
@@ -187,6 +189,17 @@ models:
     lookback_days: 252
     skip_days: 21
     clip: 3.0
+
+research:
+  reproduction:
+    # Spec decision criteria: same sign, and inside the paper's interval or at least half its size.
+    min_fraction_of_paper: 0.5
+    interval_z: 1.96
+  # Half spread assumed in research portfolios when no historical quote exists.
+  default_half_spread: 0.0005
+  # Newey-West lag for monthly academic returns.
+  monthly_hac_lag: 6
+  osap_release: "2026.10"
 
 sizing:
   # Phase 1 sizing for a single Level A model. Must stay at or under the hard position limit.

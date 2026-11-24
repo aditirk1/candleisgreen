@@ -1,1 +1,1 @@
-"""Research processor: claim cards, evidence graph, experiment registry. Built in Phase 3."""
+"""Research processor: claim cards, experiment registry, evidence graph, academic studies."""

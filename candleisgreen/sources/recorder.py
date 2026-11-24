@@ -21,6 +21,7 @@ from .alpaca import MARKET_TZ, AlpacaData, session_close_utc
 
 BAR_FIELDS = {"o": "open", "h": "high", "l": "low", "c": "close", "v": "volume", "vw": "vwap", "n": "trade_count"}
 SOURCE = "alpaca"
+SYNTHETIC_VENDOR = "alpaca_synthetic"
 LICENSE = "alpaca_market_data"
 
 
@@ -39,7 +40,7 @@ def _bar_date(bar: dict) -> date:
 
 
 def bars_to_observations(symbol: str, instrument_id: str, exchange: str, bars: list[dict], now: datetime,
-                         mode: CollectionMode, cfg: AppConfig) -> list[Observation]:
+                         mode: CollectionMode, cfg: AppConfig, synthetic: bool = False) -> list[Observation]:
     delay = timedelta(minutes=cfg.sources.alpaca.sip_delay_minutes)
     out = []
     for bar in bars:
@@ -52,11 +53,12 @@ def bars_to_observations(symbol: str, instrument_id: str, exchange: str, bars: l
                 continue
             value = bar[key]
             out.append(Observation(
-                instrument_id=instrument_id, vendor=SOURCE, raw_symbol=symbol, exchange=exchange, field=field,
+                instrument_id=instrument_id, vendor=SYNTHETIC_VENDOR if synthetic else SOURCE, raw_symbol=symbol,
+                exchange=exchange, field=field,
                 value=None if value is None else float(value), event_time=close, published_at=close,
                 vendor_available_at=available, ingested_at=ensure_utc(now), first_usable_at=usable,
                 timezone=MARKET_TZ, currency="USD", adjustment_method="none", vintage=0,
-                missing_flag=value is None, license=LICENSE, collection_mode=mode))
+                missing_flag=value is None, license="synthetic" if synthetic else LICENSE, collection_mode=mode))
     return out
 
 
@@ -80,7 +82,7 @@ def record_session(session_date: date, data: AlpacaData, store: PointInTimeStore
         iid = mapping.get(symbol) or master.instrument_for_symbol(symbol)
         if iid is None:
             continue
-        obs += bars_to_observations(symbol, iid, exchanges.get(symbol, ""), rows, now, mode, cfg)
+        obs += bars_to_observations(symbol, iid, exchanges.get(symbol, ""), rows, now, mode, cfg, data.synthetic)
     added = store.add(obs)
     actions = master.add_actions(data.corporate_actions(list(mapping), session_date, session_date), now)
     received = sorted(s for s, rows in bars.items() if rows)
@@ -105,7 +107,8 @@ def backfill(start: date, end: date, data: AlpacaData, store: PointInTimeStore, 
         iid = mapping.get(symbol) or master.instrument_for_symbol(symbol)
         if iid is None:
             continue
-        obs += bars_to_observations(symbol, iid, exchanges.get(symbol, ""), rows, now, CollectionMode.BACKFILL, cfg)
+        obs += bars_to_observations(symbol, iid, exchanges.get(symbol, ""), rows, now, CollectionMode.BACKFILL, cfg,
+                                    data.synthetic)
         for row in rows:
             by_day.setdefault(_bar_date(row), set()).add(symbol)
     added = store.add(obs)

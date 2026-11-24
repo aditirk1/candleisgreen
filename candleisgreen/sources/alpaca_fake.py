@@ -54,17 +54,28 @@ class FakeMarket:
         FakeAsset("a-0007", "BIGX", "Broad Index ETF Trust", "ARCA", 0.0004, 400.0),
     ))
     page_size: int = 250
+    daily_noise: float = 0.004
     days: list = field(init=False)
 
     def __post_init__(self):
         self.days = weekdays(self.start, self.end)
+
+    def _noise(self, a: FakeAsset):
+        """Seeded random walk, 0.4% daily volatility, so synthetic prices are not unrealistically smooth."""
+        cache = self.__dict__.setdefault("_noise_cache", {})
+        if a.asset_id not in cache:
+            import numpy as np
+
+            rng = np.random.default_rng(int(a.asset_id.split("-")[1]))
+            cache[a.asset_id] = np.cumsum(rng.normal(0.0, self.daily_noise, len(self.days)))
+        return cache[a.asset_id]
 
     def symbol_on(self, a: FakeAsset, day: date) -> str:
         return a.new_symbol if a.renamed_on and day >= a.renamed_on else a.symbol
 
     def close(self, a: FakeAsset, i: int, day: date) -> float:
         wiggle = 0.01 * math.sin(i / 7.0 + len(a.symbol))
-        price = a.start_price * math.exp(a.drift * i + wiggle)
+        price = a.start_price * math.exp(a.drift * i + wiggle + self._noise(a)[i])
         if a.split_on and day >= a.split_on:
             price /= 2.0
         return round(price, 2)
@@ -151,6 +162,8 @@ class FakeMarket:
 
 class FakeAlpacaTransport:
     """Transport wrapper. `now` controls which assets look active, like a real snapshot."""
+
+    synthetic = True
 
     def __init__(self, market: Optional[FakeMarket] = None, now: Optional[datetime] = None):
         self.market = market or FakeMarket()

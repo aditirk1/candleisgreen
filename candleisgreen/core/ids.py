@@ -16,6 +16,8 @@ from .timeutil import iso_utc
 
 
 def _canon(value: Any) -> Any:
+    if type(value).__module__ == "numpy" and hasattr(value, "item"):
+        value = value.item()  # NumPy scalars become plain Python values
     if isinstance(value, datetime):
         return iso_utc(value)
     if isinstance(value, date):

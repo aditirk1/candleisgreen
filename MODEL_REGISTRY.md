@@ -2,7 +2,7 @@
 
 Source: `SPEC.md` v3.2, sections "The Composite", "Model laboratory" and "Evidence tiers". This file defines what a registry entry holds, lists every model and signal the platform knows about, and gives each one's honest status.
 
-Nothing in this registry holds an evidence tier above 1 today. No real signal has been tested yet. Published factors can be taken to Tier 4 on free portfolio returns once the Phase 3 research engine exists (`QUESTIONS.md` Q1 and Q14).
+Two signals hold Tier 3 on academic evidence (momentum and short-term reversal). None holds Tier 4, because no executable approximation has been tested on real platform data. Published factors can be taken to Tier 4 on free portfolio returns once the Phase 3 research engine exists (`QUESTIONS.md` Q1 and Q14).
 
 ## 1. Registry entry schema
 
@@ -120,8 +120,8 @@ None of these exists in code. Each enters at Tier 1 and moves only through the g
 | Phase | `model_id` | Level | Family | Type | Horizon | Benchmark |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `ts_momentum_252_21` (built, Tier 1, simulator only) | A | trend | time_series | 21 | Buy and hold, volatility matched |
-| 3 | `xs_momentum_12_1` | A | momentum (JKP) | cross_sectional | 21 | Universe return |
-| 3 | `st_reversal_5` | A | short-term reversal (JKP) | cross_sectional | 5 | Universe return |
+| 3 | `xs_momentum_12_1` (built, Tier 3 on academic evidence) | A | momentum (JKP) | cross_sectional | 21 | Universe return |
+| 3 | `st_reversal_5` (built, Tier 3 on academic evidence) | A | short-term reversal (JKP) | cross_sectional | 5 | Universe return |
 | 3 | `buy_and_hold` | A | none | benchmark | none | Cash |
 | 3 | Two published factor reproductions, one expected to pass and one expected to fail | A | to be chosen from the claim cards | cross_sectional | per paper | Per paper |
 | 5 | Regularized linear, GARCH and HAR volatility, shrinkage covariance, event-study regressions | B | several | several | several | The Level A model in the same family |

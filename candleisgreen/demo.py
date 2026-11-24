@@ -83,6 +83,23 @@ def build(workdir: Path) -> None:
     if fixtures.exists():
         sec.ingest_issuer(sec.SecClient(sec.FixtureSecTransport(fixtures), cfg.sources.sec), "320193", "AAPL",
                           store, master, rec2, cfg)
+    # Phase 3: published factors through the evidence pipeline, then Composite v0.
+    from .composite.v0 import build as build_v0
+    from .research.academic import load_osap
+    from .research.published import run_published_factor
+    from .research.registry import ResearchRegistry
+
+    osap = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "osap"
+    research = ResearchRegistry(workdir / "research.sqlite", audit)
+    if osap.exists():
+        ls, claims = load_osap(osap / "PredictorLSretWide_subset.parquet", osap / "SignalDoc_subset.csv")
+        for name, sid, note in (("Mom12m", "xs_momentum_12_1", ""), ("STreversal", "st_reversal_5", ""),
+                                ("BetaFP", "betting_against_beta",
+                                 "Chosen as the expected failure because the dataset rates its reconstruction 3_distant. "
+                                 "The reproduction table was viewed before choosing, so this is not a blind pre-registration.")):
+            run_published_factor(claims[name], ls[name], sid, research, cfg, rec2, f"osap {cfg.research.osap_release}", note)
+    build_v0(store, master, research, cfg, d2, rec2)
+    research.close()
     write_heartbeat(workdir, "record", "ok", rec2, {"sessions": [d2.isoformat()], "synthetic": True})
     store.close()
 

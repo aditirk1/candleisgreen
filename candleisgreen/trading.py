@@ -62,13 +62,13 @@ class DecisionResult:
     equity: float
 
 
-def _last_closes(store: PointInTimeStore, iids, when: datetime) -> dict[str, float]:
+def _last_closes(store: PointInTimeStore, iids, when: datetime, with_vendor: bool = False) -> dict:
     view = store.as_of(when)
     out = {}
     for iid in iids:
         series = view.series(iid, "close")
         if series:
-            out[iid] = series[-1].value
+            out[iid] = (series[-1].value, series[-1].vendor) if with_vendor else series[-1].value
     return out
 
 
@@ -84,9 +84,11 @@ def run_decision(decision_date: date, session_date: date, store: PointInTimeStor
     equity = journal.cash() + sum(q * prices.get(i, 0.0) for i, q in positions.items())
     journal.record_equity(decision_time, equity)
     names = {m.instrument_id: m.symbol for m in members}
+    vendors = _last_closes(store, prices, decision_time, with_vendor=True)
     for iid, price in prices.items():
+        synthetic = vendors.get(iid, (None, ""))[1].endswith("synthetic")
         journal.record_mark(iid, names.get(iid) or (master.symbols(iid) or ["?"])[-1], price, decision_time,
-                            "close, delayed consolidated")
+                            "close, synthetic" if synthetic else "close, delayed consolidated")
 
     scored = []
     view = store.as_of(decision_time)
@@ -94,7 +96,7 @@ def run_decision(decision_date: date, session_date: date, store: PointInTimeStor
         obs = view.series(m.instrument_id, "close")
         adj = adjust_closes([(o.event_time.date(), o.value) for o in obs], master.actions(m.instrument_id), decision_date)
         fc = ts_momentum.issue_forecast(m.instrument_id, obs, [c for _, c in adj], decision_time, ensure_utc(now),
-                                        target_start, cfg.models.ts_momentum, entry.data_licenses)
+                                        target_start, cfg.models.ts_momentum, sorted({o.license for o in obs}))
         if fc is None:
             continue
         journal._log("forecast_issued", fc.forecast_id, fc, "system:decision", ensure_utc(now))

@@ -51,6 +51,20 @@ const earningsText = (await page.locator("body").innerText()).toLowerCase();
 check(!earningsText.includes("beat") && !earningsText.includes("miss"), "no beat or miss on the Earnings screen");
 await page.screenshot({ path: `${out}/earnings-terminal.png`, fullPage: true });
 
+await page.getByRole("button", { name: "Composite" }).click();
+await page.getByText("Composite run").waitFor();
+check((await page.getByText("xs_momentum_12_1").count()) > 0, "Composite lists each signal");
+check(await page.getByText("RETROSPECTIVE").first().isVisible(), "Composite run labeled retrospective");
+check(await page.getByText("SYNTHETIC").first().isVisible(), "synthetic data labeled on the Composite screen");
+check((await page.getByText(/PROVISIONAL|SAFEGUARD/).count()) > 0, "exclusion reasons carry their parameter basis");
+await page.screenshot({ path: `${out}/composite-terminal.png`, fullPage: true });
+await page.getByRole("button", { name: "Evidence chain" }).first().click();
+await page.getByText("Evidence chain:").waitFor();
+check(await page.getByText("reproduction").first().isVisible(), "evidence chain opens from the Composite screen");
+check(await page.getByText("Failure archive").isVisible(), "failure archive shown");
+check(await page.getByText("▼ FAILED").first().isVisible(), "negative result visible");
+await page.screenshot({ path: `${out}/research-terminal.png`, fullPage: true });
+
 const text = await page.locator("body").innerText();
 check(!/[—–;·]/.test(text), "no em dashes, semicolons or middle dots in visible text");
 check(!/manual_simulation|auto_simulation/.test(text), "modes shown in plain words");

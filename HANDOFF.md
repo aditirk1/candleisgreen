@@ -1,6 +1,6 @@
 # HANDOFF.md
 
-Last updated: 2026-11-24 00:56 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
+Last updated: 2026-11-24 01:14 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
 
 ## Timeline note
 
@@ -20,12 +20,14 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 
 8. **Phase 2, broker paper and filings.** Acceptance test passed. Alpaca paper adapter with duplicate safety and reconciliation that fails closed, SEC filings and XBRL facts timestamped at acceptance with restatements as vintages, Fama-French 12 classifications with mapping version and date, the earnings scorecard with no beat or miss, slippage by window, and the Earnings screen.
 
-Full suite: 230 passed. Details in `TEST_RESULTS.md`.
+9. **Phase 3, research engine and the first Composite.** Acceptance test passed. Experiment registry with frozen pre-registered plans, trial counts and a failure archive, claim cards and an evidence graph, reproduction and replication on real Open Source Asset Pricing returns (momentum passes, betting against beta fails as expected), cross-sectional momentum and short-term reversal baselines, Composite v0 through every step with each signal's evidence chain, and the Research and Composite screens.
+
+Full suite: 237 passed. Details in `TEST_RESULTS.md`.
 
 ## Half done
 
 - **Live Alpaca data.** The client is written from Alpaca's documentation and tested offline. The first run with paper keys must compare response shapes (DECISIONS D-033), and check whether bars for delisted symbols are served (spec decision Q1).
-- **The Composite is not wired into the trading loop.** Phase 1 trades the single Level A baseline in the simulator. The Composite joins in Phase 3.
+- **The Composite does not trade yet.** No signal holds Tier 4, so the Composite allocates nothing and the trading loop still runs the single Level A baseline in the simulator. That changes only when an executable approximation passes on real data.
 
 ## Not started
 
@@ -58,9 +60,9 @@ make phase0
 
 ## Exact next step
 
-Phase 3 (research engine and the first Composite). First atomic task: `candleisgreen/research/registry.py`, the experiment registry and claim cards in SQLite, with pre-registered test plans, every variant counted, negative results stored, and `ParameterRegistry.assert_tunable` called on every varied parameter. Then the academic portfolio loader for Open Source Asset Pricing and Kenneth French returns, two factor reproductions (one expected to pass, one expected to fail), and Composite v0 over three Level A signals with the frozen-weight benchmark, wired to the Composite screen.
+Phase 4 (news and teaching). First atomic task: `candleisgreen/sources/rss.py`, lawful RSS ingestion with feed URLs in config, a content hash per item, publication and ingestion times, and duplicate clustering. Then the Reasoning screen for one candidate, predict-first scoring with the Brier score, and one full historical replay that cannot see later news or prices.
 
-Live keys needed before live runs: `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY` (paper), `SEC_USER_AGENT` (a name and contact email).
+Live keys needed before live runs: `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY` (paper), `SEC_USER_AGENT`.
 
 Commands:
 
