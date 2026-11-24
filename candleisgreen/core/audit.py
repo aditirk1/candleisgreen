@@ -7,6 +7,7 @@ DELETE, so a normal connection cannot rewrite history.
 from __future__ import annotations
 
 import sqlite3
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -43,8 +44,9 @@ def _record_hash(prev_hash: str, body: dict[str, Any]) -> str:
 class AuditLog:
     def __init__(self, path: str | Path):
         self.path = str(path)
-        self._conn = sqlite3.connect(self.path, isolation_level=None)
+        self._conn = sqlite3.connect(self.path, isolation_level=None, check_same_thread=False)
         self._conn.executescript(_SCHEMA)
+        self._lock = threading.Lock()
 
     def close(self) -> None:
         self._conn.close()
@@ -64,6 +66,10 @@ class AuditLog:
         event_time: datetime,
         received_time: datetime,
     ) -> str:
+        with self._lock:
+            return self._append(event_type, entity_id, payload, actor, strategy_version, event_time, received_time)
+
+    def _append(self, event_type, entity_id, payload, actor, strategy_version, event_time, received_time) -> str:
         self._conn.execute("BEGIN IMMEDIATE")
         try:
             last_seq, prev_hash = self._last()
