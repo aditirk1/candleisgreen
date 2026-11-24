@@ -115,3 +115,23 @@ def test_execution_blocks_a_name_outside_stable_clusters(tmp_path):
     assert env.journal.proposal(covered.proposal_id).status == "filled"
     blocked = env.journal.proposal(dropped.proposal_id)
     assert blocked.status == "blocked" and "cluster exposure cannot be evaluated" in blocked.reason
+
+
+def test_book_labels_feed_the_book_check_and_unmapped_names_block(tmp_path):
+    from candleisgreen.risk.engine import evaluate_portfolio
+
+    cfg = load_config()
+    store, master, names = _store_with(tmp_path, _groups(np.random.default_rng(5), 260))
+    t = datetime(2025, 9, 30, 22, tzinfo=UTC)
+    run = clusters.run(t, store, master, cfg)
+    ids = sorted(run.labels)
+    labels = clusters.book_labels(store.connection, master, ids + ["inst_unknown"], t)
+    assert set(labels) == set(ids)
+    ok = evaluate_portfolio({i: 0.01 for i in ids}, labels, cfg.risk.hard_limits)
+    assert ok == ()
+    blocked = evaluate_portfolio({**{i: 0.01 for i in ids}, "inst_unknown": 0.01}, labels, cfg.risk.hard_limits)
+    assert any("no cluster mapping" in r for r in blocked)
+    group = [i for i in ids if run.labels[i] == run.labels[ids[0]]]
+    heavy = evaluate_portfolio({i: 0.05 for i in group}, labels, cfg.risk.hard_limits)
+    assert any(r.startswith("cluster") for r in heavy)
+    store.close()

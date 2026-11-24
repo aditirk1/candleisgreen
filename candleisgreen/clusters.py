@@ -179,6 +179,17 @@ def cluster_key(conn, master: InstrumentMaster, instrument_id: str, when: dateti
     return (last.labels.get(instrument_id), f"clusters {last.run_id}")
 
 
+def book_labels(conn, master: InstrumentMaster, instrument_ids, when: datetime) -> dict[str, str]:
+    """Cluster keys for a target book, in the shape `evaluate_portfolio` takes. A name without a cluster
+    is left out, so the book check reports it as unmapped and blocks the book."""
+    out = {}
+    for iid in instrument_ids:
+        key, _ = cluster_key(conn, master, iid, when)
+        if key is not None:
+            out[iid] = key
+    return out
+
+
 def config_for_tests(cfg: AppConfig, **changes) -> AppConfig:
     return cfg.model_copy(update={"clustering": cfg.clustering.model_copy(update=changes)})
 

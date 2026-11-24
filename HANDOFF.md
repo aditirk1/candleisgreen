@@ -82,4 +82,4 @@ make screens
 
 ## Exact next step
 
-Run the scheduler for a week against real Alpaca paper data and the free IEX quotes once keys exist, and compare response shapes (quotes, clock, bars). Then the concept map and daily lesson, and the FDA advisory committee calendar. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.
+Run the scheduler for a week against real Alpaca paper data and the free IEX quotes once keys exist, and compare response shapes (quotes, clock, bars). Then the concept map and daily lesson, and the FDA advisory committee calendar.

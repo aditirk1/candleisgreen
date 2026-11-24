@@ -29,6 +29,7 @@ Correlated clusters come from `candleisgreen/clusters.py` (decision Q7). Each mo
 - Stability is the adjusted Rand index against the last stable run. Below `clustering.min_stability` the run is UNSTABLE, orders use Fama-French 12 sectors as clusters with unknown sectors pooled, and Overview shows an alert.
 - With no run yet, the same sector fallback applies.
 - Under a stable run, if the order's name or any held or pending name has no cluster, cluster exposure cannot be computed and the order is blocked.
+- `clusters.book_labels` gives a target book the same cluster keys, so `evaluate_portfolio` blocks a book with an unmapped name or a cluster over its cap. No code path sends an optimizer book to orders yet.
 - The executor sums held and pending value in the order's cluster only. Before this job existed it summed the whole book, which was stricter.
 
 ## 3. Order of checks
