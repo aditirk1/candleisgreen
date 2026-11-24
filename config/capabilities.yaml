@@ -25,8 +25,17 @@ capabilities:
     sources: [sec_edgar_xbrl]
     reason: XBRL data starts in 2009. Uses the filed date for point-in-time
   macro:
-    status: available
-    sources: [fred, alfred, bls, bea]
+    status: limited
+    sources: [fred, alfred]
+    reason: FRED and ALFRED vintages need a free FRED API key in FRED_API_KEY. BLS and BEA direct feeds are not built
+  clinical_trials:
+    status: limited
+    sources: [clinicaltrials_gov]
+    reason: Recorded forward from the first run, because the API serves only the latest version of each study. Research only
+  fda_advisory_calendar:
+    status: not_available
+    sources: []
+    reason: The FDA calendar page fills its table with JavaScript and no documented feed was found on 2026-11-24. Paste a meeting notice into the Research Capture Inbox instead
   paper_execution_us:
     status: available
     sources: [alpaca_paper]

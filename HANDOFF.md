@@ -50,7 +50,7 @@ Full suite: 326 passed. Playwright: 68 checks. Details in `TEST_RESULTS.md`. Pha
 ## Not started
 
 - Phase 7 (live trading). Needs a separate written decision from Aditi.
-- FDA advisory committee calendar for biotech events. FDA action dates must come from press releases and 8-K filings.
+- FDA advisory committee calendar. NOT AVAILABLE: the FDA page fills its table with JavaScript and has no documented feed. Meeting notices can be pasted into the Research Capture Inbox. FDA action dates must come from press releases and 8-K filings.
 - Read the ClinicalTrials.gov terms by hand. The page renders with JavaScript and could not be read automatically.
 - Teaching: a fuller decision reconstruction than the Reasoning screen gives.
 - Tier 5 shadow tracking process for a Composite signal that reaches Tier 4.
@@ -84,4 +84,4 @@ make screens
 
 ## Exact next step
 
-Run the scheduler for a week against real Alpaca paper data and the free IEX quotes once keys exist, and compare response shapes (quotes, clock, bars). Then the FDA advisory committee calendar.
+Run the scheduler for a week against real Alpaca paper data and the free IEX quotes once keys exist, and compare response shapes (quotes, clock, bars).
