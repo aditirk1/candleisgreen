@@ -264,3 +264,67 @@ def crisis_library(store: PointInTimeStore, episodes: list, when: datetime) -> l
                     "what_current_rules_would_do": "NOT AVAILABLE. Needs the episode's data" if not covered
                     else "NOT AVAILABLE. Not computed yet. Replay the episode from its start date"})
     return out
+
+
+# Concept map and daily lesson ------------------------------------------------------------------
+
+def concept_order(prerequisites: dict[str, list[str]]) -> list[str]:
+    """Every concept after its prerequisites, ties broken by name. Raises on a cycle."""
+    done, order = set(), []
+    remaining = dict(prerequisites)
+    while remaining:
+        ready = sorted(k for k, deps in remaining.items() if set(deps) <= done)
+        if not ready:
+            raise ValueError(f"prerequisite cycle among {sorted(remaining)}")
+        for k in ready:
+            order.append(k)
+            done.add(k)
+            del remaining[k]
+    return order
+
+
+def market_event(store: PointInTimeStore, master: InstrumentMaster, when: datetime) -> Optional[dict]:
+    """The largest one-day move on the last recorded session known at `when`, with its source.
+    Only names with a close on that session count, so a delisted name's old move never appears."""
+    view = store.as_of(when)
+    series = {i["instrument_id"]: view.series(i["instrument_id"], "close") for i in master.instruments()}
+    last_day = max((s[-1].event_time.date() for s in series.values() if s), default=None)
+    best = None
+    for iid, s in series.items():
+        if len(s) < 22 or s[-1].event_time.date() != last_day:
+            continue
+        a, b = s[-2], s[-1]
+        if a.value and a.value > 0:
+            r = b.value / a.value - 1
+            rets = [y.value / x.value - 1 for x, y in zip(s[-22:-1], s[-21:]) if x.value]
+            vol = (sum((x - sum(rets) / len(rets)) ** 2 for x in rets) / (len(rets) - 1)) ** 0.5 if len(rets) > 1 else None
+            if best is None or abs(r) > abs(best["move"]):
+                syms = master.symbols(iid)
+                best = {"symbol": syms[-1] if syms else iid, "date": b.event_time.date().isoformat(),
+                        "move": r, "vol20_daily": vol, "close": b.value, "vendor": b.vendor,
+                        "known_from": b.first_usable_at.isoformat()}
+    return best
+
+
+def daily_lesson(glossary: dict, store: PointInTimeStore, master: InstrumentMaster, when: datetime) -> dict:
+    """One concept a day in prerequisite order, illustrated with a recorded market event."""
+    order = concept_order(glossary["prerequisites"])
+    day = ensure_utc(when).date()
+    concept = order[day.toordinal() % len(order)]
+    term = glossary["terms"][concept]
+    ev = market_event(store, master, when)
+    lesson = {"date": day.isoformat(), "concept": concept, "plain": term["plain"], "meaning": term["meaning"],
+              "formula": term.get("formula"), "typical": term.get("typical"),
+              "prerequisites": [glossary["terms"][p]["plain"] for p in glossary["prerequisites"][concept]], "position": order.index(concept) + 1, "of": len(order),
+              "event": ev}
+    if ev is None:
+        lesson["example"] = "NOT AVAILABLE. No recorded session with enough history yet"
+    elif concept == "daily_return":
+        lesson["example"] = f"{ev['symbol']} closed at {ev['close']:.2f} on {ev['date']}, a daily return of {ev['move'] * 100:+.2f}%"
+    elif concept in ("volatility", "standard_error") and ev["vol20_daily"]:
+        z = ev["move"] / ev["vol20_daily"]
+        lesson["example"] = (f"{ev['symbol']} moved {ev['move'] * 100:+.2f}% on {ev['date']}. Its 20-day daily volatility was "
+                             f"{ev['vol20_daily'] * 100:.2f}%, so the move was {z:+.1f} standard deviations")
+    else:
+        lesson["example"] = f"Largest recorded move on {ev['date']}: {ev['symbol']} {ev['move'] * 100:+.2f}%"
+    return lesson

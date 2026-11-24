@@ -108,3 +108,32 @@ def test_teaching_endpoints(tmp_path):
     assert cards and all(c["kind"] == "glossary" for c in cards)
     assert api.post(f"/api/review/{cards[0]['card_id']}", json={"correct": True}).json()["box"] == 1
     assert all(e["status"] == "NOT AVAILABLE" for e in api.get("/api/crises").json()["episodes"])
+
+
+def test_concept_order_respects_prerequisites_and_rejects_cycles():
+    import json
+    from pathlib import Path
+
+    g = json.loads((Path(__file__).resolve().parents[1] / "config" / "glossary.json").read_text())
+    order = lab.concept_order(g["prerequisites"])
+    assert set(order) == set(g["terms"])
+    for k, deps in g["prerequisites"].items():
+        assert all(order.index(d) < order.index(k) for d in deps)
+    with pytest.raises(ValueError):
+        lab.concept_order({"a": ["b"], "b": ["a"]})
+
+
+def test_daily_lesson_uses_a_recorded_event(tmp_path):
+    import json
+    from pathlib import Path
+
+    g = json.loads((Path(__file__).resolve().parents[1] / "config" / "glossary.json").read_text())
+    env = build_env(tmp_path, "manual_simulation")
+    lesson = lab.daily_lesson(g, env.store, env.master, DECIDE_NOW)
+    ev = lesson["event"]
+    assert ev["vendor"] and ev["known_from"] < DECIDE_NOW.isoformat() and ev["date"] == "2026-11-19"
+    assert ev["symbol"] != "DLST"  # delisted names cannot supply the latest session's move
+    assert lesson["concept"] in g["terms"] and 1 <= lesson["position"] <= lesson["of"]
+    assert ev["symbol"] in lesson["example"] or lesson["example"].startswith("NOT AVAILABLE")
+    days = {lab.daily_lesson(g, env.store, env.master, DECIDE_NOW + timedelta(days=d))["concept"] for d in range(len(g["terms"]))}
+    assert days == set(g["terms"])  # every concept comes round

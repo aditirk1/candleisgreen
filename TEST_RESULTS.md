@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24, **320 passed, 0 failed** in about 148 seconds on Python 3.13.
+Latest full run: 2026-11-24, **323 passed, 0 failed** in about 160 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -270,3 +270,7 @@ Interface check: 66 Playwright checks passed. The check exposed a fill that paid
 | `tests/test_phase6.py` | updated | The week now runs eleven jobs a day, including decision, execution and expiry |
 
 Interface check: 66 Playwright checks passed.
+
+## Concept map and daily lesson, 2026-11-24
+
+`tests/test_teaching_lab.py` adds 2 tests: concept order respects every prerequisite and rejects a cycle, and the daily lesson uses a recorded event from the latest session (never a delisted name) and reaches every concept. `tests/test_clusters.py` adds the book-label test. Interface check: 67 Playwright checks passed.

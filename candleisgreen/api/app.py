@@ -93,7 +93,8 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
     inbox = Inbox(workdir / "inbox.sqlite", cfg.research.inbox, shared_across_threads=True)
     from ..teaching import lab
     review = lab.Review(workdir / "review.sqlite", cfg.teaching.review_intervals_days, shared_across_threads=True)
-    glossary_terms = json.loads((Path(__file__).resolve().parents[2] / "config" / "glossary.json").read_text())["terms"]
+    glossary = json.loads((Path(__file__).resolve().parents[2] / "config" / "glossary.json").read_text())
+    glossary_terms = glossary["terms"]
 
     def with_store(fn):
         """Short read-only access to the price database. Returns None when it is busy."""
@@ -392,6 +393,16 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
             return review.answer(USER, card_id, body.correct, clock())
         except KeyError:
             raise HTTPException(404, "unknown card")
+
+    @app.get("/api/lesson")
+    def lesson_view():
+        out = with_store(lambda store, master: lab.daily_lesson(glossary, store, master, clock()))
+        return out or {"status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
+
+    @app.get("/api/concepts")
+    def concepts_view():
+        return {"order": lab.concept_order(glossary["prerequisites"]), "prerequisites": glossary["prerequisites"],
+                "terms": {k: v["plain"] for k, v in glossary_terms.items()}}
 
     @app.get("/api/crises")
     def crises_view():

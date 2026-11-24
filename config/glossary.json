@@ -1,5 +1,5 @@
 {
- "glossary_version": "1.0.0",
+ "glossary_version": "1.1.0",
  "terms": {
   "alpha": {
    "plain": "Expected gain",
@@ -58,6 +58,62 @@
    "plain": "Normal daily trading",
    "meaning": "Average dollar volume over the last 20 sessions",
    "typical": "Orders here stay under a small share of it"
+  },
+  "daily_return": {
+   "plain": "How much it moved in a day",
+   "meaning": "Change in closing price from one session to the next, as a fraction of the earlier close",
+   "formula": "r = close_t / close_(t-1) minus 1",
+   "typical": "Large US stocks usually move under 2 percent a day"
+  },
+  "standard_error": {
+   "plain": "How unsure the estimate is",
+   "meaning": "Standard deviation of an estimate across samples. A mean with a large standard error could easily be zero",
+   "formula": "se = sd / sqrt(n) for independent observations",
+   "typical": "Compare it with the estimate itself. A ratio above 1 means little information"
   }
+ },
+ "prerequisites": {
+  "daily_return": [],
+  "volatility": [
+   "daily_return"
+  ],
+  "sharpe": [
+   "daily_return",
+   "volatility"
+  ],
+  "standard_error": [
+   "volatility"
+  ],
+  "alpha": [
+   "daily_return"
+  ],
+  "prob_positive": [
+   "alpha",
+   "standard_error"
+  ],
+  "trial_count": [
+   "sharpe"
+  ],
+  "signal_strength": [
+   "daily_return",
+   "volatility"
+  ],
+  "adv20": [
+   "daily_return"
+  ],
+  "slippage_bps": [
+   "adv20"
+  ],
+  "economic": [
+   "sharpe",
+   "slippage_bps"
+  ],
+  "tier": [
+   "economic",
+   "prob_positive"
+  ],
+  "basis": [
+   "tier"
+  ]
  }
 }

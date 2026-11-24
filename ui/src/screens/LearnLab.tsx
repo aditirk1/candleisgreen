@@ -5,6 +5,8 @@ import { timeET, usd } from "../format";
 type Autopsy = { fill_id: string; symbol: string; side: string; quantity: number; fill_price: number; filled_at: string; expected_catalyst: string; window: { end: string; status: string }; spread_paid_bps: number | null; what_happened: string; pnl: { total_usd: number; price_move_usd: number; spread_cost_usd: number; market_usd: number | null; specific_usd: number | null; market_method: string } | null; assumptions: { assumption: string; result: string }[] };
 type CF = { label: string; status: string; reason?: string; baseline?: { signal: number; decision: string }; hypothetical?: { signal: number | null; decision: string }; changed?: boolean; note?: string };
 type Card = { card_id: string; kind: string; prompt: string; answer: string; box: number };
+type Lesson = { status?: string; reason?: string; date: string; concept: string; plain: string; meaning: string; formula: string | null; typical: string | null; prerequisites: string[]; position: number; of: number; example: string; event: { symbol: string; date: string; vendor: string; known_from: string } | null };
+type Concepts = { order: string[]; prerequisites: Record<string, string[]>; terms: Record<string, string> };
 type Crisis = { name: string; start: string; end: string; status: string; reason: string | null; what_current_rules_would_do: string };
 
 const CHANGES: [string, string, number][] = [["vol_multiplier", "Multiply volatility by", 2], ["last_price_pct", "Move the latest close by (%)", -10], ["spread_bps", "Set the spread to (bps)", 50], ["remove_news", "Remove a news story", 0]];
@@ -17,6 +19,9 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
   const [shown, setShown] = useState(false);
   const [crises, setCrises] = useState<Crisis[]>([]);
   const [n, setN] = useState(0);
+  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [concepts, setConcepts] = useState<Concepts | null>(null);
+  useEffect(() => { getJSON<Lesson>("/api/lesson").then(setLesson); getJSON<Concepts>("/api/concepts").then(setConcepts); }, [tick]);
   useEffect(() => { getJSON<{ rows: Autopsy[] }>("/api/autopsy").then((d) => setAutopsy(d.rows)); }, [tick]);
   useEffect(() => { getJSON<{ cards: Card[] }>(`/api/review?cursor=${encodeURIComponent(cursor)}`).then((d) => { setCards(d.cards); setShown(false); }); }, [tick, cursor, n]);
   useEffect(() => { getJSON<{ episodes: Crisis[] }>("/api/crises").then((d) => setCrises(d.episodes)); }, [tick]);
@@ -29,6 +34,28 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
   const card = cards[0];
   return (
     <>
+      <div className="grid2">
+        <section className="panel"><h2>Daily lesson {lesson?.date ?? ""}</h2>
+          {!lesson ? <p className="muted">Loading</p> : lesson.status === "NOT AVAILABLE" ? <p className="na">NOT AVAILABLE. {lesson.reason}</p> : (
+            <dl className="facts">
+              <dt>Concept {lesson.position} of {lesson.of}</dt><dd>{lesson.plain} ({lesson.concept.replace(/_/g, " ")})</dd>
+              <dt>Meaning</dt><dd>{lesson.meaning}</dd>
+              {lesson.formula && <><dt>Formula</dt><dd>{lesson.formula}</dd></>}
+              {lesson.typical && <><dt>Typical range</dt><dd>{lesson.typical}</dd></>}
+              <dt>Today's example</dt><dd>{lesson.example}</dd>
+              {lesson.event && <><dt>Source</dt><dd className="muted">{lesson.event.vendor}, known from {timeET(lesson.event.known_from)}</dd></>}
+              <dt>Learn first</dt><dd>{lesson.prerequisites.length ? lesson.prerequisites.join(", ") : "Nothing. This is a starting point"}</dd>
+            </dl>)}
+        </section>
+        <section className="panel"><h2>Concept map, in learning order</h2>
+          {!concepts ? <p className="muted">Loading</p> : (
+            <table><thead><tr><th className="num">Step</th><th>Concept</th><th>Builds on</th></tr></thead>
+              <tbody>{concepts.order.map((c, i) => (
+                <tr key={c} className={lesson?.concept === c ? "selected" : ""}><td className="num">{i + 1}</td><td>{concepts.terms[c]}</td>
+                  <td className="muted">{concepts.prerequisites[c].map((p) => concepts.terms[p]).join(", ") || "None"}</td></tr>))}
+              </tbody></table>)}
+        </section>
+      </div>
       <section className="panel"><h2>Market autopsy, simulated trades</h2>
         {autopsy.length === 0 ? <p className="muted">No simulated fills yet</p> : autopsy.map((a) => (
           <div key={a.fill_id} style={{ marginBottom: 12 }}>

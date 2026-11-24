@@ -115,6 +115,7 @@ await page.getByRole("button", { name: "Advance 1 day" }).click();
 await page.waitForTimeout(600);
 check((await page.getByText(/RIGHT|WRONG/).count()) > 0, "outcome revealed after advancing past the horizon");
 check(await page.getByText("Market autopsy, simulated trades").isVisible(), "market autopsy shown");
+check(await page.getByText(/Daily lesson 2026/).isVisible() && await page.getByText("Concept map, in learning order").isVisible(), "daily lesson and concept map shown");
 await page.getByLabel("Change").selectOption("spread_bps");
 await page.getByRole("button", { name: "Test the change" }).click();
 await page.getByText("BLOCKED BY RISK").waitFor({ timeout: 5000 }).catch(() => {});
