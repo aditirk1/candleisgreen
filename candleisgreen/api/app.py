@@ -62,6 +62,10 @@ class CaptureBody(BaseModel):
     filename: Optional[str] = None
 
 
+class IdeaBody(BaseModel):
+    idea: str
+
+
 class ReviewBody(BaseModel):
     correct: bool
 
@@ -403,6 +407,24 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
     def concepts_view():
         return {"order": lab.concept_order(glossary["prerequisites"]), "prerequisites": glossary["prerequisites"],
                 "terms": {k: v["plain"] for k, v in glossary_terms.items()}}
+
+    @app.post("/api/lab/design")
+    def lab_design(body: IdeaBody):
+        from ..teaching import experiment_lab
+        try:
+            out = with_store(lambda store, master: experiment_lab.design(body.idea, store, master, cfg, clock()))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        return out or {"status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
+
+    @app.post("/api/lab/submit")
+    def lab_submit(body: IdeaBody):
+        """Designed again on the server, so the submitted plan is exactly what the rules produce."""
+        from ..teaching import experiment_lab
+        designed = lab_design(body)
+        if designed.get("status") != "DESIGNED":
+            raise HTTPException(400, designed.get("request") or designed.get("reason", "not designed"))
+        return {**experiment_lab.submit(designed, research, cfg, clock()), "plan": designed["plan"]}
 
     @app.get("/api/crises")
     def crises_view():

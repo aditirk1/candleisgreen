@@ -170,6 +170,7 @@ parameters:
   sources.trials.page_size: {basis: external_fact, source: "ClinicalTrials.gov OpenAPI description: page size above 1,000 is coerced down to 1,000", as_of: "2026-11-24"}
   sources.trials.license: {basis: safeguard, change_policy: Aditi changes it only after reading the ClinicalTrials.gov terms}
 
+  research.lab_holdout_fraction: {basis: provisional, review: "A common holdout share. Longer histories can hold out more"}
   research.inbox.auto_fetch_hosts: {basis: safeguard, change_policy: "Aditi adds a host only after reading its terms of use and robots rules"}
   research.inbox.summary_max_chars: {basis: safeguard, change_policy: "Aditi approves. Keeps summaries short so captured content is never copied in full"}
   research.inbox.max_file_bytes: {basis: safeguard, change_policy: Aditi approves}

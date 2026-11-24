@@ -229,6 +229,8 @@ models:
     clip: 3.0
 
 research:
+  # Share of the newest history the experiment lab holds out for the one out-of-sample run.
+  lab_holdout_fraction: 0.3
   inbox:
     # Hosts the inbox may fetch by itself. Empty: every link asks Aditi to paste the passage.
     auto_fetch_hosts: []

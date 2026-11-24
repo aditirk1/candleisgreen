@@ -36,8 +36,9 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 19. **Teaching tools.** Market autopsy for each simulated fill, a counterfactual that runs the real trend model and risk limit and is labeled HYPOTHETICAL, spaced review with wrong predictions first and replay outcomes kept hidden, and a crisis library that stays NOT AVAILABLE until stored data covers each episode. The glossary now lives in `config/glossary.json`, shared by Guide mode and the review deck.
 20. **Scheduled trading day and Tier 5 shadow tracking.** The scheduler now runs the decision at 16:30, execution at 09:35 and expiry at 10:30, all in New York time, with execution through the risk service process. The daily Composite run follows the decision, and any Tier 4 signal gets a prospective shadow book whose `promotion_check` pass opens a proposal only Aditi can decide. Execution quotes come from Alpaca's free IEX latest quotes and the paper clock.
 21. **Concept map and daily lesson.** Glossary terms carry prerequisites, the Learn screen lists them in learning order, and one lesson a day uses the largest recorded move on the latest session, with its source and the time it became known.
+22. **Experiment lab.** A plain-words idea becomes a null hypothesis, a data plan with free substitutes for missing data, and a holdout test rule, then is pre-registered through the same factory as a paper. The server redesigns the idea on submit, so the stored plan is exactly what the rules produce.
 
-Full suite: 323 passed. Playwright: 67 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+Full suite: 326 passed. Playwright: 68 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 
@@ -51,7 +52,7 @@ Full suite: 323 passed. Playwright: 67 checks. Details in `TEST_RESULTS.md`. Pha
 - Phase 7 (live trading). Needs a separate written decision from Aditi.
 - FDA advisory committee calendar for biotech events. FDA action dates must come from press releases and 8-K filings.
 - Read the ClinicalTrials.gov terms by hand. The page renders with JavaScript and could not be read automatically.
-- Teaching: experiment lab (a plain-words idea turned into a pre-registered test), and a fuller decision reconstruction than the Reasoning screen gives.
+- Teaching: a fuller decision reconstruction than the Reasoning screen gives.
 - Tier 5 shadow tracking process for a Composite signal that reaches Tier 4.
 
 ## Commands
@@ -83,4 +84,4 @@ make screens
 
 ## Exact next step
 
-Run the scheduler for a week against real Alpaca paper data and the free IEX quotes once keys exist, and compare response shapes (quotes, clock, bars). Then the experiment lab, and the FDA advisory committee calendar.
+Run the scheduler for a week against real Alpaca paper data and the free IEX quotes once keys exist, and compare response shapes (quotes, clock, bars). Then the FDA advisory committee calendar.

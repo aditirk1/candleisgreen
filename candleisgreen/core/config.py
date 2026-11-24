@@ -315,6 +315,7 @@ class InboxConfig(_Section):
 
 class ResearchConfig(_Section):
     inbox: InboxConfig
+    lab_holdout_fraction: float = Field(gt=0, lt=1)
     reproduction: ReproductionConfig
     criteria: CriteriaConfig
     default_half_spread: float = Field(ge=0)

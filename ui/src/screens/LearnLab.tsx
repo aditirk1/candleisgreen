@@ -7,6 +7,7 @@ type CF = { label: string; status: string; reason?: string; baseline?: { signal:
 type Card = { card_id: string; kind: string; prompt: string; answer: string; box: number };
 type Lesson = { status?: string; reason?: string; date: string; concept: string; plain: string; meaning: string; formula: string | null; typical: string | null; prerequisites: string[]; position: number; of: number; example: string; event: { symbol: string; date: string; vendor: string; known_from: string } | null };
 type Concepts = { order: string[]; prerequisites: Record<string, string[]>; terms: Record<string, string> };
+type Plan = { null_hypothesis: string; alternative: string; data_available: string[]; data_missing: { data: string; free_substitute: string }[]; out_of_sample: string; study_type: string; claim_type: string };
 type Crisis = { name: string; start: string; end: string; status: string; reason: string | null; what_current_rules_would_do: string };
 
 const CHANGES: [string, string, number][] = [["vol_multiplier", "Multiply volatility by", 2], ["last_price_pct", "Move the latest close by (%)", -10], ["spread_bps", "Set the spread to (bps)", 50], ["remove_news", "Remove a news story", 0]];
@@ -20,6 +21,9 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
   const [crises, setCrises] = useState<Crisis[]>([]);
   const [n, setN] = useState(0);
   const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [idea, setIdea] = useState("");
+  const [plan, setPlan] = useState<{ status: string; request?: string; plan?: Plan } | null>(null);
+  const [labMsg, setLabMsg] = useState<string | null>(null);
   const [concepts, setConcepts] = useState<Concepts | null>(null);
   useEffect(() => { getJSON<Lesson>("/api/lesson").then(setLesson); getJSON<Concepts>("/api/concepts").then(setConcepts); }, [tick]);
   useEffect(() => { getJSON<{ rows: Autopsy[] }>("/api/autopsy").then((d) => setAutopsy(d.rows)); }, [tick]);
@@ -29,6 +33,15 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
   async function runCf() {
     const q = new URLSearchParams({ symbol: cfForm.symbol, change: cfForm.change, amount: String(cfForm.amount) });
     setCf(await getJSON<CF>(`/api/counterfactual?${q}`).catch((e) => ({ label: "HYPOTHETICAL", status: "NOT AVAILABLE", reason: String(e) })));
+  }
+  async function designIdea() {
+    const r = await post("/api/lab/design", { idea });
+    setPlan(await r.json()); setLabMsg(null);
+  }
+  async function submitIdea() {
+    const r = await post("/api/lab/submit", { idea });
+    const out = await r.json();
+    setLabMsg(r.ok ? (out.outcome === "new_hypotheses" ? `Pre-registered as ${out.experiment_id}. It waits in the research queue` : out.outcome === "duplicates" ? "Already registered. Linked to the earlier claim" : out.outcome === "needs_data" ? "Recorded as NEEDS DATA" : "Recorded") : `Not submitted. ${out.detail ?? r.status}`);
   }
   async function grade(correct: boolean) { await post(`/api/review/${cards[0].card_id}`, { correct }); setN((x) => x + 1); }
   const card = cards[0];
@@ -97,6 +110,24 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
           </>)}
         </section>
       </div>
+      <section className="panel"><h2>Experiment lab</h2>
+        <form onSubmit={(e) => { e.preventDefault(); designIdea(); }} style={{ display: "flex", gap: 8 }}>
+          <input aria-label="Trade idea" className="field" style={{ flex: 1 }} value={idea} onChange={(e) => setIdea(e.target.value)} placeholder="For example: $UPCO shares will outperform over the next 5 days" />
+          <button type="submit" disabled={!idea.trim()}>Design the test</button>
+        </form>
+        {plan && (plan.status !== "DESIGNED" ? <p className="na">{plan.status}. {plan.request}</p> : (
+          <>
+            <dl className="facts">
+              <dt>Null hypothesis</dt><dd>{plan.plan!.null_hypothesis}</dd>
+              <dt>Alternative</dt><dd>{plan.plan!.alternative}</dd>
+              <dt>Data available</dt><dd>{plan.plan!.data_available.join(", ") || "None"}</dd>
+              <dt>Data missing</dt><dd>{plan.plan!.data_missing.length ? plan.plan!.data_missing.map((m) => `${m.data} (free substitute: ${m.free_substitute})`).join(", ") : "None"}</dd>
+              <dt>Out-of-sample test</dt><dd>{plan.plan!.out_of_sample}</dd>
+            </dl>
+            <button onClick={submitIdea}>Pre-register through the research pipeline</button>
+          </>))}
+        {labMsg && <p role="status">{labMsg}</p>}
+      </section>
       <section className="panel"><h2>Crisis library</h2>
         <table><thead><tr><th>Episode</th><th>Start</th><th>End</th><th>Status</th><th>What current rules would have done</th></tr></thead>
           <tbody>{crises.map((c) => <tr key={c.name}><td>{c.name}</td><td>{c.start}</td><td>{c.end}</td><td className={c.status === "AVAILABLE" ? "" : "na"}>{c.status}{c.reason ? `. ${c.reason}` : ""}</td><td className="muted">{c.what_current_rules_would_do}</td></tr>)}</tbody></table>
