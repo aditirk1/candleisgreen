@@ -31,18 +31,20 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 14. **All fifteen screens.** Opportunities, Markets, Experts, Backtests, Audit and Rules, and Settings join the earlier nine. Command bar with coded commands and plain phrases, Guide mode with plain labels and hover definitions, Explain this screen, and a first-run tour.
 15. **Correlation clusters.** Monthly residual-return clustering with a stability test, sector fallback when unstable, and the executor counting exposure per cluster.
 16. **Research Capture Inbox.** On the Research screen. Stores a hash, the time and a short summary, extracts testable claims and forecasts into claim cards for the nightly research loop, and asks for the passage when a link or file cannot be read.
+17. **Macro vintages.** FRED API `series/observations` over the full real-time period, every revision stored as a vintage, usable from 17:00 New York time on its release date, shown on the Global screen. NOT AVAILABLE without a key.
 
-Full suite: 296 passed. Playwright: 61 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+Full suite: 301 passed. Playwright: 62 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 
+- **Live FRED macro.** Built against the documented response shape with a constructed fixture. The first run with a key in `FRED_API_KEY` must compare shapes and check how missing values appear.
 - **Live Alpaca data.** The client is written from Alpaca's documentation and tested offline. The first run with paper keys must compare response shapes (DECISIONS D-033), and check whether bars for delisted symbols are served (spec decision Q1).
 - **The Composite does not trade yet.** No signal holds Tier 4, so the Composite allocates nothing and the trading loop still runs the single Level A baseline in the simulator. That changes only when an executable approximation passes on real data.
 
 ## Not started
 
 - Phase 7 (live trading). Needs a separate written decision from Aditi.
-- Macro ingestion from FRED and ALFRED vintages. Biotech ingestion from ClinicalTrials.gov.
+- Biotech ingestion from ClinicalTrials.gov.
 - Teaching: crisis library (shows NOT AVAILABLE until data covers the dates), counterfactual, market autopsy, spaced review, concept map.
 - Tier 5 shadow tracking process for a Composite signal that reaches Tier 4.
 
@@ -75,4 +77,4 @@ make screens
 
 ## Exact next step
 
-Macro ingestion from FRED with ALFRED vintages, then biotech ingestion from ClinicalTrials.gov. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.
+Biotech ingestion from ClinicalTrials.gov into the research-only biotech universe. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.

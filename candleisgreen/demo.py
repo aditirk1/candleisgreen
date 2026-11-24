@@ -139,13 +139,13 @@ def build(workdir: Path) -> None:
                    datetime(2026, 11, 24, 6, 0, tzinfo=UTC), cfg)
     news.close()
     research.close()
-    # Phase 6: one round of the follow-the-sun research jobs (FX and global factors).
+    store.close()  # the scheduled jobs open the price database themselves
+    # Phase 6: one round of the follow-the-sun research jobs (FX, macro and global factors).
     from .scheduler import run_slot
 
     for slot, when in (("asia_pacific", datetime(2026, 11, 20, 8, 0, tzinfo=UTC)), ("europe", datetime(2026, 11, 20, 17, 0, tzinfo=UTC))):
         run_slot(slot, when, workdir, cfg, True)
     write_heartbeat(workdir, "record", "ok", rec2, {"sessions": [d2.isoformat()], "synthetic": True})
-    store.close()
 
 
 if __name__ == "__main__":

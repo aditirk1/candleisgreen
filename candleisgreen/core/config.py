@@ -244,10 +244,23 @@ class SecSourceConfig(_Section):
     concepts: tuple[str, ...]
 
 
+class FredSeriesConfig(_Section):
+    id: str
+    license: str
+
+
+class FredSourceConfig(_Section):
+    base_url: str
+    api_key_env: str
+    release_time_local: str
+    series: tuple[FredSeriesConfig, ...]
+
+
 class SourcesConfig(_Section):
     alpaca: AlpacaSourceConfig
     recorder: RecorderConfig
     sec: SecSourceConfig
+    fred: FredSourceConfig
 
 
 class TsMomentumConfig(_Section):

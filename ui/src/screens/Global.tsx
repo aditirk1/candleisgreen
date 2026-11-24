@@ -7,6 +7,7 @@ type G = {
   fx: { currency: string; series: string; date: string | null; usd_per_unit: number | null }[];
   momentum_by_market: { location: string; months: number; mean_monthly?: number; t_stat?: number; replicates?: boolean; status?: string; use?: string }[];
   entitlements: { capability: string; status: string; label: string }[];
+  macro: { series: string; status: string; reason?: string; period?: string; value?: number | null; vintage?: number; known_from?: string; license?: string }[];
   markets: { mic: string; name: string; tag: string; hours_local?: string; settlement?: string; lot_size?: string; transaction_tax?: string; price_limits?: string; source?: string }[];
 };
 
@@ -26,6 +27,15 @@ export function GlobalScreen({ tick }: { tick: number }) {
             <tbody>{g.fx.map((r) => <tr key={r.currency}><td>{r.currency}</td><td className="muted">{r.series}</td><td>{r.date ?? "NOT AVAILABLE"}</td><td className="num">{r.usd_per_unit === null ? "NOT AVAILABLE" : r.usd_per_unit.toFixed(5)}</td></tr>)}</tbody></table>
         </section>
       </div>
+      <section className="panel"><h2>Macro, as known now, every vintage kept (FRED API)</h2>
+        {g.macro.length === 0 ? <p className="na">NOT AVAILABLE. Price database busy or no series configured</p> : (
+          <table><thead><tr><th>Series</th><th>Period</th><th className="num">Value</th><th className="num">Revision</th><th>Known from</th><th>License</th></tr></thead>
+            <tbody>{g.macro.map((m) => m.status !== "OK"
+              ? <tr key={m.series}><td>{m.series}</td><td colSpan={5} className="na">NOT AVAILABLE. {m.reason}</td></tr>
+              : <tr key={m.series}><td>{m.series}</td><td>{m.period}</td><td className="num">{m.value === null || m.value === undefined ? "NOT AVAILABLE" : m.value}</td>
+                  <td className="num">{m.vintage}</td><td>{timeET(m.known_from)}</td><td className="muted">{m.license}</td></tr>)}
+            </tbody></table>)}
+      </section>
       <section className="panel"><h2>Momentum by market after 1993, research only (JKP, noncommercial license)</h2>
         {g.momentum_by_market.length === 0 ? <p className="na">NOT AVAILABLE. No global factor data loaded</p> : (
           <table><thead><tr><th>Market</th><th className="num">Months</th><th className="num">Mean (a month)</th><th className="num">t</th><th>Replicates</th><th>Use</th></tr></thead>

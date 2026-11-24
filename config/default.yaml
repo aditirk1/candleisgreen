@@ -195,6 +195,20 @@ sources:
       - us-gaap:OperatingIncomeLoss
       - us-gaap:Assets
       - us-gaap:StockholdersEquity
+  fred:
+    # FRED API v1. The key is read from this environment variable, never stored here.
+    base_url: https://api.stlouisfed.org/fred
+    api_key_env: FRED_API_KEY
+    # ALFRED gives release dates, not times. A value counts as known from this time on its release date.
+    release_time_local: "17:00"
+    # Series are produced by US agencies, fetched under FRED's terms. Trading use stays unverified.
+    series:
+      - {id: CPIAUCSL, license: fred_terms}
+      - {id: UNRATE, license: fred_terms}
+      - {id: PAYEMS, license: fred_terms}
+      - {id: GDPC1, license: fred_terms}
+      - {id: FEDFUNDS, license: fred_terms}
+      - {id: DGS10, license: fred_terms}
 
 models:
   ts_momentum:

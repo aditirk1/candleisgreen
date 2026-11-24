@@ -1,0 +1,1 @@
+Constructed in the response shape documented at https://fred.stlouisfed.org/docs/api/fred/series_observations.html (read 2026-11-24). The values are invented for tests and are not FRED data. The first run with a real key must compare shapes.

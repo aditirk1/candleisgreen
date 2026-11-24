@@ -122,6 +122,7 @@ await page.getByText("USA").first().waitFor({ timeout: 5000 }).catch(() => {});
 check((await page.getByText("research only").count()) >= 5, "every non-US market is research only on the Global screen");
 check(await page.getByText("XTKS Tokyo Stock Exchange").isVisible() && (await page.getByText("RESEARCH_ONLY").count()) >= 4, "market rule table tags non-US exchanges research only");
 check(await page.getByText("DEXUSEU").isVisible(), "FX rates from FRED shown");
+check(await page.getByText("UNRATE").isVisible() && (await page.getByText(/no vintage stored yet/).count()) >= 1, "macro shows the stored vintage and NOT AVAILABLE for series without one");
 check(await page.getByText(/NOT AVAILABLE\. No free source of historical or real-time options data/).isVisible(), "entitlement map shows options as NOT AVAILABLE");
 await page.screenshot({ path: `${out}/global-terminal.png`, fullPage: true });
 

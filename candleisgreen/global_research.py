@@ -39,6 +39,52 @@ def refresh_fx(workdir: Path, now: datetime, fake: bool) -> dict:
     return {"series": counts, "synthetic_clock": fake}
 
 
+FRED_API_FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "fred_api"
+
+
+def refresh_macro(workdir: Path, now: datetime, cfg, fake: bool) -> dict:
+    """Every vintage of the configured FRED series into the point-in-time store.
+
+    Without an API key this reports NOT AVAILABLE and changes nothing. In fake mode it reads the
+    constructed fixtures and skips series that have none.
+    """
+    from .data.pit_store import PointInTimeStore
+    from .sources import macro
+
+    fc = cfg.sources.fred
+    if fake:
+        transport = macro.FixtureFredTransport(FRED_API_FIXTURES)
+        series = [s for s in fc.series if (FRED_API_FIXTURES / f"{s.id}.json").exists()]
+    else:
+        try:
+            transport = macro.HttpFredTransport(fc)
+        except macro.MissingApiKeyError as exc:
+            return {"status": "NOT AVAILABLE", "reason": str(exc)}
+        series = list(fc.series)
+    store = PointInTimeStore(workdir / "pit.duckdb")
+    try:
+        counts = macro.refresh(store, transport, fc.model_copy(update={"series": tuple(series)}), now)
+    finally:
+        store.close()
+    return {"status": "OK", "added": counts, "synthetic": fake}
+
+
+def macro_view(store, cfg, when: datetime) -> list[dict]:
+    """Latest value known at `when` for each configured series, with its vintage and release time."""
+    out = []
+    view = store.as_of(when)
+    for s in cfg.sources.fred.series:
+        obs = [o for o in view.series(f"macro:{s.id}", "value")]
+        if not obs:
+            out.append({"series": s.id, "status": "NOT AVAILABLE", "reason": "no vintage stored yet"})
+            continue
+        last = obs[-1]
+        out.append({"series": s.id, "status": "OK", "period": last.event_time.date().isoformat(),
+                    "value": last.value, "vintage": last.vintage, "known_from": last.first_usable_at.isoformat(),
+                    "license": last.license})
+    return out
+
+
 def load_fx(workdir: Path) -> fx.FxTable:
     rates = {}
     for currency, (series, _) in fx.SERIES.items():

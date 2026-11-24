@@ -159,6 +159,10 @@ parameters:
   sources.sec.user_agent_env: {basis: safeguard, change_policy: Contact details stay in the environment and never enter the repository}
   sources.sec.filed_date_fallback_time_local: {basis: external_fact, source: "EDGAR filing-date cutoff of 17:30 ET. Checked on 2026-11-24 that acceptanceDateTime in the submissions API is UTC (index page 18:30:21 ET, API 23:30:21Z)", as_of: "2026-11-24"}
   sources.sec.concepts: {basis: provisional, review: XBRL concepts collected for the scorecard and fundamental factors. Extend per signal}
+  sources.fred.base_url: {basis: external_fact, source: "FRED API documentation, https://fred.stlouisfed.org/docs/api/fred/series_observations.html", as_of: "2026-11-24"}
+  sources.fred.api_key_env: {basis: safeguard, change_policy: The key stays in the environment and never enters the repository}
+  sources.fred.release_time_local: {basis: safeguard, change_policy: "Aditi approves an earlier time. Release dates carry no time, so this stays after most US releases"}
+  sources.fred.series: {basis: provisional, review: "Starting macro set. Add a series after checking its copyright on its FRED page"}
 
   research.inbox.auto_fetch_hosts: {basis: safeguard, change_policy: "Aditi adds a host only after reading its terms of use and robots rules"}
   research.inbox.summary_max_chars: {basis: safeguard, change_policy: "Aditi approves. Keeps summaries short so captured content is never copied in full"}

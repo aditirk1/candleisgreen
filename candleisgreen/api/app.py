@@ -355,8 +355,10 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         if rules_path.exists():
             import yaml as _yaml
             markets = _yaml.safe_load(rules_path.read_text()).get("exchanges", [])
+        from ..global_research import macro_view
+        macro = with_store(lambda store, master: macro_view(store, cfg, clock()))
         return {"sessions": sessions, "fx": rates, "momentum_by_market": evidence, "entitlements": entitlements,
-                "markets": markets}
+                "markets": markets, "macro": macro if macro is not None else []}
 
     @app.get("/api/inbox")
     def inbox_list():
@@ -470,7 +472,7 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         import os
         creds = [{"name": n, "purpose": p, "status": "SET" if os.environ.get(n) else "NOT SET"} for n, p in (
             ("APCA_API_KEY_ID", "Alpaca paper key ID"), ("APCA_API_SECRET_KEY", "Alpaca paper secret"),
-            ("SEC_USER_AGENT", "SEC contact for EDGAR requests"))]
+            ("SEC_USER_AGENT", "SEC contact for EDGAR requests"), ("FRED_API_KEY", "FRED API key for macro vintages"))]
         return {"mode": cfg.execution.mode, "venue": venue, "live_trading": "Not built. Every live route rejects orders",
                 "credentials": creds, "monthly_cost_usd": 0, "config_version": cfg.config_version,
                 "providers": [f.name for f in cfg.news.feeds] + ["alpaca free plan", "sec edgar", "fred", "osap", "jkp"]}

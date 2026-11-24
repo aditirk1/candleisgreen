@@ -35,6 +35,12 @@ def _fx(now, workdir, cfg, fake):
     return refresh_fx(workdir, now, fake)
 
 
+def _macro(now, workdir, cfg, fake):
+    from .global_research import refresh_macro
+
+    return refresh_macro(workdir, now, cfg, fake)
+
+
 def _global_factors(now, workdir, cfg, fake):
     from .global_research import refresh_global_factors
 
@@ -81,7 +87,7 @@ def _preopen(now, workdir, cfg, fake):
 JOBS: dict[str, list[tuple[str, Job]]] = {
     "us_preopen": [("preopen", _preopen)],
     "asia_pacific": [("global_factors", _global_factors)],
-    "europe": [("fx", _fx)],
+    "europe": [("fx", _fx), ("macro", _macro)],
     "us": [("record", _record)],
     "overnight_review": [("review", _review), ("clusters", _clusters)],
 }

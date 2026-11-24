@@ -9,7 +9,7 @@ Source: `SPEC.md` v3.2, sections "Source registry and expert discovery" and "Dat
 | Alpaca free plan | Asset list, daily consolidated bars (15 minutes delayed), corporate actions, IEX real-time quotes, paper trading | `alpaca_market_data` | Permitted | Permitted | Built against an offline fake. Live run needs paper keys |
 | SEC EDGAR | Submissions, XBRL company facts, SIC codes, filing acceptance times | `us_government_public` | Permitted | Permitted | Built. Live run needs `SEC_USER_AGENT` |
 | SEC and Federal Reserve RSS | Press releases and litigation releases | `us_government_public` | Permitted | Permitted | Built |
-| FRED | Daily FX (H.10), public CSV endpoint. ALFRED vintages planned | `fred_terms` (H.10 FX series are public domain, citation requested) | Permitted | Unverified for other series | FX built |
+| FRED | Daily FX (H.10), public CSV endpoint. Macro series with every vintage through the FRED API `series/observations` (realtime 1776-07-04 to 9999-12-31), key in `FRED_API_KEY` | `fred_terms` (H.10 FX series are public domain, citation requested) | Permitted | Unverified for other series | FX built. Macro built and tested on a constructed fixture. First run with a key must compare response shapes |
 | Open Source Asset Pricing | Long-short portfolio returns and signal documentation | `cc_by_4_0` | Permitted | Permitted | Built, release 2026.10 |
 | JKP Global Factor Data | Factor returns by country | `cc_by_nc_4_0` | Permitted | Unverified, so research only | Built |
 | Kenneth French library | Factor returns, Fama-French 12 SIC mapping | `french_library` | Permitted | Unverified | SIC mapping built |
