@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS account (
 CREATE TABLE IF NOT EXISTS equity_history (
     as_of TEXT PRIMARY KEY, equity REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS marks (
+    instrument_id TEXT PRIMARY KEY, symbol TEXT NOT NULL, price REAL NOT NULL, as_of TEXT NOT NULL, source TEXT NOT NULL
+);
 """
 
 
@@ -59,8 +62,9 @@ class Proposal:
 
 
 class Journal:
-    def __init__(self, path: str | Path, audit: AuditLog, starting_cash: float, strategy_version: str):
-        self.conn = sqlite3.connect(str(path), isolation_level=None)
+    def __init__(self, path: str | Path, audit: AuditLog, starting_cash: float, strategy_version: str,
+                 shared_across_threads: bool = False):
+        self.conn = sqlite3.connect(str(path), isolation_level=None, check_same_thread=not shared_across_threads)
         self.conn.executescript(_SCHEMA)
         self.audit = audit
         self.strategy_version = strategy_version
@@ -169,6 +173,14 @@ class Journal:
 
     def record_equity(self, as_of: datetime, equity: float) -> None:
         self.conn.execute("INSERT OR REPLACE INTO equity_history VALUES (?, ?)", (iso_utc(as_of), equity))
+
+    def record_mark(self, instrument_id: str, symbol: str, price: float, as_of: datetime, source: str) -> None:
+        self.conn.execute("INSERT OR REPLACE INTO marks VALUES (?,?,?,?,?)",
+                          (instrument_id, symbol, price, iso_utc(as_of), source))
+
+    def marks(self) -> dict[str, dict]:
+        cur = self.conn.execute("SELECT instrument_id, symbol, price, as_of, source FROM marks")
+        return {r[0]: {"symbol": r[1], "price": r[2], "as_of": r[3], "source": r[4]} for r in cur.fetchall()}
 
     def equity_history(self) -> list[tuple[str, float]]:
         return list(self.conn.execute("SELECT as_of, equity FROM equity_history ORDER BY as_of").fetchall())

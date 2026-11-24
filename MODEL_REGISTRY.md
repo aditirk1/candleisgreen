@@ -119,7 +119,7 @@ None of these exists in code. Each enters at Tier 1 and moves only through the g
 
 | Phase | `model_id` | Level | Family | Type | Horizon | Benchmark |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `ts_momentum_252_21` | A | trend | time_series | 21 | Buy and hold, volatility matched |
+| 1 | `ts_momentum_252_21` (built, Tier 1, simulator only) | A | trend | time_series | 21 | Buy and hold, volatility matched |
 | 3 | `xs_momentum_12_1` | A | momentum (JKP) | cross_sectional | 21 | Universe return |
 | 3 | `st_reversal_5` | A | short-term reversal (JKP) | cross_sectional | 5 | Universe return |
 | 3 | `buy_and_hold` | A | none | benchmark | none | Cash |

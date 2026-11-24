@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-22 01:17 ET, **170 passed, 0 failed** in about 18 seconds on Python 3.13.18.
+Latest full run: 2026-11-24 00:42 ET, **203 passed, 0 failed** in about 92 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -128,3 +128,24 @@ Result: **9 passed** (`tests/test_capabilities.py`). Every limited or unavailabl
 | `tests/test_risk_and_broker.py` | 44 | Adds the execution window, quote feed, zero quote size, limit distance from mid, pending orders, resting non-marketable limits and slippage against arrival mid |
 
 Not tested yet, because the code belongs to later phases: the forward recorder and its completeness flags (Phase 1), the execution window comparison and SIC classifications (Phase 2), the clustering stability test and the experiment registry's development history (Phase 3), and the Oracle fallback and heartbeat (Phase 1). Python 3.12 has not been run.
+
+## Phase 1, US paper vertical slice, 2026-11-24
+
+Acceptance test: **passed**. Approval, rejection, fill, stale-feed block and kill switch are verified end to end, with the risk engine running in its own process.
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_phase1_acceptance.py` | 11 | Decision proposes buys for uptrends only, approval then fill, rejection means no order, auto simulation stays inside the limits, stale quote blocks, delayed consolidated quote blocks, kill switch blocks and only Aditi can release it, risk service down blocks everything, outside the window blocks, a Tier 1 model cannot reach a paper account, rerunning execution does not repeat orders |
+| `tests/test_recorder.py` | 10 | Delisted name kept with its history, ticker change keeps one instrument ID, split and dividend stored with raw bars, backfill flagged without a snapshot, live session recorded once, live values usable only after collection, closed day recorded, free-plan delay respected, security type inferred, live transport needs paper keys |
+| `tests/test_ts_momentum.py` | 5 | Split and dividend adjustment only once effective, score sign and clip, skipped month ignored, universe excludes the delisted name, a split does not look like a crash |
+| `tests/test_jobs.py` | 5 | Record twice stores the same result, catch-up fills missed weekdays, fallback runs only on a stale heartbeat, missing heartbeat counts as stale, no session before the free data is ready |
+| `tests/test_api.py` | 2 | Approve, reject, execute and kill switch through the API, and an unreachable risk service reported |
+
+### Interface check
+
+`make screens` drives the real interface with Playwright against the demo. Last run, 2026-11-24 00:40 ET, all 11 checks passed: SIMULATION label visible, positions table and equity curve drawn, approval queue present, approve and reject both work, kill switch shown as ON after engaging, no em dashes, semicolons or middle dots in visible text, modes in plain words, no page errors. Screenshots are in `docs/screens/`.
+
+### Not tested in Phase 1
+
+- Any live Alpaca call. No paper keys exist in the build environment, so the client ran only against the offline synthetic market (DECISIONS D-033).
+- The Oracle Cloud schedule itself. The heartbeat and fallback logic are tested locally.

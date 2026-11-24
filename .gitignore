@@ -7,3 +7,5 @@ var/
 *.duckdb
 *.sqlite
 .env
+ui/node_modules/
+ui/dist/

@@ -1,0 +1,39 @@
+/* Design tokens. Components never hard-code colors or sizes. A theme switch changes tokens only. */
+:root, [data-theme="terminal"] {
+  --bg: #0B0D10;
+  --panel: #12151A;
+  --panel-border: 1px solid #232830;
+  --panel-blur: none;
+  --text: #D7DCE2;
+  --muted: #8A93A0;
+  --accent: #FFB000;
+  --gain: #3FB950;
+  --loss: #F85149;
+  --font-num: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  --font-label: "IBM Plex Sans", Inter, system-ui, sans-serif;
+  --label-size: 12px;
+  --row: 28px;
+  --radius: 2px;
+  --gap: 8px;
+}
+[data-theme="glass"] {
+  --bg: linear-gradient(160deg, #0E1420, #16213A);
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-solid: rgba(22, 33, 58, 0.9);
+  --panel-border: 1px solid rgba(255, 255, 255, 0.12);
+  --panel-blur: blur(16px);
+  --text: #E8EDF5;
+  --muted: #9AA6B8;
+  --accent: #5B8CFF;
+  --gain: #34C78A;
+  --loss: #FF6B6B;
+  --font-num: Inter, system-ui, sans-serif;
+  --font-label: Inter, system-ui, sans-serif;
+  --label-size: 14px;
+  --row: 40px;
+  --radius: 12px;
+  --gap: 16px;
+}
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme="glass"] { --panel: #16213A; --panel-blur: none; }
+}

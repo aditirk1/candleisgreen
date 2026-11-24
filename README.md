@@ -18,7 +18,21 @@ make ci
 make phase0
 ```
 
-`make ci` runs every test. `make phase0` pushes one recorded event through the collector, the point-in-time store, a stub model, the risk engine and the internal simulator, and prints the IDs.
+`make ci` runs every test. `make phase0` pushes one recorded event through the whole chain and prints the IDs.
+
+To see the Phase 1 screens on the offline synthetic market:
+
+```bash
+make demo
+```
+
+Then open http://127.0.0.1:8000. Every number in the demo is synthetic. `make screens` checks both screens with Playwright.
+
+With Alpaca paper keys in `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY`, the recorder runs against the real free data:
+
+```bash
+.venv/bin/python -m candleisgreen.jobs catch-up --workdir var/live
+```
 
 ## Documents
 

@@ -1,6 +1,6 @@
 # HANDOFF.md
 
-Last updated: 2026-11-22 01:18 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
+Last updated: 2026-11-24 00:45 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
 
 ## Timeline note
 
@@ -16,11 +16,14 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 
 6. **Spec v3.2.** Aditi's decisions on Q1 to Q15 are consolidated into `SPEC.md`, each in the decisions register with assumptions, implementation, validation test and failure behavior. Every config value is classified by basis in `config/parameters.yaml`. The code for the decisions that touch existing modules is built: limit orders, execution-grade quotes, the execution window, pending orders, license tags, record types, the UNKNOWN sector bucket, deterioration monitoring, the promotion check and academic evidence with an implementation gap.
 
-Full suite: 170 passed. Details in `TEST_RESULTS.md`.
+7. **Phase 1, US paper vertical slice.** Acceptance test passed. Survivorship-aware recorder against an offline synthetic Alpaca market, split and dividend adjustment, decision-time universe, the Level A trend baseline (Tier 1, simulator only), an audited journal, the risk service as its own process owning the kill switch, the decision and next-session executor with limit orders, scheduled jobs with heartbeat and fallback, the workstation API, and the Overview and Execution screens in React. Screens verified with Playwright.
+
+Full suite: 203 passed. Details in `TEST_RESULTS.md`.
 
 ## Half done
 
-- **The Composite has no real inputs.** Everything in section C runs on synthetic data. Nothing connects it to the point-in-time store yet, because there is no real price history and no Level A signal. That wiring is Phase 1 and Phase 3 work.
+- **Live Alpaca data.** The client is written from Alpaca's documentation and tested offline. The first run with paper keys must compare response shapes (DECISIONS D-033), and check whether bars for delisted symbols are served (spec decision Q1).
+- **The Composite is not wired into the trading loop.** Phase 1 trades the single Level A baseline in the simulator. The Composite joins in Phase 3.
 
 ## Not started
 
@@ -53,6 +56,14 @@ make phase0
 
 ## Exact next step
 
-Start Phase 1 (US paper vertical slice). First atomic task: the survivorship-aware forward recorder, because every day it runs adds prospective history. Build `candleisgreen/sources/alpaca_recorder.py` against recorded API fixtures first, with no network: it stores the full asset list including inactive assets, daily consolidated bars requested at least 15 minutes after the close, and corporate actions, and writes a completeness flag per day. Tests: a delisted name stays in the instrument master with its date, a missed day is flagged, a ticker change keeps one `instrument_id`, and running the job twice stores the same result. While building it, check whether Alpaca serves bars for delisted symbols (spec decision Q1 assumption). Then the Oracle heartbeat and local fallback (Q13), then the Level A trend baseline.
+Phase 2 (broker paper and filings). First atomic task: `candleisgreen/broker/alpaca_paper.py`, the Alpaca paper adapter behind the existing `BrokerAdapter` interface, tested against an offline fake of the paper trading API. It submits limit orders with the stable client order ID, queries open orders before any retry after an uncertain response, and reconciles positions and fills. Acceptance: a duplicate submission is not repeated. Then SEC filing timestamps and XBRL facts with the `filed` date, SIC classifications with mapping versions, and the earnings scorecard with no beat or miss.
 
-Alpaca paper keys are needed for any live call. They come from environment variables only, and only the paper endpoint is allowed.
+Commands:
+
+```bash
+make ci
+```
+
+```bash
+make demo
+```

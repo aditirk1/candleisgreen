@@ -82,6 +82,10 @@ def run_decision(decision_date: date, session_date: date, store: PointInTimeStor
     prices = _last_closes(store, set(positions) | {m.instrument_id for m in members}, decision_time)
     equity = journal.cash() + sum(q * prices.get(i, 0.0) for i, q in positions.items())
     journal.record_equity(decision_time, equity)
+    names = {m.instrument_id: m.symbol for m in members}
+    for iid, price in prices.items():
+        journal.record_mark(iid, names.get(iid) or (master.symbols(iid) or ["?"])[-1], price, decision_time,
+                            "close, delayed consolidated")
 
     scored = []
     view = store.as_of(decision_time)
@@ -199,6 +203,7 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
         ack = broker.submit(intent, decision, snap.quote)
         for fill in ack.fills:
             journal.record_fill(fill)
+        journal.record_mark(p.instrument_id, p.symbol, snap.quote.mid, now, f"mid, {snap.quote.feed}")
         journal.set_status(p.proposal_id, "filled" if ack.fills else "resting", f"broker:{venue.value.lower()}", now,
                            ack.message, intent.client_order_id)
         positions = journal.positions()

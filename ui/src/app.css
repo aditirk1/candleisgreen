@@ -1,0 +1,33 @@
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; min-height: 100%; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-label); font-size: var(--label-size); }
+.strip { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; padding: 6px var(--gap);
+  background: var(--panel); border-bottom: var(--panel-border); backdrop-filter: var(--panel-blur); }
+.strip .badge { padding: 2px 8px; border-radius: var(--radius); border: var(--panel-border); }
+.strip .venue { color: var(--bg); background: var(--accent); font-weight: 700; }
+.strip .spacer { flex: 1; }
+.nav { display: flex; gap: var(--gap); padding: var(--gap); }
+button { font: inherit; color: var(--text); background: transparent; border: var(--panel-border);
+  border-radius: var(--radius); padding: 4px 10px; cursor: pointer; transition: opacity 120ms; }
+button:hover { opacity: 0.85; }
+button.active { border-color: var(--accent); color: var(--accent); }
+button.danger { border-color: var(--loss); color: var(--loss); }
+button.engaged { background: var(--loss); color: var(--bg); }
+main { padding: 0 var(--gap) var(--gap); display: grid; gap: var(--gap); }
+.panel { background: var(--panel-solid, var(--panel)); border: var(--panel-border); border-radius: var(--radius); padding: var(--gap); }
+.panel h2 { margin: 0 0 var(--gap); font-size: var(--label-size); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); }
+.kpi .value { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 22px; }
+.kpi .label { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: var(--panel-border); height: var(--row); }
+td { height: var(--row); border-bottom: var(--panel-border); }
+th, td { padding: 0 10px; }
+th:first-child, td:first-child { padding-left: 0; }
+td.num, th.num { text-align: right; font-family: var(--font-num); }
+.gain { color: var(--gain); }
+.loss { color: var(--loss); }
+.muted { color: var(--muted); }
+.na { color: var(--muted); font-style: normal; }
+.grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: var(--gap); }
+@media (max-width: 900px) { .grid2, .kpis { grid-template-columns: 1fr; } }
