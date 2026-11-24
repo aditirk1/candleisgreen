@@ -46,12 +46,17 @@ def _review(now, workdir, cfg, fake):
     from .research import factory
     from .research.registry import ResearchRegistry
 
+    from .research.inbox import Inbox
+
     reg = ResearchRegistry(workdir / "research.sqlite", AuditLog(workdir / "audit.sqlite"))
+    inbox = Inbox(workdir / "inbox.sqlite", cfg.research.inbox)
     try:
-        digest = factory.run_daily([], reg, factory.Library({}, {}), set(), cfg, now)
-        return {"digest_date": digest["date"], "open_cases": len(reg.reevaluations("OPEN"))}
+        cards = inbox.take_for_factory()
+        digest = factory.run_daily(cards, reg, factory.Library({}, {}), set(), cfg, now)
+        return {"digest_date": digest["date"], "open_cases": len(reg.reevaluations("OPEN")), "captured_claims": len(cards)}
     finally:
         reg.close()
+        inbox.close()
 
 
 def _clusters(now, workdir, cfg, fake):

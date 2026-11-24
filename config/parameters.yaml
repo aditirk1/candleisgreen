@@ -160,6 +160,9 @@ parameters:
   sources.sec.filed_date_fallback_time_local: {basis: external_fact, source: "EDGAR filing-date cutoff of 17:30 ET. Checked on 2026-11-24 that acceptanceDateTime in the submissions API is UTC (index page 18:30:21 ET, API 23:30:21Z)", as_of: "2026-11-24"}
   sources.sec.concepts: {basis: provisional, review: XBRL concepts collected for the scorecard and fundamental factors. Extend per signal}
 
+  research.inbox.auto_fetch_hosts: {basis: safeguard, change_policy: "Aditi adds a host only after reading its terms of use and robots rules"}
+  research.inbox.summary_max_chars: {basis: safeguard, change_policy: "Aditi approves. Keeps summaries short so captured content is never copied in full"}
+  research.inbox.max_file_bytes: {basis: safeguard, change_policy: Aditi approves}
   research.reproduction.min_fraction_of_paper: {basis: provisional, review: "Spec decision criteria for reproductions. At least half the published effect"}
   research.reproduction.interval_z: {basis: provisional, review: Width of the paper's reported interval used by the reproduction rule}
   research.monthly_hac_lag: {basis: provisional, review: Newey-West lag for monthly returns}

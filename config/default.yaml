@@ -203,6 +203,11 @@ models:
     clip: 3.0
 
 research:
+  inbox:
+    # Hosts the inbox may fetch by itself. Empty: every link asks Aditi to paste the passage.
+    auto_fetch_hosts: []
+    summary_max_chars: 600
+    max_file_bytes: 5000000
   reproduction:
     # Spec decision criteria: same sign, and inside the paper's interval or at least half its size.
     min_fraction_of_paper: 0.5

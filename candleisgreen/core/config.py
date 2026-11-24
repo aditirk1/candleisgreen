@@ -283,7 +283,14 @@ class CriteriaConfig(_Section):
     novelty_similarity: float = Field(gt=0, le=1)
 
 
+class InboxConfig(_Section):
+    auto_fetch_hosts: tuple[str, ...] = ()
+    summary_max_chars: int = Field(gt=0)
+    max_file_bytes: int = Field(gt=0)
+
+
 class ResearchConfig(_Section):
+    inbox: InboxConfig
     reproduction: ReproductionConfig
     criteria: CriteriaConfig
     default_half_spread: float = Field(ge=0)

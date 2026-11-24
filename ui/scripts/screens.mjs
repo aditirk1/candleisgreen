@@ -70,6 +70,15 @@ check(await page.getByText("NEEDS DATA: analyst estimates").isVisible(), "missin
 check((await page.getByText("xs_momentum_12_1").count()) > 0 && await page.getByRole("heading", { name: "Re-evaluation cases" }).isVisible(), "re-evaluation case listed");
 check(await page.getByText("Clark-West adjusted mean squared error").isVisible(), "Level B against Level A uses Clark-West");
 check((await page.getByText("keep the champion").count()) === 2, "synthetic comparisons never recommend a switch");
+await page.getByLabel("Capture text").fill("Stocks with high gross profitability earn higher average returns over the next 12 months.");
+await page.getByRole("button", { name: "Capture", exact: true }).click();
+await page.getByText(/Captured\. 1 claims found/).waitFor();
+check(true, "inbox extracts a claim from pasted text");
+await page.getByRole("button", { name: "Link", exact: true }).click();
+await page.getByLabel("Capture link").fill("https://papers.example.org/abstract=1");
+await page.getByRole("button", { name: "Capture", exact: true }).click();
+await page.getByText(/Automatic retrieval is not allowed for papers\.example\.org/).first().waitFor();
+check(true, "inbox asks for input instead of fetching a link");
 await page.screenshot({ path: `${out}/research-terminal.png`, fullPage: true });
 await page.getByRole("button", { name: "Decline" }).click();
 await page.getByText("DECLINED").first().waitFor({ timeout: 5000 }).catch(() => {});

@@ -55,6 +55,13 @@ def _refusal(exc: Exception) -> str:
     return f"Risk service unreachable ({type(exc).__name__})"
 
 
+class CaptureBody(BaseModel):
+    kind: str
+    content: str = ""
+    url: Optional[str] = None
+    filename: Optional[str] = None
+
+
 class LimitBody(BaseModel):
     key: str
     value: Optional[float] = None
@@ -78,6 +85,8 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
     research = ResearchRegistry(workdir / "research.sqlite", audit, shared_across_threads=True)
     news = NewsStore(workdir / "news.sqlite", shared_across_threads=True)
     preds = Predictions(workdir / "teaching.sqlite", shared_across_threads=True)
+    from ..research.inbox import Inbox, InboxError
+    inbox = Inbox(workdir / "inbox.sqlite", cfg.research.inbox, shared_across_threads=True)
 
     def with_store(fn):
         """Short read-only access to the price database. Returns None when it is busy."""
@@ -348,6 +357,17 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
             markets = _yaml.safe_load(rules_path.read_text()).get("exchanges", [])
         return {"sessions": sessions, "fx": rates, "momentum_by_market": evidence, "entitlements": entitlements,
                 "markets": markets}
+
+    @app.get("/api/inbox")
+    def inbox_list():
+        return {"captures": inbox.list(), "auto_fetch_hosts": list(cfg.research.inbox.auto_fetch_hosts)}
+
+    @app.post("/api/inbox")
+    def inbox_add(body: CaptureBody):
+        try:
+            return inbox.capture(body.kind, clock(), body.content, body.url, body.filename)
+        except (InboxError, ValueError) as exc:
+            raise HTTPException(400, str(exc))
 
     @app.get("/api/opportunities")
     def opportunities():

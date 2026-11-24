@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24, **289 passed, 0 failed** in about 121 seconds on Python 3.13.
+Latest full run: 2026-11-24, **296 passed, 0 failed** in about 125 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -228,3 +228,11 @@ A first run found a real bug: two simultaneous requests shared one SQLite connec
 | `tests/test_safety_extras.py` | 8 | Adds the scheduled pre-open check cancelling a halted buy, cancelling every buy when asset status cannot be read, and its slot following New York daylight saving |
 | `tests/test_clusters.py` | 6 | Planted groups recovered, market-only correlation not merged into one cluster, stability score, monthly runs stored and reused, sector fallback when unstable, a name outside a stable clustering blocked at execution while a covered name fills |
 | `tests/test_phase6.py` | updated | The follow-the-sun week now has six jobs a day, including the pre-open check and a clustering computed once and reused |
+
+## Research Capture Inbox, 2026-11-24
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_inbox.py` | 7 | Hash, time, short summary and claims kept, duplicates detected, full text never stored, links ask for input instead of fetching, HTML read and PDF asks for input, commentary not turned into claims, the nightly review takes claims once, the API |
+
+Interface check: 61 Playwright checks passed, now including an inbox capture from pasted text and a link that asks for input.

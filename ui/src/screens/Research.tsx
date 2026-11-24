@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getJSON, post } from "../api";
 import { timeET } from "../format";
+import { InboxPanel } from "./Inbox";
 
 type Experiment = { experiment_id: string; claim_id: string; study_type: string; status: string; plan: Record<string, unknown>; result: Record<string, unknown> | null; registered_at: string; completed_at: string | null; variants: number; selection_note: string };
 type Claim = { claim_id: string; status: string; signal_id: string | null; tier: number | null; card: { title: string; reported_effect?: { monthly_return_pct: number; t_stat: number; sample: number[] }; replication_quality_in_source?: string } };
@@ -37,6 +38,7 @@ export function ResearchScreen({ tick, focus }: { tick: number; focus: string | 
   async function decide(id: string, verb: "approve" | "decline") { await post(`/api/promotions/${id}/${verb}`); getJSON<Overview>("/api/research").then(setData); }
   return (
     <>
+      <InboxPanel tick={tick} />
       <div className="grid2">
         <section className="panel"><h2>Daily research digest {d ? d.date : ""}</h2>
           {!d ? <p className="muted">No digest yet</p> : (<table><tbody>
