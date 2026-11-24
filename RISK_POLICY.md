@@ -87,7 +87,16 @@ The system may raise a signal's tier up to 4 on recorded evidence. A promotion a
 | New experiments | System, automatically | Sandbox only, no capital |
 | Model code changes | Aditi or the coding model, through Git | Full test suite must pass |
 
-The 24-hour loosening delay and the approval flow are planned. Today the only way to change a limit is to edit the config file through Git.
+The risk service owns limit changes (`candleisgreen/risk/limits.py`). The config file holds the base values and the service keeps active changes in its own state directory.
+
+- Only `user:aditi` can request or confirm a change. Any other actor is refused.
+- Every numeric limit is a ceiling, so a smaller value is a tightening and applies at once.
+- A larger value waits in `pending` until `risk.loosening_delay_hours` has passed, then needs a second confirmation from Aditi.
+- Fractional limits cannot exceed 1. Unknown keys and nonpositive values are refused.
+- Each request and confirmation is written to the risk service's audit log.
+- The workstation's Audit and Rules screen shows effective, base and pending values and sends requests through the risk service. It cannot write limits itself.
+
+Pre-open check (`candleisgreen/preopen.py`): before the execution window, buy proposals still proposed or approved are cancelled when the instrument is halted, has a corporate action effective after the decision and by the session, or filed an 8-K since the decision. The check only cancels. It never adds or enlarges an order.
 
 ## 7. Operating modes
 

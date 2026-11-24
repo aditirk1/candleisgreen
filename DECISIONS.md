@@ -65,3 +65,7 @@ Choices made where the spec was silent, or where the review changed it. Newest l
 | D-059 | 2026-11-24 | FX comes from FRED's public CSV endpoint, which needs no key. The H.10 series are public domain with citation requested. A missing rate is never filled | Free, official, and the spec's missing-FX failure fixture |
 | D-060 | 2026-11-24 | JKP fixtures are committed with attribution under CC BY-NC 4.0, and results derived from them are tagged and research only | Noncommercial sharing with attribution is allowed. Trading use stays unverified (QUESTIONS Q3) |
 | D-061 | 2026-11-24 | Scheduled catch-up uses the NYSE calendar from the rule table, so holidays are skipped rather than recorded as closed days | Cleaner completeness records |
+| D-062 | 2026-11-24 | Hard-limit changes live in the risk service. Tightening applies now. Loosening waits `risk.loosening_delay_hours` and needs Aditi's second confirmation. Only `user:aditi` can act | Spec Who can change what. The workstation can only ask the risk service |
+| D-063 | 2026-11-24 | The pre-open check only cancels buys (halt, corporate action, 8-K since the decision) and never adds orders | Spec Phase 2 pre-open recheck. A failed recheck must reduce risk, never increase it |
+| D-064 | 2026-11-24 | Opportunities shows expected return as NOT AVAILABLE until a model is calibrated | Spec principle 8. No invented numbers |
+| D-065 | 2026-11-24 | Settings shows only whether each credential is set, never its value | Secrets come from environment variables only |

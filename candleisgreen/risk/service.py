@@ -21,6 +21,7 @@ from ..core.config import AppConfig, load_config
 from ..core.schemas import OrderIntent, RiskContext
 from ..core.timeutil import utc_now
 from .engine import evaluate, evaluate_portfolio, limits_hash
+from .limits import LimitBook, LimitChangeError
 
 ALLOWED_DISENGAGE_ACTORS = ("user:aditi",)
 
@@ -33,6 +34,7 @@ class RiskState:
         self.path = self.dir / "kill_switch.json"
         self.lock = threading.Lock()
         self.audit = AuditLog(self.dir / "risk_audit.sqlite")
+        self.limits = LimitBook(self.dir, cfg.risk.hard_limits, cfg.risk.loosening_delay_hours)
 
     def kill_switch(self) -> bool:
         if not self.path.exists():
@@ -54,7 +56,6 @@ class RiskState:
 
 
 def make_handler(state: RiskState):
-    limits = state.cfg.risk.hard_limits
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):  # quiet
@@ -74,7 +75,10 @@ def make_handler(state: RiskState):
 
         def do_GET(self):
             if self.path == "/health":
-                self._send(200, {"ok": True, "limits_hash": limits_hash(limits), "kill_switch": state.kill_switch()})
+                self._send(200, {"ok": True, "limits_hash": limits_hash(state.limits.effective()),
+                                 "kill_switch": state.kill_switch()})
+            elif self.path == "/limits":
+                self._send(200, state.limits.view())
             else:
                 self._send(404, {"error": "not found"})
 
@@ -84,17 +88,29 @@ def make_handler(state: RiskState):
                 if self.path == "/evaluate":
                     intent = OrderIntent.model_validate(body["intent"])
                     ctx = RiskContext.model_validate({**body["context"], "kill_switch_engaged": state.kill_switch()})
-                    self._send(200, {"decision": evaluate(intent, ctx, limits).model_dump(mode="json")})
+                    self._send(200, {"decision": evaluate(intent, ctx, state.limits.effective()).model_dump(mode="json")})
                 elif self.path == "/evaluate-book":
-                    reasons = evaluate_portfolio(body["weights"], body["clusters"], limits, body.get("sectors"),
+                    reasons = evaluate_portfolio(body["weights"], body["clusters"], state.limits.effective(), body.get("sectors"),
                                                  body.get("sector_cap"))
                     self._send(200, {"reasons": list(reasons)})
+                elif self.path == "/limits/request":
+                    out = state.limits.request(str(body["key"]), float(body["value"]), str(body.get("actor", "")), utc_now())
+                    state.audit.append(event_type="limit_change_requested", entity_id=str(body["key"]), payload=out,
+                                       actor=str(body.get("actor", "")), strategy_version="risk", event_time=utc_now(),
+                                       received_time=utc_now())
+                    self._send(200, out)
+                elif self.path == "/limits/confirm":
+                    out = state.limits.confirm(str(body["key"]), str(body.get("actor", "")), utc_now())
+                    state.audit.append(event_type="limit_change_confirmed", entity_id=str(body["key"]), payload=out,
+                                       actor=str(body.get("actor", "")), strategy_version="risk", event_time=utc_now(),
+                                       received_time=utc_now())
+                    self._send(200, out)
                 elif self.path == "/kill-switch":
                     state.set_kill_switch(bool(body["engaged"]), str(body.get("actor", "")))
                     self._send(200, {"kill_switch": state.kill_switch()})
                 else:
                     self._send(404, {"error": "not found"})
-            except PermissionError as exc:
+            except (PermissionError, LimitChangeError) as exc:
                 self._send(403, {"error": str(exc)})
             except Exception as exc:  # malformed input is refused, never approved
                 self._send(400, {"error": f"{type(exc).__name__}: {exc}"})

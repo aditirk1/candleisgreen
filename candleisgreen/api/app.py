@@ -42,6 +42,11 @@ class RejectBody(BaseModel):
     reason: str = "rejected by user"
 
 
+class LimitBody(BaseModel):
+    key: str
+    value: Optional[float] = None
+
+
 class PredictionBody(BaseModel):
     symbol: str
     direction: str
@@ -323,6 +328,104 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
             markets = _yaml.safe_load(rules_path.read_text()).get("exchanges", [])
         return {"sessions": sessions, "fx": rates, "momentum_by_market": evidence, "entitlements": entitlements,
                 "markets": markets}
+
+    @app.get("/api/opportunities")
+    def opportunities():
+        from ..models.registry import load_models
+        props = journal.proposals()
+        latest = max((p.session_date for p in props), default=None)
+        models = load_models()
+        rows = []
+        for p in props:
+            if p.session_date != latest:
+                continue
+            try:
+                entry = models.get(p.model_id)
+                tier = entry.tier
+            except KeyError:
+                tier = None
+            rows.append({"proposal_id": p.proposal_id, "symbol": p.symbol, "side": p.side, "quantity": p.quantity,
+                         "signal_strength": p.signal_strength, "expected_return": "NOT AVAILABLE. The model is not calibrated",
+                         "entry": "Limit order priced from a fresh quote at execution", "model": f"{p.model_id} {p.model_version}",
+                         "tier": tier, "status": p.status, "risk": p.reason.split(chr(10))[0] if p.reason else ""})
+        return {"session_date": latest, "venue": venue, "rows": rows}
+
+    @app.get("/api/markets")
+    def markets(symbol: Optional[str] = None):
+        def run(store, master):
+            insts = []
+            for i in master.instruments():
+                syms = master.symbols(i["instrument_id"])
+                insts.append({"instrument_id": i["instrument_id"], "symbol": syms[-1] if syms else i["instrument_id"],
+                              "name": i["name"], "type": i["security_type"], "type_inferred": i["type_inferred"],
+                              "tag": master.tag(i["instrument_id"], cfg.markets.us_exchanges),
+                              "sector": master.sector_at(i["instrument_id"], clock()),
+                              "status": master.status(i["instrument_id"]) or "unknown"})
+            sel = next((x for x in insts if x["symbol"] == (symbol or "").upper()), insts[0] if insts else None)
+            history = []
+            if sel:
+                history = [{"date": o.event_time.date().isoformat(), "close": o.value, "vendor": o.vendor}
+                           for o in store.as_of(clock()).series(sel["instrument_id"], "close")[-250:]]
+            run_rec = research.latest_run() or {}
+            score = next((s["score"] for s in run_rec.get("scores", []) if sel and s["symbol"] == sel["symbol"]), None)
+            return {"instruments": insts, "selected": sel, "history": history, "composite_score": score}
+        return with_store(run) or {"status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
+
+    @app.get("/api/backtests")
+    def backtests():
+        run_rec = research.latest_run() or {}
+        rows = [{"signal_id": s["signal_id"], "platform": s.get("platform"), "data_labels": s.get("data_labels"),
+                 "record_type": s.get("record_type"), "economic": s["scores"]["economic"]} for s in run_rec.get("signals", [])]
+        return {"trial_count": research.variant_count(), "rows": rows,
+                "method": "Walk-forward research portfolios, costs from the cost model, economic test at double costs"}
+
+    @app.get("/api/experts")
+    def experts():
+        from ..core.licenses import load_licenses
+        lic = load_licenses()
+        sources = [{"license": k, "description": v.description, "research": v.research.value,
+                    "paper_trading": v.paper_trading.value, "note": v.note} for k, v in lic.licenses.items()]
+        return {"sources": sources, "practitioners": [],
+                "practitioner_note": "NOT AVAILABLE. No practitioner has scored claims yet. A domain needs 30 before it can become a signal"}
+
+    @app.get("/api/audit")
+    def audit_view(limit: int = 200):
+        recs = audit.records()[-limit:]
+        try:
+            limits = risk._call("GET", "/limits")
+        except Exception:
+            limits = None
+        from ..core.parameters import load_registry
+        reg = load_registry()
+        params = [{"path": p, "basis": v.basis.value, "label": v.label, "note": v.review or v.change_policy or v.source}
+                  for p, v in reg.parameters.items()]
+        return {"chain_ok": audit.verify() is None, "records": [
+            {"seq": r["seq"], "time": r["event_time_utc"], "actor": r["actor"], "event": r["event_type"], "entity": r["entity_id"]}
+            for r in reversed(recs)], "limits": limits, "parameters": params}
+
+    @app.post("/api/limits/request")
+    def limit_request(body: LimitBody):
+        try:
+            return risk._call("POST", "/limits/request", {"key": body.key, "value": body.value, "actor": USER})
+        except Exception as exc:
+            raise HTTPException(400, f"risk service refused ({type(exc).__name__})")
+
+    @app.post("/api/limits/confirm")
+    def limit_confirm(body: LimitBody):
+        try:
+            return risk._call("POST", "/limits/confirm", {"key": body.key, "actor": USER})
+        except Exception as exc:
+            raise HTTPException(400, f"risk service refused ({type(exc).__name__})")
+
+    @app.get("/api/settings")
+    def settings():
+        import os
+        creds = [{"name": n, "purpose": p, "status": "SET" if os.environ.get(n) else "NOT SET"} for n, p in (
+            ("APCA_API_KEY_ID", "Alpaca paper key ID"), ("APCA_API_SECRET_KEY", "Alpaca paper secret"),
+            ("SEC_USER_AGENT", "SEC contact for EDGAR requests"))]
+        return {"mode": cfg.execution.mode, "venue": venue, "live_trading": "Not built. Every live route rejects orders",
+                "credentials": creds, "monthly_cost_usd": 0, "config_version": cfg.config_version,
+                "providers": [f.name for f in cfg.news.feeds] + ["alpaca free plan", "sec edgar", "fred", "osap", "jkp"]}
 
     @app.post("/api/proposals/{pid}/approve")
     def approve(pid: str):

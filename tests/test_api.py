@@ -58,3 +58,34 @@ def test_replay_and_predictions_through_the_api(tmp_path):
     assert later["predictions"][0]["outcome"] in (0, 1) and later["calibration"]["resolved"] == 1
     why = api.get("/api/reasoning", params={"symbol": "DNCO"}).json()
     assert why["why_not"] and "not positive" in why["why_not"]
+
+
+def test_workstation_screens_through_the_api(tmp_path):
+    env = build_env(tmp_path, "manual_simulation")
+    run_decision(DECISION_DATE, SESSION_DATE, env.store, env.master, env.journal, env.cfg, DECIDE_NOW)
+    env.store.close()
+    with risk_service(tmp_path / "risk") as (risk, _):
+        api = TestClient(create_app(tmp_path, risk.base_url, env.cfg, clock=lambda: EXEC_NOW))
+        opp = api.get("/api/opportunities").json()
+        assert opp["session_date"] == SESSION_DATE.isoformat() and opp["rows"]
+        assert all(r["expected_return"].startswith("NOT AVAILABLE") for r in opp["rows"])
+        mk = api.get("/api/markets", params={"symbol": "UPCO"}).json()
+        assert mk["selected"]["symbol"] == "UPCO" and mk["history"]
+        assert max(h["date"] for h in mk["history"]) <= EXEC_NOW.date().isoformat()
+        assert api.get("/api/backtests").json()["rows"] == []
+        ex = api.get("/api/experts").json()
+        assert ex["sources"] and ex["practitioner_note"].startswith("NOT AVAILABLE")
+        au = api.get("/api/audit").json()
+        assert au["chain_ok"] and au["records"] and au["parameters"]
+        assert au["limits"]["effective"]
+        key = "max_position_pct_equity"
+        assert key in au["limits"]["editable"]
+        current = au["limits"]["effective"][key]
+        changed = api.post("/api/limits/request", json={"key": key, "value": current * 0.5}).json()
+        assert changed["status"] == "APPLIED"
+        waiting = api.post("/api/limits/request", json={"key": key, "value": current}).json()
+        assert waiting["status"] == "WAITING"
+        assert api.post("/api/limits/confirm", json={"key": key}).status_code == 400
+        st = api.get("/api/settings").json()
+        assert st["monthly_cost_usd"] == 0 and {c["name"] for c in st["credentials"]} >= {"APCA_API_KEY_ID"}
+        assert all(c["status"] in ("SET", "NOT SET") for c in st["credentials"])
