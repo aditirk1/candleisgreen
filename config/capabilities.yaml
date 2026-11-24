@@ -41,7 +41,7 @@ capabilities:
     reason: No free source of historical or real-time options data
   analyst_consensus_estimates:
     status: not_available
-    reason: No free source of timestamped estimates. Earnings beat or miss is never shown
+    reason: No free source of timestamped estimates, so reported results are never compared with a consensus
   licensed_news:
     status: not_available
     reason: Lawful RSS feeds only

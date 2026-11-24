@@ -76,6 +76,13 @@ def build(workdir: Path) -> None:
     rec2 = datetime(2026, 11, 19, 21, 20, tzinfo=UTC)
     recorder.record_session(d2, AlpacaData(FakeAlpacaTransport(now=rec2), cfg.sources.alpaca), store, master, rec2, cfg)
     run_decision(d2, s2, store, master, journal, cfg, datetime(2026, 11, 19, 21, 31, tzinfo=UTC))
+    # Real public SEC data for one issuer, from the recorded fixture, for the Earnings screen.
+    from .sources import sec
+
+    fixtures = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "sec"
+    if fixtures.exists():
+        sec.ingest_issuer(sec.SecClient(sec.FixtureSecTransport(fixtures), cfg.sources.sec), "320193", "AAPL",
+                          store, master, rec2, cfg)
     write_heartbeat(workdir, "record", "ok", rec2, {"sessions": [d2.isoformat()], "synthetic": True})
     store.close()
 

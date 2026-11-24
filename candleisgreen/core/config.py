@@ -222,9 +222,20 @@ class RecorderConfig(_Section):
     heartbeat_max_age_hours: float = Field(gt=0)
 
 
+class SecSourceConfig(_Section):
+    data_base_url: str
+    tickers_url: str
+    archives_base_url: str
+    max_requests_per_second: float = Field(gt=0)
+    user_agent_env: str
+    filed_date_fallback_time_local: str
+    concepts: tuple[str, ...]
+
+
 class SourcesConfig(_Section):
     alpaca: AlpacaSourceConfig
     recorder: RecorderConfig
+    sec: SecSourceConfig
 
 
 class TsMomentumConfig(_Section):

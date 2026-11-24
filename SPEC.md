@@ -405,7 +405,7 @@ The forward record is survivorship-aware, not automatically survivorship-free: i
 | Real-time consolidated quotes | Not available | The free real-time feed covers IEX only |
 | Intraday trading | Not available | No free real-time consolidated data |
 | Options data and options flow | Not available | No free source |
-| Analyst consensus estimates | Not available | No free timestamped source, so earnings beat or miss is never shown |
+| Analyst consensus estimates | Not available | No free timestamped source, so reported results are never compared with a consensus |
 | Licensed news | Not available | Lawful RSS only |
 | Non-US execution | Not available | Non-US market data needs monthly fees |
 | LLM features | Limited | Optional, off by default, local open-weight models only |

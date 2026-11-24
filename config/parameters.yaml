@@ -145,3 +145,11 @@ parameters:
   sizing.target_weight_per_name: {basis: provisional, review: Phase 1 sizing for a single model. Replaced by the Composite optimizer}
   sizing.max_names: {basis: provisional, review: Phase 1 sizing for a single model}
   sizing.min_trade_value_usd: {basis: provisional, review: Skips trades too small to matter}
+
+  sources.sec.data_base_url: {basis: external_fact, source: "SEC EDGAR APIs, https://www.sec.gov/search-filings/edgar-application-programming-interfaces", as_of: "2026-11-24"}
+  sources.sec.tickers_url: {basis: external_fact, source: SEC company ticker file, as_of: "2026-11-24"}
+  sources.sec.archives_base_url: {basis: external_fact, source: SEC EDGAR archive paths, as_of: "2026-11-24"}
+  sources.sec.max_requests_per_second: {basis: external_fact, source: "SEC fair access, https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data", as_of: "2026-11-17"}
+  sources.sec.user_agent_env: {basis: safeguard, change_policy: Contact details stay in the environment and never enter the repository}
+  sources.sec.filed_date_fallback_time_local: {basis: external_fact, source: "EDGAR filing-date cutoff of 17:30 ET. Checked on 2026-11-24 that acceptanceDateTime in the submissions API is UTC (index page 18:30:21 ET, API 23:30:21Z)", as_of: "2026-11-24"}
+  sources.sec.concepts: {basis: provisional, review: XBRL concepts collected for the scorecard and fundamental factors. Extend per signal}

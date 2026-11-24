@@ -26,4 +26,6 @@ export type Execution = {
   approval_queue: OrderRow[]; orders: OrderRow[];
   fills: { fill_id: string; instrument_id: string; symbol: string; side: string; quantity: number; price: number; filled_at: string; slippage_bps: number | null; venue: string }[];
   reconciliation: { status: string; reason: string };
+  execution_quality: { window: string; fills: number; mean_bps: number; interval_95: number[] | null }[];
+  execution_quality_note: string;
 };

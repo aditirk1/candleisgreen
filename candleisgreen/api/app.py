@@ -17,6 +17,9 @@ from pydantic import BaseModel
 from ..core.audit import AuditLog
 from ..core.config import AppConfig, load_config
 from ..core.timeutil import utc_now
+from ..data.pit_store import PointInTimeStore
+from ..earnings import consensus_label, scorecard
+from ..execution_quality import by_window
 from ..jobs import heartbeat_stale, read_heartbeat
 from ..journal import Journal
 from ..risk.client import RiskClient
@@ -119,8 +122,45 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
             "orders": [row(p) for p in session if p.status != "proposed"],
             "fills": [{**f, "symbol": journal.marks().get(f["instrument_id"], {}).get("symbol", f["instrument_id"])}
                       for f in journal.fills()[-50:]],
-            "reconciliation": {"status": "NOT AVAILABLE", "reason": "Broker reconciliation arrives with the paper adapter in Phase 2"},
+            "reconciliation": recon(),
+            "execution_quality": [{"window": w.window, "fills": w.fills, "mean_bps": w.mean_bps,
+                                   "interval_95": None if w.fills < 2 else list(w.interval_95)}
+                                  for w in by_window(journal.fills(), 30)],
+            "execution_quality_note": "Paper and simulated fills contain no market impact, so this measures spread and quote quality only",
         }
+
+    def recon() -> dict:
+        last = journal.last_reconciliation()
+        if last is None:
+            return {"status": "NOT AVAILABLE", "reason": "No reconciliation has run yet"}
+        return {"status": "MATCHED" if last else "MISMATCH",
+                "reason": "Broker positions match the journal" if last else "New orders are blocked until positions match"}
+
+    @app.get("/api/earnings")
+    def earnings(instrument_id: Optional[str] = None):
+        try:
+            store = PointInTimeStore(workdir / "pit.duckdb", read_only=True)
+        except Exception as exc:
+            return {"status": "NOT AVAILABLE", "reason": f"Filing data is busy or missing ({type(exc).__name__})",
+                    "issuers": [], "rows": []}
+        try:
+            conn = store.connection
+            issuers = [dict(zip(("cik", "instrument_id", "ticker"), r)) for r in
+                       conn.execute("SELECT cik, instrument_id, ticker FROM issuers ORDER BY ticker").fetchall()]
+            for i in issuers:
+                row = conn.execute("SELECT industry_ff12 FROM classifications WHERE instrument_id = ? "
+                                   "ORDER BY classified_at DESC LIMIT 1", [i["instrument_id"]]).fetchall()
+                i["industry"] = row[0][0] if row else "UNKNOWN"
+            target = instrument_id or (issuers[0]["instrument_id"] if issuers else None)
+            rows = [] if target is None else [
+                {"period_end": r.period_end.isoformat(), "eps_diluted": r.eps_diluted, "eps_yoy_change": r.eps_yoy_change,
+                 "revenue": r.revenue, "revenue_yoy_pct": r.revenue_yoy_pct, "filed_at": r.filed_at.isoformat(),
+                 "source": r.source, "vs_consensus": r.vs_consensus_label}
+                for r in scorecard(store, target, clock())]
+            return {"status": "OK", "issuers": issuers, "instrument_id": target, "rows": rows,
+                    "consensus": consensus_label()}
+        finally:
+            store.close()
 
     @app.post("/api/proposals/{pid}/approve")
     def approve(pid: str):

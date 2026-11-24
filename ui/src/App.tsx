@@ -3,8 +3,9 @@ import { getJSON, post, Status } from "./api";
 import { timeET } from "./format";
 import { OverviewScreen } from "./screens/Overview";
 import { ExecutionScreen } from "./screens/Execution";
+import { EarningsScreen } from "./screens/Earnings";
 
-type Screen = "overview" | "execution";
+type Screen = "overview" | "execution" | "earnings";
 
 const MODE_LABELS: Record<string, string> = {
   research: "Research", teaching: "Teaching and market watch", manual_simulation: "Manual simulation",
@@ -13,7 +14,7 @@ const MODE_LABELS: Record<string, string> = {
 type Theme = "terminal" | "glass";
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>(() => (location.hash === "#execution" ? "execution" : "overview"));
+  const [screen, setScreen] = useState<Screen>(() => (["#execution", "#earnings"].includes(location.hash) ? (location.hash.slice(1) as Screen) : "overview"));
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("theme") as Theme) || "terminal");
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,9 +58,12 @@ export function App() {
       <nav className="nav">
         <button className={screen === "overview" ? "active" : ""} onClick={() => setScreen("overview")}>Overview</button>
         <button className={screen === "execution" ? "active" : ""} onClick={() => setScreen("execution")}>Execution</button>
+        <button className={screen === "earnings" ? "active" : ""} onClick={() => setScreen("earnings")}>Earnings</button>
       </nav>
       <main>
-        {screen === "overview" ? <OverviewScreen tick={tick} /> : <ExecutionScreen tick={tick} onChange={refresh} />}
+        {screen === "overview" && <OverviewScreen tick={tick} />}
+        {screen === "execution" && <ExecutionScreen tick={tick} onChange={refresh} />}
+        {screen === "earnings" && <EarningsScreen tick={tick} />}
       </main>
     </>
   );

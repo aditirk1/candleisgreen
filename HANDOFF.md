@@ -1,6 +1,6 @@
 # HANDOFF.md
 
-Last updated: 2026-11-24 00:45 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
+Last updated: 2026-11-24 00:56 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
 
 ## Timeline note
 
@@ -18,7 +18,9 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 
 7. **Phase 1, US paper vertical slice.** Acceptance test passed. Survivorship-aware recorder against an offline synthetic Alpaca market, split and dividend adjustment, decision-time universe, the Level A trend baseline (Tier 1, simulator only), an audited journal, the risk service as its own process owning the kill switch, the decision and next-session executor with limit orders, scheduled jobs with heartbeat and fallback, the workstation API, and the Overview and Execution screens in React. Screens verified with Playwright.
 
-Full suite: 203 passed. Details in `TEST_RESULTS.md`.
+8. **Phase 2, broker paper and filings.** Acceptance test passed. Alpaca paper adapter with duplicate safety and reconciliation that fails closed, SEC filings and XBRL facts timestamped at acceptance with restatements as vintages, Fama-French 12 classifications with mapping version and date, the earnings scorecard with no beat or miss, slippage by window, and the Earnings screen.
+
+Full suite: 230 passed. Details in `TEST_RESULTS.md`.
 
 ## Half done
 
@@ -56,7 +58,9 @@ make phase0
 
 ## Exact next step
 
-Phase 2 (broker paper and filings). First atomic task: `candleisgreen/broker/alpaca_paper.py`, the Alpaca paper adapter behind the existing `BrokerAdapter` interface, tested against an offline fake of the paper trading API. It submits limit orders with the stable client order ID, queries open orders before any retry after an uncertain response, and reconciles positions and fills. Acceptance: a duplicate submission is not repeated. Then SEC filing timestamps and XBRL facts with the `filed` date, SIC classifications with mapping versions, and the earnings scorecard with no beat or miss.
+Phase 3 (research engine and the first Composite). First atomic task: `candleisgreen/research/registry.py`, the experiment registry and claim cards in SQLite, with pre-registered test plans, every variant counted, negative results stored, and `ParameterRegistry.assert_tunable` called on every varied parameter. Then the academic portfolio loader for Open Source Asset Pricing and Kenneth French returns, two factor reproductions (one expected to pass, one expected to fail), and Composite v0 over three Level A signals with the frozen-weight benchmark, wired to the Composite screen.
+
+Live keys needed before live runs: `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY` (paper), `SEC_USER_AGENT` (a name and contact email).
 
 Commands:
 

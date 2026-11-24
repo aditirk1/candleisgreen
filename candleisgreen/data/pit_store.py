@@ -34,7 +34,7 @@ _TIME_COLS = ("event_time", "published_at", "vendor_available_at", "ingested_at"
 _COLUMNS = (
     "observation_id", "instrument_id", "vendor", "raw_symbol", "exchange", "field", "value",
     *_TIME_COLS, "timezone", "currency", "adjustment_method", "vintage", "missing_flag",
-    "license", "collection_mode",
+    "license", "collection_mode", "source_ref",
 )
 
 _ARROW_SCHEMA = pa.schema([
@@ -43,6 +43,7 @@ _ARROW_SCHEMA = pa.schema([
     *[(name, pa.int64()) for name in _TIME_COLS],
     ("timezone", pa.string()), ("currency", pa.string()), ("adjustment_method", pa.string()),
     ("vintage", pa.int32()), ("missing_flag", pa.bool_()), ("license", pa.string()), ("collection_mode", pa.string()),
+    ("source_ref", pa.string()),
 ])
 
 _DDL = """
@@ -54,7 +55,7 @@ CREATE TABLE IF NOT EXISTS observations (
     ingested_at BIGINT NOT NULL, first_usable_at BIGINT NOT NULL,
     timezone VARCHAR NOT NULL, currency VARCHAR NOT NULL, adjustment_method VARCHAR NOT NULL,
     vintage INTEGER NOT NULL, missing_flag BOOLEAN NOT NULL, license VARCHAR NOT NULL,
-    collection_mode VARCHAR NOT NULL
+    collection_mode VARCHAR NOT NULL, source_ref VARCHAR
 )
 """
 
@@ -123,9 +124,10 @@ class AsOfView:
 
 
 class PointInTimeStore:
-    def __init__(self, path: str | Path = ":memory:"):
-        self._conn = duckdb.connect(str(path))
-        self._conn.execute(_DDL).fetchall()
+    def __init__(self, path: str | Path = ":memory:", read_only: bool = False):
+        self._conn = duckdb.connect(str(path), read_only=read_only)
+        if not read_only:
+            self._conn.execute(_DDL).fetchall()
 
     def close(self) -> None:
         self._conn.close()

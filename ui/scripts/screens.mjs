@@ -42,6 +42,15 @@ check(await page.getByText("ON. New orders are blocked").isVisible(), "kill swit
 await page.getByRole("button", { name: "THEME GLASS" }).click();
 await page.screenshot({ path: `${out}/execution-glass-kill.png`, fullPage: true });
 
+await page.getByRole("button", { name: "THEME TERMINAL" }).click();
+await page.getByRole("button", { name: "Earnings" }).click();
+await page.getByText("Scorecard, as reported in SEC filings").waitFor();
+check(await page.getByText("BusEq").first().isVisible(), "issuer shows its Fama-French 12 industry");
+check((await page.locator("a[href*='sec.gov/Archives']").count()) > 0, "every scorecard row links to its SEC filing");
+const earningsText = (await page.locator("body").innerText()).toLowerCase();
+check(!earningsText.includes("beat") && !earningsText.includes("miss"), "no beat or miss on the Earnings screen");
+await page.screenshot({ path: `${out}/earnings-terminal.png`, fullPage: true });
+
 const text = await page.locator("body").innerText();
 check(!/[—–;·]/.test(text), "no em dashes, semicolons or middle dots in visible text");
 check(!/manual_simulation|auto_simulation/.test(text), "modes shown in plain words");

@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24 00:42 ET, **203 passed, 0 failed** in about 92 seconds on Python 3.13.
+Latest full run: 2026-11-24 00:55 ET, **230 passed, 0 failed** in about 103 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -149,3 +149,18 @@ Acceptance test: **passed**. Approval, rejection, fill, stale-feed block and kil
 
 - Any live Alpaca call. No paper keys exist in the build environment, so the client ran only against the offline synthetic market (DECISIONS D-033).
 - The Oracle Cloud schedule itself. The heartbeat and fallback logic are tested locally.
+
+## Phase 2, broker paper and filings, 2026-11-24
+
+Acceptance test: **passed**. A duplicate submission is not repeated, every financial figure traces to an SEC filing, and there is no beat or miss without a consensus estimate.
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_phase2_broker.py` | 10 | Limit order with the client ID fills, duplicate submission not repeated, lost response queried not resubmitted, failure before acceptance retried once, two uncertain failures leave the state unknown, resting and partial fills, paper adapter refuses simulation and unapproved orders, reconciliation, paper execution through the executor fills and reconciles without repeats, a reconciliation mismatch blocks every order |
+| `tests/test_phase2_filings.py` | 17 | Every SEC figure has an accession number and filing URL, figures usable only from the acceptance time, a restatement becomes a new vintage, the 17:30 ET fallback, scorecard has no beat or miss and labels consensus NOT AVAILABLE, scorecard shows only what was filed by then, SIC to Fama-French 12 with version and date, eight SIC mapping cases, live SEC transport needs a User-Agent, slippage by window |
+
+SEC fixtures are trimmed real EDGAR responses for Apple, fetched 2026-11-24 (`tests/fixtures/sec/`).
+
+Interface check, 2026-11-24 00:51 ET: all 14 Playwright checks passed, now including the Earnings screen (industry shown, every row links to its filing, no beat or miss).
+
+Not tested: a live Alpaca paper account (no keys) and a live SEC pull with a real User-Agent.

@@ -52,6 +52,7 @@ class Observation(Contract):
     missing_flag: bool
     license: str
     collection_mode: CollectionMode
+    source_ref: Optional[str] = None  # where the value came from, for example an SEC accession number
 
     @model_validator(mode="after")
     def _availability_is_consistent(self) -> "Observation":

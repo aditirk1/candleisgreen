@@ -3,7 +3,7 @@
 # config/parameters.yaml as empirical, safeguard, provisional or external_fact,
 # and that basis decides who may change it and how it is shown.
 # Bump config_version on every edit. The loader rejects unknown keys.
-config_version: "3.2.1"
+config_version: "3.2.2"
 spec_version: "3.2"
 
 time:
@@ -161,6 +161,26 @@ sources:
     run_time_local: "16:20"
     close_time_local: "16:00"
     heartbeat_max_age_hours: 26
+  sec:
+    data_base_url: https://data.sec.gov
+    tickers_url: https://www.sec.gov/files/company_tickers.json
+    archives_base_url: https://www.sec.gov/Archives/edgar/data
+    # SEC fair-access limit. A declared User-Agent with contact details is required, and it
+    # is read from this environment variable, never stored in the repository.
+    max_requests_per_second: 10
+    user_agent_env: SEC_USER_AGENT
+    # When a filing's acceptance time is unknown: EDGAR assigns the filing date to anything
+    # accepted by 17:30 ET, so the value was public by then at the latest.
+    filed_date_fallback_time_local: "17:30"
+    concepts:
+      - us-gaap:EarningsPerShareDiluted
+      - us-gaap:EarningsPerShareBasic
+      - us-gaap:Revenues
+      - us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax
+      - us-gaap:NetIncomeLoss
+      - us-gaap:OperatingIncomeLoss
+      - us-gaap:Assets
+      - us-gaap:StockholdersEquity
 
 models:
   ts_momentum:

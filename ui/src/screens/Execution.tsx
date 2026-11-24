@@ -46,7 +46,16 @@ export function ExecutionScreen({ tick, onChange }: { tick: number; onChange: ()
                   <td className="num">{usd(f.price)}</td><td className="num">{f.slippage_bps === null ? "NOT AVAILABLE" : f.slippage_bps.toFixed(2)}</td><td>{f.venue}</td></tr>))}
               </tbody></table>)}
         </section>
-        <section className="panel"><h2>Reconciliation</h2><p className="na">{data.reconciliation.status}. {data.reconciliation.reason}</p>
+        <section className="panel"><h2>Reconciliation</h2>
+          <p className={data.reconciliation.status === "MISMATCH" ? "loss" : data.reconciliation.status === "MATCHED" ? "" : "na"}>{data.reconciliation.status}. {data.reconciliation.reason}</p>
+          <h2>Slippage by window</h2>
+          {data.execution_quality.length === 0 ? <p className="muted">No fills yet</p> : (
+            <table><thead><tr><th>Window</th><th className="num">Fills</th><th className="num">Mean (bps)</th><th className="num">95% interval (bps)</th></tr></thead>
+              <tbody>{data.execution_quality.map((w) => (
+                <tr key={w.window}><td>{w.window}</td><td className="num">{w.fills}</td><td className="num">{w.mean_bps.toFixed(2)}</td>
+                  <td className="num">{w.interval_95 ? `${w.interval_95[0].toFixed(2)} to ${w.interval_95[1].toFixed(2)}` : "NOT AVAILABLE"}</td></tr>))}
+              </tbody></table>)}
+          <p className="muted">{data.execution_quality_note}</p>
           <h2>Kill switch</h2><p>{data.kill_switch === null ? "NOT AVAILABLE. Risk service unreachable" : data.kill_switch ? "ON. New orders are blocked" : "OFF"}</p>
         </section>
       </div>

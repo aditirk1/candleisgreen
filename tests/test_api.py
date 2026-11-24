@@ -25,7 +25,8 @@ def test_overview_and_execution_through_the_api(tmp_path):
         ex = api.get("/api/execution").json()
         statuses = {o["proposal_id"]: o["status"] for o in ex["orders"]}
         assert statuses[first["proposal_id"]] == "filled" and statuses[second["proposal_id"]] == "rejected"
-        assert ex["fills"] and ex["reconciliation"]["status"] == "NOT AVAILABLE"
+        assert ex["fills"] and ex["reconciliation"]["status"] == "MATCHED"
+        assert ex["execution_quality"] and ex["execution_quality"][0]["fills"] >= 1
         ov = api.get("/api/overview").json()
         assert ov["positions"] and 0 < ov["risk_in_use"]["invested_pct"] < 0.2
         assert api.post("/api/kill-switch", json={"engaged": True}).json()["kill_switch"] is True

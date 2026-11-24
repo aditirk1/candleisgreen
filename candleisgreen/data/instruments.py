@@ -42,6 +42,14 @@ CREATE TABLE IF NOT EXISTS corporate_actions (
     instrument_id VARCHAR, symbol VARCHAR, effective_date DATE, ingested_at BIGINT NOT NULL,
     raw_json VARCHAR NOT NULL
 );
+CREATE TABLE IF NOT EXISTS issuers (
+    cik VARCHAR PRIMARY KEY, instrument_id VARCHAR NOT NULL, ticker VARCHAR, mapped_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS classifications (
+    record_id VARCHAR PRIMARY KEY, instrument_id VARCHAR NOT NULL, cik VARCHAR, sic_code INTEGER,
+    industry_ff12 VARCHAR NOT NULL, status VARCHAR NOT NULL, classified_at BIGINT NOT NULL,
+    source_filing VARCHAR, mapping_version VARCHAR NOT NULL
+);
 CREATE TABLE IF NOT EXISTS completeness (
     record_id VARCHAR PRIMARY KEY, session_date DATE NOT NULL, source VARCHAR NOT NULL,
     session_open BOOLEAN NOT NULL, asset_list_snapshot_taken BOOLEAN NOT NULL,
@@ -149,7 +157,8 @@ class InstrumentMaster:
         return [dict(zip(cols, r)) for r in cur.fetchall()]
 
     def count(self, table: str) -> int:
-        if table not in ("instruments", "symbol_history", "status_history", "corporate_actions", "completeness"):
+        if table not in ("instruments", "symbol_history", "status_history", "corporate_actions", "completeness",
+                         "issuers", "classifications"):
             raise ValueError(table)
         return _first(self.conn.execute(f"SELECT count(*) FROM {table}").fetchall())[0]
 
@@ -190,6 +199,39 @@ class InstrumentMaster:
             args = [instrument_id]
         rows = self.conn.execute(sql + " ORDER BY effective_date", args).fetchall()
         return [{"action_type": r[0], "symbol": r[1], "effective_date": r[2], "raw": json.loads(r[3])} for r in rows]
+
+    # Issuers and classifications -----------------------------------------------------------
+
+    def map_issuer(self, cik: str, ticker: Optional[str], mapped_at: datetime) -> str:
+        """Link an SEC issuer to an instrument. Falls back to a CIK-based ID when no ticker matches."""
+        row = _first(self.conn.execute("SELECT instrument_id FROM issuers WHERE cik = ?", [cik]).fetchall())
+        if row:
+            return row[0]
+        iid = (self.instrument_for_symbol(ticker) if ticker else None) or make_id("inst", {"vendor": "sec", "cik": cik})
+        self._exec("INSERT INTO issuers VALUES (?,?,?,?) ON CONFLICT DO NOTHING",
+                   [cik, iid, ticker, to_micros(ensure_utc(mapped_at))])
+        return iid
+
+    def add_classification(self, instrument_id: str, cik: Optional[str], sic_code: Optional[int], industry: str,
+                           status: str, classified_at: datetime, source_filing: Optional[str], mapping_version: str) -> None:
+        rid = make_id("cls", {"iid": instrument_id, "sic": sic_code, "ind": industry, "status": status,
+                              "at": classified_at, "ver": mapping_version})
+        self._exec("INSERT INTO classifications VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+                   [rid, instrument_id, cik, sic_code, industry, status, to_micros(ensure_utc(classified_at)),
+                    source_filing, mapping_version])
+
+    def sector_at(self, instrument_id: str, when: datetime) -> str:
+        """Industry known at `when`. Before the first classification it is UNKNOWN."""
+        row = _first(self.conn.execute(
+            "SELECT industry_ff12 FROM classifications WHERE instrument_id = ? AND classified_at <= ? "
+            "ORDER BY classified_at DESC LIMIT 1", [instrument_id, to_micros(ensure_utc(when))]).fetchall())
+        return row[0] if row else "UNKNOWN"
+
+    def classifications(self, instrument_id: str) -> list[dict]:
+        cur = self.conn.execute("SELECT * FROM classifications WHERE instrument_id = ? ORDER BY classified_at",
+                                [instrument_id])
+        cols = [c[0] for c in cur.description]
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
 
     # Completeness --------------------------------------------------------------------------
 
