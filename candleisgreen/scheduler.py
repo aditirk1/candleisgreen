@@ -41,6 +41,12 @@ def _macro(now, workdir, cfg, fake):
     return refresh_macro(workdir, now, cfg, fake)
 
 
+def _trials(now, workdir, cfg, fake):
+    from .global_research import refresh_trials
+
+    return refresh_trials(workdir, now, cfg, fake)
+
+
 def _global_factors(now, workdir, cfg, fake):
     from .global_research import refresh_global_factors
 
@@ -89,7 +95,7 @@ JOBS: dict[str, list[tuple[str, Job]]] = {
     "asia_pacific": [("global_factors", _global_factors)],
     "europe": [("fx", _fx), ("macro", _macro)],
     "us": [("record", _record)],
-    "overnight_review": [("review", _review), ("clusters", _clusters)],
+    "overnight_review": [("review", _review), ("clusters", _clusters), ("trials", _trials)],
 }
 
 

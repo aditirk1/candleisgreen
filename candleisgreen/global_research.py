@@ -69,6 +69,25 @@ def refresh_macro(workdir: Path, now: datetime, cfg, fake: bool) -> dict:
     return {"status": "OK", "added": counts, "synthetic": fake}
 
 
+TRIALS_FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "trials"
+
+
+def refresh_trials(workdir: Path, now: datetime, cfg, fake: bool) -> dict:
+    """Forward snapshot of clinical trials for the research-only biotech universe."""
+    from .data.instruments import InstrumentMaster
+    from .data.pit_store import PointInTimeStore
+    from .sources import trials
+
+    transport = trials.FixtureTrialsTransport(TRIALS_FIXTURES) if fake else trials.HttpTrialsTransport(cfg.sources.trials)
+    store = PointInTimeStore(workdir / "pit.duckdb")
+    try:
+        out = trials.record(store.connection, transport, InstrumentMaster(store.connection),
+                            tuple(cfg.universe.research_universes["biotech"].sic_codes), cfg.sources.trials, now)
+    finally:
+        store.close()
+    return {**out, "synthetic": fake}
+
+
 def macro_view(store, cfg, when: datetime) -> list[dict]:
     """Latest value known at `when` for each configured series, with its vintage and release time."""
     out = []

@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24, **301 passed, 0 failed** in about 125 seconds on Python 3.13.
+Latest full run: 2026-11-24, **306 passed, 0 failed** in about 122 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -244,3 +244,11 @@ Interface check: 61 Playwright checks passed, now including an inbox capture fro
 | `tests/test_macro.py` | 5 | Every vintage stored once, reads as known then (first release, then revision, nothing before release, 17:00 New York cutoff), non-numeric values missing and never filled, paging, NOT AVAILABLE without a key, the Global view |
 
 The fixture is constructed in the documented shape with invented values. Interface check: 62 Playwright checks passed.
+
+## Clinical trials, 2026-11-24
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_trials.py` | 5 | Name normalization, only exact lead-sponsor matches linked with paging followed, unchanged content not stored twice, non-biotech names not queried, changes become events, reads as known then, a revert recorded, trial data refused for paper trading |
+
+The follow-the-sun week now runs eight jobs a day. Interface check: 62 Playwright checks passed.

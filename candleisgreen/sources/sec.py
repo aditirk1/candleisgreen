@@ -168,6 +168,7 @@ def ingest_issuer(client: SecClient, cik: str, ticker: Optional[str], store, mas
     filings = filing_index(subs)
     iid = master.map_issuer(cik10(cik), ticker or (subs.get("tickers") or [None])[0], now)
     added = store.add(facts_to_observations(cik, iid, facts, filings, now, cfg))
+    master.add_entity_name(iid, subs.get("name") or "", "sec_submissions", now)
     version, industries = load_ff12()
     industry, status = ff12_for(subs.get("sic"), industries)
     latest = next(iter(filings), None)

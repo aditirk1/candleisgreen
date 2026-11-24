@@ -410,7 +410,11 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
                            for o in store.as_of(clock()).series(sel["instrument_id"], "close")[-250:]]
             run_rec = research.latest_run() or {}
             score = next((s["score"] for s in run_rec.get("scores", []) if sel and s["symbol"] == sel["symbol"]), None)
-            return {"instruments": insts, "selected": sel, "history": history, "composite_score": score}
+            from ..sources.trials import as_of as trials_as_of
+            trial_rows = trials_as_of(store.connection, clock(), sel["instrument_id"]) if sel else []
+            return {"instruments": insts, "selected": sel, "history": history, "composite_score": score,
+                    "trials": [{k: t[k] for k in ("nct_id", "title", "overall_status", "phases", "primary_completion",
+                                                   "primary_completion_type", "enrollment", "observed_at")} for t in trial_rows]}
         return with_store(run) or {"status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
 
     @app.get("/api/backtests")

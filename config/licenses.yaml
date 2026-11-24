@@ -27,6 +27,11 @@ licenses:
     research: permitted
     paper_trading: unverified
     note: A captured claim must be tested on licensed data before anything trades on it
+  clinicaltrials_gov:
+    description: ClinicalTrials.gov registry records from the National Library of Medicine
+    research: permitted
+    paper_trading: unverified
+    note: The terms page did not render for automated reading on 2026-11-24. Read it before any published or trading use. Biotech names are research only
   alpaca_market_data:
     description: Alpaca free market data for the account holder
     research: permitted

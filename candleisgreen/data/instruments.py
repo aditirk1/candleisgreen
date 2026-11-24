@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS corporate_actions (
 CREATE TABLE IF NOT EXISTS issuers (
     cik VARCHAR PRIMARY KEY, instrument_id VARCHAR NOT NULL, ticker VARCHAR, mapped_at BIGINT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS entity_names (
+    instrument_id VARCHAR NOT NULL, name VARCHAR NOT NULL, source VARCHAR NOT NULL, observed_at BIGINT NOT NULL,
+    PRIMARY KEY (instrument_id, name, source)
+);
 CREATE TABLE IF NOT EXISTS classifications (
     record_id VARCHAR PRIMARY KEY, instrument_id VARCHAR NOT NULL, cik VARCHAR, sic_code INTEGER,
     industry_ff12 VARCHAR NOT NULL, status VARCHAR NOT NULL, classified_at BIGINT NOT NULL,
@@ -232,6 +236,22 @@ class InstrumentMaster:
         self._exec("INSERT INTO issuers VALUES (?,?,?,?) ON CONFLICT DO NOTHING",
                    [cik, iid, ticker, to_micros(ensure_utc(mapped_at))])
         return iid
+
+    def add_entity_name(self, instrument_id: str, name: str, source: str, observed_at: datetime) -> None:
+        """A legal or registered name from a named source, for example the SEC submissions file."""
+        if name and name.strip():
+            self._exec("INSERT INTO entity_names VALUES (?,?,?,?) ON CONFLICT DO NOTHING",
+                       [instrument_id, name.strip(), source, to_micros(ensure_utc(observed_at))])
+
+    def entity_names(self, instrument_id: Optional[str] = None) -> list[tuple[str, str]]:
+        """(instrument_id, name) pairs. Empty on a store created before the table existed."""
+        try:
+            sql, args = "SELECT instrument_id, name FROM entity_names", []
+            if instrument_id:
+                sql, args = sql + " WHERE instrument_id = ?", [instrument_id]
+            return [tuple(r) for r in self.conn.execute(sql, args).fetchall()]
+        except Exception:
+            return []
 
     def add_classification(self, instrument_id: str, cik: Optional[str], sic_code: Optional[int], industry: str,
                            status: str, classified_at: datetime, source_filing: Optional[str], mapping_version: str) -> None:

@@ -209,6 +209,12 @@ sources:
       - {id: GDPC1, license: fred_terms}
       - {id: FEDFUNDS, license: fred_terms}
       - {id: DGS10, license: fred_terms}
+  trials:
+    # ClinicalTrials.gov API v2. No key. It serves only the latest version of each study.
+    base_url: https://clinicaltrials.gov/api/v2
+    # The API coerces larger page sizes down to 1,000.
+    page_size: 1000
+    license: clinicaltrials_gov
 
 models:
   ts_momentum:

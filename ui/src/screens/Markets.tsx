@@ -3,7 +3,8 @@ import { createChart, LineSeries, UTCTimestamp } from "lightweight-charts";
 import { getJSON } from "../api";
 
 type Inst = { instrument_id: string; symbol: string; name: string | null; type: string; type_inferred: boolean; tag: string; sector: string; status: string };
-type Data = { instruments: Inst[]; selected: Inst | null; history: { date: string; close: number; vendor: string }[]; composite_score: number | null; status?: string; reason?: string };
+type Trial = { nct_id: string; title: string; overall_status: string; phases: string | null; primary_completion: string | null; primary_completion_type: string | null; enrollment: number | null; observed_at: string };
+type Data = { trials?: Trial[]; instruments: Inst[]; selected: Inst | null; history: { date: string; close: number; vendor: string }[]; composite_score: number | null; status?: string; reason?: string };
 
 function Chart({ points }: { points: Data["history"] }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -59,6 +60,14 @@ export function MarketsScreen({ tick, initial }: { tick: number; initial?: strin
             <dt>Vendor</dt><dd>{data.history.at(-1)?.vendor ?? "NOT AVAILABLE"}</dd>
           </dl></>}
         {s && <button onClick={() => toggle(s.symbol)}>{watch.includes(s.symbol) ? `Remove ${s.symbol} from watchlist` : `Add ${s.symbol} to watchlist`}</button>}
+        {(data.trials ?? []).length > 0 && (<>
+          <h2 style={{ marginTop: 16 }}>Clinical trials, research only, as recorded</h2>
+          <table><thead><tr><th>Trial</th><th>Phase</th><th>Status</th><th>Primary completion</th><th className="num">Enrollment</th></tr></thead>
+            <tbody>{data.trials!.map((t) => (
+              <tr key={t.nct_id} title={`${t.title}. Recorded ${t.observed_at}`}><td>{t.nct_id}</td><td>{t.phases ?? "NOT AVAILABLE"}</td><td>{t.overall_status}</td>
+                <td>{t.primary_completion ?? "NOT AVAILABLE"} {t.primary_completion_type ? `(${t.primary_completion_type.toLowerCase()})` : ""}</td>
+                <td className="num">{t.enrollment ?? "NOT AVAILABLE"}</td></tr>))}
+            </tbody></table></>)}
         <h2 style={{ marginTop: 16 }}>Watchlist</h2>
         {watch.length === 0 ? <p className="muted">Empty. Kept in this browser only</p> : (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{watch.map((w) => <button key={w} onClick={() => { setSymbol(w); setQ(w); }}>{w}</button>)}</div>)}

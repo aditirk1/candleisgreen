@@ -10,6 +10,7 @@ Source: `SPEC.md` v3.2, sections "Source registry and expert discovery" and "Dat
 | SEC EDGAR | Submissions, XBRL company facts, SIC codes, filing acceptance times | `us_government_public` | Permitted | Permitted | Built. Live run needs `SEC_USER_AGENT` |
 | SEC and Federal Reserve RSS | Press releases and litigation releases | `us_government_public` | Permitted | Permitted | Built |
 | FRED | Daily FX (H.10), public CSV endpoint. Macro series with every vintage through the FRED API `series/observations` (realtime 1776-07-04 to 9999-12-31), key in `FRED_API_KEY` | `fred_terms` (H.10 FX series are public domain, citation requested) | Permitted | Unverified for other series | FX built. Macro built and tested on a constructed fixture. First run with a key must compare response shapes |
+| ClinicalTrials.gov | API v2 `studies`, no key, latest version of each study only, so trials are recorded forward as snapshots | `clinicaltrials_gov` | Permitted | Unverified. Terms page did not render for automated reading | Built and tested on a constructed fixture. Live API response checked on 2026-11-24 |
 | Open Source Asset Pricing | Long-short portfolio returns and signal documentation | `cc_by_4_0` | Permitted | Permitted | Built, release 2026.10 |
 | JKP Global Factor Data | Factor returns by country | `cc_by_nc_4_0` | Permitted | Unverified, so research only | Built |
 | Kenneth French library | Factor returns, Fama-French 12 SIC mapping | `french_library` | Permitted | Unverified | SIC mapping built |

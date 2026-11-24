@@ -84,3 +84,6 @@ Choices made where the spec was silent, or where the review changed it. Newest l
 | D-078 | 2026-11-24 | Macro vintages come from FRED API `series/observations` with realtime 1776-07-04 to 9999-12-31. Each later real-time period for the same date is a higher vintage | Spec data sources. The store's latest-usable-vintage rule then gives as-known-then values |
 | D-079 | 2026-11-24 | A release date counts as known from 17:00 New York time, after most US releases and after the 16:30 decision | ALFRED gives dates without times. Never earlier than public |
 | D-080 | 2026-11-24 | Any FRED value that is not a number is stored as missing | The documentation does not state the missing-value marker |
+| D-081 | 2026-11-24 | Trials are recorded forward as snapshots, usable from collection time. No history is rebuilt | The API serves only the latest version of each study, per its OpenAPI description |
+| D-082 | 2026-11-24 | A trial links to a company only when its lead sponsor equals a SEC entity name after removing case, punctuation and legal suffixes | Same spirit as the identity matching rule: never attach on a weak match |
+| D-083 | 2026-11-24 | ClinicalTrials.gov data is research permitted and paper trading unverified, and the committed fixture is constructed | The terms page could not be read automatically, so nothing is assumed |

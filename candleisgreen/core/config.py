@@ -256,11 +256,18 @@ class FredSourceConfig(_Section):
     series: tuple[FredSeriesConfig, ...]
 
 
+class TrialsSourceConfig(_Section):
+    base_url: str
+    page_size: int = Field(gt=0, le=1000)
+    license: str
+
+
 class SourcesConfig(_Section):
     alpaca: AlpacaSourceConfig
     recorder: RecorderConfig
     sec: SecSourceConfig
     fred: FredSourceConfig
+    trials: TrialsSourceConfig
 
 
 class TsMomentumConfig(_Section):

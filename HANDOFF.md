@@ -32,8 +32,9 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 15. **Correlation clusters.** Monthly residual-return clustering with a stability test, sector fallback when unstable, and the executor counting exposure per cluster.
 16. **Research Capture Inbox.** On the Research screen. Stores a hash, the time and a short summary, extracts testable claims and forecasts into claim cards for the nightly research loop, and asks for the passage when a link or file cannot be read.
 17. **Macro vintages.** FRED API `series/observations` over the full real-time period, every revision stored as a vintage, usable from 17:00 New York time on its release date, shown on the Global screen. NOT AVAILABLE without a key.
+18. **Clinical trials.** Forward snapshots from the ClinicalTrials.gov API v2 for names with biotech SIC codes, linked only on an exact lead-sponsor match to the SEC entity name. Changes between snapshots become trial events. Shown on Markets. Trial data is research only by license.
 
-Full suite: 301 passed. Playwright: 62 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+Full suite: 306 passed. Playwright: 62 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 
@@ -44,7 +45,8 @@ Full suite: 301 passed. Playwright: 62 checks. Details in `TEST_RESULTS.md`. Pha
 ## Not started
 
 - Phase 7 (live trading). Needs a separate written decision from Aditi.
-- Biotech ingestion from ClinicalTrials.gov.
+- FDA advisory committee calendar for biotech events. FDA action dates must come from press releases and 8-K filings.
+- Read the ClinicalTrials.gov terms by hand. The page renders with JavaScript and could not be read automatically.
 - Teaching: crisis library (shows NOT AVAILABLE until data covers the dates), counterfactual, market autopsy, spaced review, concept map.
 - Tier 5 shadow tracking process for a Composite signal that reaches Tier 4.
 
@@ -77,4 +79,4 @@ make screens
 
 ## Exact next step
 
-Biotech ingestion from ClinicalTrials.gov into the research-only biotech universe. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.
+Teaching features from the spec table: market autopsy after each simulated trade, counterfactual (labeled hypothetical), spaced review from wrong predictions, and the crisis library showing NOT AVAILABLE until data covers its dates. Then the Composite and trading integration with Tier 5 shadow tracking. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.
