@@ -125,3 +125,23 @@ parameters:
   execution.simulator_starting_equity_usd: {basis: provisional, review: Paper account size}
   execution.order_type: {basis: safeguard, change_policy: "Aditi approves. Limit orders only (Q4)"}
   execution.limit_offset_fraction: {basis: provisional, review: "How far past the touch a limit is placed, as a share of the spread. Tune from measured fills (Q4)"}
+
+  sources.alpaca.trading_base_url: {basis: safeguard, change_policy: Paper host only. The loader rejects any other value}
+  sources.alpaca.data_base_url: {basis: external_fact, source: "Alpaca market data API, https://docs.alpaca.markets/docs/about-market-data-api", as_of: "2026-11-17"}
+  sources.alpaca.bars_feed: {basis: provisional, review: Consolidated history for end-of-day bars. IEX if SIP access changes}
+  sources.alpaca.sip_delay_minutes: {basis: external_fact, source: "Alpaca free plan: historical SIP data must end at least 15 minutes in the past, https://docs.alpaca.markets/docs/market-data-faq", as_of: "2026-11-17"}
+  sources.alpaca.adjustment: {basis: safeguard, change_policy: Aditi approves. Raw bars plus stored corporate actions keep adjustments reproducible}
+  sources.alpaca.symbols_per_request: {basis: provisional, review: Batch size for bar requests}
+  sources.alpaca.request_timeout_seconds: {basis: provisional, review: Network setting}
+  sources.alpaca.max_retries: {basis: provisional, review: Network setting}
+  sources.recorder.run_time_local: {basis: provisional, review: After the close plus the SIP delay and before the 16:30 decision}
+  sources.recorder.close_time_local: {basis: external_fact, source: "Regular US equity session close. Early closes end sooner, so this is conservative for first_usable_at", as_of: "2026-11-24"}
+  sources.recorder.heartbeat_max_age_hours: {basis: provisional, review: Age after which the local fallback runs the job}
+
+  models.ts_momentum.lookback_days: {basis: provisional, review: "Twelve months, the usual time-series momentum lookback (Moskowitz, Ooi and Pedersen 2012). The exact value is a starting point"}
+  models.ts_momentum.skip_days: {basis: provisional, review: Skips the most recent month to avoid short-term reversal}
+  models.ts_momentum.clip: {basis: safeguard, change_policy: Aditi approves. Limits the effect of one extreme score}
+
+  sizing.target_weight_per_name: {basis: provisional, review: Phase 1 sizing for a single model. Replaced by the Composite optimizer}
+  sizing.max_names: {basis: provisional, review: Phase 1 sizing for a single model}
+  sizing.min_trade_value_usd: {basis: provisional, review: Skips trades too small to matter}

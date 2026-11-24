@@ -3,7 +3,7 @@
 # config/parameters.yaml as empirical, safeguard, provisional or external_fact,
 # and that basis decides who may change it and how it is shown.
 # Bump config_version on every edit. The loader rejects unknown keys.
-config_version: "3.2.0"
+config_version: "3.2.1"
 spec_version: "3.2"
 
 time:
@@ -143,3 +143,33 @@ execution:
   order_type: limit
   # Buy limit = ask + offset x spread. Sell limit = bid - offset x spread.
   limit_offset_fraction: 0.5
+
+sources:
+  alpaca:
+    # Paper host only. The loader rejects any other trading host.
+    trading_base_url: https://paper-api.alpaca.markets
+    data_base_url: https://data.alpaca.markets
+    # Consolidated history is free once the request ends this many minutes in the past.
+    bars_feed: sip
+    sip_delay_minutes: 15
+    # Unadjusted bars. Corporate actions are stored separately.
+    adjustment: raw
+    symbols_per_request: 200
+    request_timeout_seconds: 30
+    max_retries: 3
+  recorder:
+    run_time_local: "16:20"
+    close_time_local: "16:00"
+    heartbeat_max_age_hours: 26
+
+models:
+  ts_momentum:
+    lookback_days: 252
+    skip_days: 21
+    clip: 3.0
+
+sizing:
+  # Phase 1 sizing for a single Level A model. Must stay at or under the hard position limit.
+  target_weight_per_name: 0.04
+  max_names: 20
+  min_trade_value_usd: 100

@@ -205,6 +205,44 @@ class ExecutionConfig(_Section):
         return self
 
 
+class AlpacaSourceConfig(_Section):
+    trading_base_url: str
+    data_base_url: str
+    bars_feed: Literal["sip", "iex"]
+    sip_delay_minutes: int = Field(ge=0)
+    adjustment: Literal["raw"]
+    symbols_per_request: int = Field(gt=0)
+    request_timeout_seconds: float = Field(gt=0)
+    max_retries: int = Field(ge=0)
+
+
+class RecorderConfig(_Section):
+    run_time_local: str
+    close_time_local: str
+    heartbeat_max_age_hours: float = Field(gt=0)
+
+
+class SourcesConfig(_Section):
+    alpaca: AlpacaSourceConfig
+    recorder: RecorderConfig
+
+
+class TsMomentumConfig(_Section):
+    lookback_days: int = Field(gt=0)
+    skip_days: int = Field(ge=0)
+    clip: float = Field(gt=0)
+
+
+class ModelsConfig(_Section):
+    ts_momentum: TsMomentumConfig
+
+
+class SizingConfig(_Section):
+    target_weight_per_name: float = Field(gt=0, le=1)
+    max_names: int = Field(gt=0)
+    min_trade_value_usd: float = Field(ge=0)
+
+
 class AppConfig(_Section):
     config_version: str
     spec_version: str
@@ -213,6 +251,17 @@ class AppConfig(_Section):
     composite: CompositeConfig
     risk: RiskConfig
     execution: ExecutionConfig
+    sources: SourcesConfig
+    models: ModelsConfig
+    sizing: SizingConfig
+
+    @model_validator(mode="after")
+    def _sizing_inside_hard_limits(self) -> "AppConfig":
+        if self.sizing.target_weight_per_name > self.risk.hard_limits.max_position_pct_equity:
+            raise ValueError("sizing.target_weight_per_name exceeds the hard position limit")
+        if not self.sources.alpaca.trading_base_url.startswith("https://paper-api."):
+            raise ValueError("only the Alpaca paper trading host is allowed")
+        return self
 
     @property
     def config_hash(self) -> str:

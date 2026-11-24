@@ -14,11 +14,17 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 import duckdb
+import pyarrow as pa
 
 from ..core.ids import make_id
 from ..core.schemas import CollectionMode, Observation
 from ..core.timeutil import ensure_utc, from_micros, to_micros
 
+
+
+def _first(rows: list):
+    """First row or None. Results are always fetched in full, as DuckDB 2.0 requires."""
+    return rows[0] if rows else None
 
 class LookaheadError(RuntimeError):
     """An input was not usable at the decision time. This must fail the build."""
@@ -30,6 +36,14 @@ _COLUMNS = (
     *_TIME_COLS, "timezone", "currency", "adjustment_method", "vintage", "missing_flag",
     "license", "collection_mode",
 )
+
+_ARROW_SCHEMA = pa.schema([
+    ("observation_id", pa.string()), ("instrument_id", pa.string()), ("vendor", pa.string()),
+    ("raw_symbol", pa.string()), ("exchange", pa.string()), ("field", pa.string()), ("value", pa.float64()),
+    *[(name, pa.int64()) for name in _TIME_COLS],
+    ("timezone", pa.string()), ("currency", pa.string()), ("adjustment_method", pa.string()),
+    ("vintage", pa.int32()), ("missing_flag", pa.bool_()), ("license", pa.string()), ("collection_mode", pa.string()),
+])
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS observations (
@@ -111,29 +125,39 @@ class AsOfView:
 class PointInTimeStore:
     def __init__(self, path: str | Path = ":memory:"):
         self._conn = duckdb.connect(str(path))
-        self._conn.execute(_DDL)
+        self._conn.execute(_DDL).fetchall()
 
     def close(self) -> None:
         self._conn.close()
 
+    @property
+    def connection(self) -> duckdb.DuckDBPyConnection:
+        """Shared with the instrument master so both live in one database file."""
+        return self._conn
+
     def add(self, observations: Iterable[Observation]) -> int:
-        """Append observations. Returns the count of new rows. Duplicates are ignored."""
-        added = 0
+        """Append observations in one bulk insert. Returns the count of new rows. Duplicates are ignored."""
+        rows: dict[str, tuple] = {}
         for obs in observations:
             row = _to_row(obs)
-            exists = self._conn.execute(
-                "SELECT 1 FROM observations WHERE observation_id = ?", [row[0]]
-            ).fetchone()
-            if exists:
-                continue
+            rows.setdefault(row[0], row)
+        if not rows:
+            return 0
+        columns = list(zip(*rows.values()))
+        table = pa.table({name: list(values) for name, values in zip(_COLUMNS, columns)},
+                         schema=_ARROW_SCHEMA)
+        before = self.count()
+        self._conn.register("_incoming", table)
+        try:
             self._conn.execute(
-                f"INSERT INTO observations VALUES ({', '.join('?' * len(_COLUMNS))})", list(row)
-            )
-            added += 1
-        return added
+                f"INSERT INTO observations SELECT {', '.join(_COLUMNS)} FROM _incoming ON CONFLICT DO NOTHING"
+            ).fetchall()
+        finally:
+            self._conn.unregister("_incoming")
+        return self.count() - before
 
     def count(self) -> int:
-        return self._conn.execute("SELECT count(*) FROM observations").fetchone()[0]
+        return _first(self._conn.execute("SELECT count(*) FROM observations").fetchall())[0]
 
     def as_of(self, decision_time: datetime) -> AsOfView:
         return AsOfView(self, decision_time)
@@ -148,4 +172,4 @@ class PointInTimeStore:
         return [_from_row(r) for r in rows]
 
     def export_parquet(self, path: str | Path) -> None:
-        self._conn.execute(f"COPY observations TO '{Path(path).as_posix()}' (FORMAT PARQUET)")
+        self._conn.execute(f"COPY observations TO '{Path(path).as_posix()}' (FORMAT PARQUET)").fetchall()

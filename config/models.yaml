@@ -1,0 +1,18 @@
+# Model registry state. Tiers change only through governance: demotion is automatic and
+# logged, promotion above Tier 4 needs Aditi's approval. A model below the capital tier
+# (composite.eligibility.capital_min_tier) may route orders to the internal simulator only.
+registry_version: "1.0.0"
+models:
+  fixture_baseline:
+    version: "0.1.0"
+    level: none
+    tier: 0
+    family: none
+    note: Phase 0 test harness. Simulator only
+  ts_momentum_252_21:
+    version: "1.0.0"
+    level: A
+    tier: 1
+    family: trend
+    data_licenses: [alpaca_market_data]
+    note: Level A baseline. Phase 1 pipeline test in the simulator. No evidence tier yet
