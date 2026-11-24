@@ -31,6 +31,18 @@ class MissingCredentialsError(RuntimeError):
     pass
 
 
+class UncertainResponseError(RuntimeError):
+    """A write may or may not have reached the broker. Query before any retry."""
+
+
+class DuplicateClientOrderError(RuntimeError):
+    """The broker already has an order with this client order ID."""
+
+
+class BrokerRejectedError(RuntimeError):
+    pass
+
+
 class TooEarlyError(RuntimeError):
     """The free plan only serves consolidated history that ended at least the SIP delay ago."""
 
@@ -73,6 +85,27 @@ class HttpTransport:
                     continue
                 raise
         raise RuntimeError("unreachable")
+
+    def send(self, method: str, base_url: str, path: str, body: Optional[dict] = None) -> Any:
+        """A write. Never retried here: an uncertain result must be queried first."""
+        assert_paper_endpoint(base_url + "/")
+        data = None if body is None else json.dumps(body).encode("utf-8")
+        headers = {"APCA-API-KEY-ID": self.key_id, "APCA-API-SECRET-KEY": self.secret,
+                   "Accept": "application/json", "Content-Type": "application/json"}
+        request = urllib.request.Request(f"{base_url}{path}", data=data, method=method, headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=self.cfg.request_timeout_seconds) as response:
+                raw = response.read().decode("utf-8")
+                return json.loads(raw) if raw else None
+        except urllib.error.HTTPError as exc:
+            text = exc.read().decode("utf-8", "replace")
+            if exc.code == 422 and "client_order_id" in text:
+                raise DuplicateClientOrderError(text) from exc
+            if exc.code >= 500:
+                raise UncertainResponseError(f"HTTP {exc.code}") from exc
+            raise BrokerRejectedError(f"HTTP {exc.code}: {text[:200]}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise UncertainResponseError(type(exc).__name__) from exc
 
 
 def session_close_utc(day: date, close_hhmm: str) -> datetime:

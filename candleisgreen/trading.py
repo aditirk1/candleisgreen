@@ -14,6 +14,7 @@ from typing import Optional, Protocol
 
 from . import universe
 from .broker.base import BrokerAdapter
+from .broker.reconcile import reconcile
 from .core.config import AppConfig
 from .core.licenses import load_licenses
 from .core.schemas import OrderIntent, Quote, RiskContext, RiskVerdict, Side, Venue
@@ -23,7 +24,7 @@ from .data.instruments import InstrumentMaster
 from .data.pit_store import PointInTimeStore
 from .journal import Journal
 from .models import ts_momentum
-from .models.registry import assert_routing_allowed, load_models
+from .models.registry import ModelRegistry, assert_routing_allowed, load_models
 from .pipeline import limit_price
 from .risk.client import RiskClient
 
@@ -140,10 +141,20 @@ def expire_unapproved(journal: Journal, session_date: date, now: datetime) -> in
 
 def execute_session(session_date: date, now: datetime, journal: Journal, quotes: QuoteSource, risk: RiskClient,
                     broker: BrokerAdapter, store: PointInTimeStore, master: InstrumentMaster, cfg: AppConfig,
-                    venue: Venue = Venue.SIMULATION) -> ExecutionResult:
+                    venue: Venue = Venue.SIMULATION, models: Optional[ModelRegistry] = None) -> ExecutionResult:
     now = ensure_utc(now)
     auto = cfg.execution.mode in ("auto_simulation", "broker_paper_auto")
-    registry = load_models()
+    registry = models or load_models()
+
+    def check_account() -> bool:
+        """Reconcile before the first order and after every order. A mismatch fails closed."""
+        try:
+            rec = reconcile(broker.positions(), journal.positions())
+        except Exception as exc:
+            journal.record_reconciliation(False, [f"broker query failed ({type(exc).__name__})"], "system:executor", now)
+            return False
+        journal.record_reconciliation(rec.matched, rec.mismatches, "system:executor", now)
+        return rec.matched
     licenses = load_licenses()
     tz = cfg.time.market_timezone
     in_window = in_local_window(now, cfg.time.execution_window_start_local, cfg.time.execution_window_end_local, tz)
@@ -152,6 +163,7 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
         for p in journal.proposals(session_date, "proposed"):
             journal.approve(p.proposal_id, "system:auto_simulation", now)
     positions = journal.positions()
+    account_ok = check_account()
     submitted, skipped, blocked = [], [], {}
     for p in journal.proposals(session_date, "approved"):
         snap = quotes.snapshot(p.symbol, p.instrument_id, now)
@@ -189,7 +201,7 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
             universe.status_at(master, p.instrument_id, now) in (None, "active")
         ctx = RiskContext(
             now=now, kill_switch_engaged=False, market_open=snap.market_open, market_halted=snap.halted,
-            broker_connected=True, account_state_known=True, instrument_mapping_certain=mapped, quote=snap.quote,
+            broker_connected=True, account_state_known=account_ok, instrument_mapping_certain=mapped, quote=snap.quote,
             equity=equity, day_start_equity=day_start, position_value=positions.get(p.instrument_id, 0.0) * snap.quote.mid,
             cluster_value=long_value, pending_position_value=pending.get(p.instrument_id, 0.0) * snap.quote.mid,
             pending_cluster_value=pending_value, adv20_shares=adv, in_execution_window=in_window)
@@ -204,8 +216,10 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
         for fill in ack.fills:
             journal.record_fill(fill)
         journal.record_mark(p.instrument_id, p.symbol, snap.quote.mid, now, f"mid, {snap.quote.feed}")
-        journal.set_status(p.proposal_id, "filled" if ack.fills else "resting", f"broker:{venue.value.lower()}", now,
-                           ack.message, intent.client_order_id)
+        status = {"filled": "filled", "partially_filled": "partially_filled", "accepted": "resting",
+                  "rejected": "broker_rejected", "unknown": "unknown"}[ack.status]
+        journal.set_status(p.proposal_id, status, f"broker:{venue.value.lower()}", now, ack.message, intent.client_order_id)
         positions = journal.positions()
         submitted.append(p.proposal_id)
+        account_ok = check_account() and ack.status != "unknown"
     return ExecutionResult(tuple(submitted), blocked, tuple(skipped))

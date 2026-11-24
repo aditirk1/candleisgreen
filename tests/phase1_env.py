@@ -99,4 +99,5 @@ def quotes_for(env: Env, now: datetime, age_seconds: float = 2.0, feed: str = "i
 
 
 def simulator(env: Env) -> InternalSimulator:
-    return InternalSimulator(env.cfg.execution.simulator_starting_equity_usd)
+    """The simulator starts from the journal's positions, so reconciliation matches."""
+    return InternalSimulator(env.journal.cash(), env.journal.positions())

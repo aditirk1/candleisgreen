@@ -16,7 +16,8 @@ from .core.ids import make_id
 from .core.schemas import Fill, OrderIntent, RiskDecision
 from .core.timeutil import ensure_utc, iso_utc
 
-STATUSES = ("proposed", "approved", "rejected", "blocked", "submitted", "filled", "resting", "expired", "cancelled")
+STATUSES = ("proposed", "approved", "rejected", "blocked", "submitted", "filled", "partially_filled", "resting",
+            "broker_rejected", "unknown", "expired", "cancelled")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS proposals (
@@ -166,10 +167,19 @@ class Journal:
         """Quantity of submitted or resting buys not yet filled, per instrument."""
         out: dict[str, float] = {}
         for iid, qty in self.conn.execute(
-                "SELECT instrument_id, quantity FROM proposals WHERE side = 'buy' AND status IN ('submitted', 'resting')"
+                "SELECT instrument_id, quantity FROM proposals WHERE side = 'buy' "
+                "AND status IN ('submitted', 'resting', 'partially_filled', 'unknown')"
         ).fetchall():
             out[iid] = out.get(iid, 0.0) + qty
         return out
+
+    def record_reconciliation(self, matched: bool, mismatches, actor: str, now: datetime) -> None:
+        self._log("reconciliation", "account", {"matched": matched, "mismatches": list(mismatches)}, actor, now)
+        self.conn.execute("INSERT OR REPLACE INTO account VALUES ('last_reconciliation_matched', ?)", (1.0 if matched else 0.0,))
+
+    def last_reconciliation(self) -> Optional[bool]:
+        row = self.conn.execute("SELECT value FROM account WHERE key = 'last_reconciliation_matched'").fetchone()
+        return None if row is None else bool(row[0])
 
     def record_equity(self, as_of: datetime, equity: float) -> None:
         self.conn.execute("INSERT OR REPLACE INTO equity_history VALUES (?, ?)", (iso_utc(as_of), equity))

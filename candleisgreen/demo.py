@@ -70,7 +70,8 @@ def build(workdir: Path) -> None:
             journal.approve(p.proposal_id, "user:aditi", exec1)
         else:
             journal.reject(p.proposal_id, "user:aditi", exec1, "demo: held back on day one")
-    execute_session(s1, exec1, journal, _quotes(store, master, exec1), risk, InternalSimulator(100_000), store, master, cfg)
+    execute_session(s1, exec1, journal, _quotes(store, master, exec1), risk,
+                    InternalSimulator(journal.cash(), journal.positions()), store, master, cfg)
     server.shutdown()
     rec2 = datetime(2026, 11, 19, 21, 20, tzinfo=UTC)
     recorder.record_session(d2, AlpacaData(FakeAlpacaTransport(now=rec2), cfg.sources.alpaca), store, master, rec2, cfg)

@@ -13,9 +13,9 @@ from .base import BrokerAdapter, LiveTradingDisabledError, assert_approved
 class InternalSimulator(BrokerAdapter):
     venue = Venue.SIMULATION
 
-    def __init__(self, starting_cash: float):
+    def __init__(self, starting_cash: float, positions: dict[str, float] | None = None):
         self.cash = float(starting_cash)
-        self._positions: dict[str, float] = {}
+        self._positions: dict[str, float] = dict(positions or {})
         self._acks: dict[str, BrokerAck] = {}
 
     def submit(self, intent: OrderIntent, decision: RiskDecision, quote: Quote) -> BrokerAck:
