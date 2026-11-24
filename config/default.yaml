@@ -32,6 +32,8 @@ universe:
       sic_codes: [2834, 2835, 2836, 8731]
 
 composite:
+  # Fewest recorded closes a name needs before the daily Composite run includes it.
+  min_history_days: 30
   standardize:
     winsor_lower_pct: 1.0
     winsor_upper_pct: 99.0
@@ -90,6 +92,8 @@ composite:
     default_max_se_to_expected_ratio: 1.0
     shadow_band_level: 0.90
     max_tracking_error_annual: 0.05
+    # A shadow day counts as a trade when the book turns over at least this fraction of gross.
+    shadow_min_turnover: 0.01
   monitoring:
     min_observation_days: 63
     review_window_days: 252
@@ -157,6 +161,8 @@ execution:
   order_type: limit
   # Buy limit = ask + offset x spread. Sell limit = bid - offset x spread.
   limit_offset_fraction: 0.5
+  # The separate risk service process. Scheduled execution cannot run without it.
+  risk_service_url: http://127.0.0.1:8765
 
 sources:
   alpaca:

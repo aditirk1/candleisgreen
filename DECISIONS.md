@@ -91,3 +91,8 @@ Choices made where the spec was silent, or where the review changed it. Newest l
 | D-085 | 2026-11-24 | The counterfactual changes one input of the real trend model or the real spread limit. Removing news reports no change, because news is not an input to the active model | Spec: labeled hypothetical, never invented |
 | D-086 | 2026-11-24 | Spaced review uses Leitner boxes (1, 3, 7, 14, 30 days, provisional). A replay prediction becomes a card only after the replay clock reveals it | Same leak rule as the calibration table |
 | D-087 | 2026-11-24 | Crisis episodes are AVAILABLE only when stored closes span the whole window | Spec: NOT AVAILABLE until licensed data covers its dates |
+| D-088 | 2026-11-24 | The decision, execution and expiry run as scheduled jobs in New York time. Before this, only the demo called them, which contradicted the scheduler's own description | Spec Phase 1 needs the loop to run without a manual step |
+| D-089 | 2026-11-24 | Scheduled execution reads the risk service at `execution.risk_service_url`. If it is unreachable every order is blocked | Spec principle 6 |
+| D-090 | 2026-11-24 | Shadow targets count as prospective only when issued before their session opens. One late target makes the whole record ineligible | Spec Q8 and Q9 |
+| D-091 | 2026-11-24 | The shadow band is fixed by formula at registration: frozen expected return plus or minus z times the combined error of the frozen estimate and the shadow sample | Pre-registered, so the band cannot be widened after seeing results |
+| D-092 | 2026-11-24 | A Composite run with fewer than two names holding `composite.min_history_days` closes reports NOT AVAILABLE instead of failing | Found by the scheduled week, where the first days have little history |

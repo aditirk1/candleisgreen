@@ -1,10 +1,11 @@
 """Follow-the-sun scheduling (spec Global markets and decision Q13).
 
-Four slots a day, in UTC: Asia-Pacific, Europe, US, then an overnight review. Each slot runs
-its jobs, each job is safe to rerun, and each writes a heartbeat. `run_week` drives the same
-job table through seven simulated days for the Phase 6 acceptance test. `serve` runs it on
-APScheduler 3.x for real. Orders are never placed by a scheduled job: the US slot records data
-and makes the decision, and execution stays a separate, risk-checked step.
+Four research slots a day in UTC (Asia-Pacific, Europe, US, overnight review), plus four US trading
+slots in New York time so they move with daylight saving: pre-open check, execution at the window
+start, expiry at the window end, and the decision after the close. Each job is safe to rerun and
+writes a heartbeat. `run_week` drives the same table through seven simulated days. `serve` runs it
+on APScheduler 3.x. Execution sends paper or simulator orders only, each through the separate risk
+service, and only approved proposals unless the mode is an auto mode.
 """
 from __future__ import annotations
 
@@ -84,6 +85,24 @@ def _clusters(now, workdir, cfg, fake):
         store.close()
 
 
+def _decide(now, workdir, cfg, fake):
+    from . import operations
+
+    return operations.decide(now, workdir, cfg, fake)
+
+
+def _execute(now, workdir, cfg, fake):
+    from . import operations
+
+    return operations.execute(now, workdir, cfg, fake)
+
+
+def _expire(now, workdir, cfg, fake):
+    from . import operations
+
+    return operations.expire(now, workdir, cfg, fake)
+
+
 def _preopen(now, workdir, cfg, fake):
     from . import preopen
 
@@ -92,6 +111,9 @@ def _preopen(now, workdir, cfg, fake):
 
 JOBS: dict[str, list[tuple[str, Job]]] = {
     "us_preopen": [("preopen", _preopen)],
+    "us_execution": [("execute", _execute)],
+    "us_expiry": [("expire", _expire)],
+    "us_decision": [("decide", _decide)],
     "asia_pacific": [("global_factors", _global_factors)],
     "europe": [("fx", _fx), ("macro", _macro)],
     "us": [("record", _record)],
@@ -118,7 +140,11 @@ def slot_times(day: date, cfg: AppConfig) -> list[tuple[datetime, str]]:
     # The pre-open check follows New York local time, so it moves with daylight saving.
     from .core.timeutil import local_to_utc
 
-    out.append((local_to_utc(day, cfg.time.preopen_check_local, cfg.time.market_timezone), "us_preopen"))
+    tz = cfg.time.market_timezone
+    out.append((local_to_utc(day, cfg.time.preopen_check_local, tz), "us_preopen"))
+    out.append((local_to_utc(day, cfg.time.execution_window_start_local, tz), "us_execution"))
+    out.append((local_to_utc(day, cfg.time.execution_window_end_local, tz), "us_expiry"))
+    out.append((local_to_utc(day, cfg.time.decision_time_local, tz), "us_decision"))
     return sorted(out)
 
 
@@ -157,9 +183,13 @@ def serve(workdir: Path, fake: bool) -> None:  # pragma: no cover - long-running
         h, m = (int(x) for x in hhmm.split(":"))
         sched.add_job(lambda s=slot: run_slot(s, datetime.now(UTC), workdir, cfg, fake), "cron", hour=h, minute=m,
                       id=slot, coalesce=True, misfire_grace_time=3600)
-    h, m = (int(x) for x in cfg.time.preopen_check_local.split(":"))
-    sched.add_job(lambda: run_slot("us_preopen", datetime.now(UTC), workdir, cfg, fake), "cron", hour=h, minute=m,
-                  timezone=cfg.time.market_timezone, id="us_preopen", coalesce=True, misfire_grace_time=1200)
+    for slot, hhmm, grace in (("us_preopen", cfg.time.preopen_check_local, 1200),
+                              ("us_execution", cfg.time.execution_window_start_local, 1200),
+                              ("us_expiry", cfg.time.execution_window_end_local, 3600),
+                              ("us_decision", cfg.time.decision_time_local, 3600)):
+        h, m = (int(x) for x in hhmm.split(":"))
+        sched.add_job(lambda s=slot: run_slot(s, datetime.now(UTC), workdir, cfg, fake), "cron", hour=h, minute=m,
+                      timezone=cfg.time.market_timezone, id=slot, coalesce=True, misfire_grace_time=grace)
     sched.start()
 
 

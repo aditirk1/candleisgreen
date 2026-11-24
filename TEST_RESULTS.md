@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24, **311 passed, 0 failed** in about 142 seconds on Python 3.13.
+Latest full run: 2026-11-24, **320 passed, 0 failed** in about 148 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -260,3 +260,13 @@ The follow-the-sun week now runs eight jobs a day. Interface check: 62 Playwrigh
 | `tests/test_teaching_lab.py` | 5 | Autopsy with no close after the fill shows NOT AVAILABLE, then splits P&L once a later close exists, counterfactual changes through the real model and limit and always labeled HYPOTHETICAL, review puts wrong predictions first and hides unrevealed replay outcomes, Leitner box moves, crisis library NOT AVAILABLE without data, the endpoints |
 
 Interface check: 66 Playwright checks passed. The check exposed a fill that paid 5.007 bps against a 5.0 bps model, shown as 5.0 and FAILED. Spread paid is now shown to two decimals.
+
+## Scheduled trading day and shadow tracking, 2026-11-24
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_operations.py` | 5 | Auto simulation day with no manual step through a real risk service process, nothing sent twice, manual mode waits then expires, unreachable risk service blocks every order, research mode makes no proposals, weekends and holidays do nothing |
+| `tests/test_shadow.py` | 4 | A clean prospective record passes and opens one proposal that only Aditi can decide, a short record fails on the 63-day minimum, one late target makes the record retrospective, unregistered strategies cannot record |
+| `tests/test_phase6.py` | updated | The week now runs eleven jobs a day, including decision, execution and expiry |
+
+Interface check: 66 Playwright checks passed.

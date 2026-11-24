@@ -107,6 +107,7 @@ class PromotionConfig(_Section):
     default_max_se_to_expected_ratio: float = Field(gt=0)
     shadow_band_level: float = Field(gt=0, lt=1)
     max_tracking_error_annual: float = Field(gt=0)
+    shadow_min_turnover: float = Field(gt=0)
 
 
 class MonitoringConfig(_Section):
@@ -155,6 +156,7 @@ class OptimizerConfig(_Section):
 
 
 class CompositeConfig(_Section):
+    min_history_days: int = Field(gt=1)
     standardize: StandardizeConfig
     research_portfolio: ResearchPortfolioConfig
     costs: CostConfig
@@ -210,6 +212,7 @@ class ExecutionConfig(_Section):
     simulator_starting_equity_usd: float = Field(gt=0)
     order_type: Literal["limit"]
     limit_offset_fraction: float = Field(ge=0)
+    risk_service_url: str
 
     @model_validator(mode="after")
     def _live_is_never_enabled(self) -> "ExecutionConfig":

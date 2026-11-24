@@ -34,14 +34,16 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 17. **Macro vintages.** FRED API `series/observations` over the full real-time period, every revision stored as a vintage, usable from 17:00 New York time on its release date, shown on the Global screen. NOT AVAILABLE without a key.
 18. **Clinical trials.** Forward snapshots from the ClinicalTrials.gov API v2 for names with biotech SIC codes, linked only on an exact lead-sponsor match to the SEC entity name. Changes between snapshots become trial events. Shown on Markets. Trial data is research only by license.
 19. **Teaching tools.** Market autopsy for each simulated fill, a counterfactual that runs the real trend model and risk limit and is labeled HYPOTHETICAL, spaced review with wrong predictions first and replay outcomes kept hidden, and a crisis library that stays NOT AVAILABLE until stored data covers each episode. The glossary now lives in `config/glossary.json`, shared by Guide mode and the review deck.
+20. **Scheduled trading day and Tier 5 shadow tracking.** The scheduler now runs the decision at 16:30, execution at 09:35 and expiry at 10:30, all in New York time, with execution through the risk service process. The daily Composite run follows the decision, and any Tier 4 signal gets a prospective shadow book whose `promotion_check` pass opens a proposal only Aditi can decide. Execution quotes come from Alpaca's free IEX latest quotes and the paper clock.
 
-Full suite: 311 passed. Playwright: 66 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+Full suite: 320 passed. Playwright: 66 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 
 - **Live FRED macro.** Built against the documented response shape with a constructed fixture. The first run with a key in `FRED_API_KEY` must compare shapes and check how missing values appear.
+- **Live Alpaca quotes and clock.** `sources/alpaca_quotes.py` follows the documented latest-quotes and clock responses and runs offline against the fake market. The first run with paper keys must compare shapes.
 - **Live Alpaca data.** The client is written from Alpaca's documentation and tested offline. The first run with paper keys must compare response shapes (DECISIONS D-033), and check whether bars for delisted symbols are served (spec decision Q1).
-- **The Composite does not trade yet.** No signal holds Tier 4, so the Composite allocates nothing and the trading loop still runs the single Level A baseline in the simulator. That changes only when an executable approximation passes on real data.
+- **The Composite does not trade yet.** No signal holds Tier 4, so the Composite allocates nothing and the trading loop still runs the single Level A baseline. The Composite now runs daily after the decision and any Tier 4 signal starts a shadow book at once. Promotion to Tier 5 then needs `promotion_check` and Aditi.
 
 ## Not started
 
@@ -80,4 +82,4 @@ make screens
 
 ## Exact next step
 
-The Composite and trading integration with Tier 5 shadow tracking: a shadow book for any signal that reaches Tier 4, recorded prospectively and checked by `promotion_check`. Then the concept map and daily lesson. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.
+Run the scheduler for a week against real Alpaca paper data and the free IEX quotes once keys exist, and compare response shapes (quotes, clock, bars). Then the concept map and daily lesson, and the FDA advisory committee calendar. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.

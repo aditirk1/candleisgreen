@@ -31,6 +31,7 @@ parameters:
   universe.research_universes.biotech.min_median_dollar_volume_20d: {basis: provisional, review: Research only. Zero means no filter}
   universe.research_universes.biotech.sic_codes: {basis: provisional, review: "SIC 2834, 2835, 2836 and 8731 as the biotech definition. Revisit if names are missed"}
 
+  composite.min_history_days: {basis: provisional, review: "Below this a name has too few returns for volatility scaling. Revisit with the shortest signal lookback"}
   composite.standardize.winsor_lower_pct: {basis: provisional, review: "Common practice, no evidence for the exact percentile"}
   composite.standardize.winsor_upper_pct: {basis: provisional, review: "Common practice, no evidence for the exact percentile"}
   composite.standardize.ts_std_window_days: {basis: provisional, review: One trading year by convention}
@@ -76,6 +77,7 @@ parameters:
   composite.promotion.default_max_se_to_expected_ratio: {basis: provisional, review: Shadow standard error no larger than the expected return. Strategies may be stricter}
   composite.promotion.shadow_band_level: {basis: provisional, review: Width of the pre-registered band for realized shadow returns}
   composite.promotion.max_tracking_error_annual: {basis: provisional, review: Allowed gap between the tradable version and its research record}
+  composite.promotion.shadow_min_turnover: {basis: provisional, review: "Smallest rebalance counted as a shadow trade. Check against the strategy's measured turnover"}
 
   composite.monitoring.min_observation_days: {basis: provisional, review: Below this the deterioration test is not run}
   composite.monitoring.review_window_days: {basis: provisional, review: Rolling window for the deterioration test. Strategies may declare their own (Q6)}
@@ -131,6 +133,7 @@ parameters:
   execution.simulator_starting_equity_usd: {basis: provisional, review: Paper account size}
   execution.order_type: {basis: safeguard, change_policy: "Aditi approves. Limit orders only (Q4)"}
   execution.limit_offset_fraction: {basis: provisional, review: "How far past the touch a limit is placed, as a share of the spread. Tune from measured fills (Q4)"}
+  execution.risk_service_url: {basis: safeguard, change_policy: "Aditi approves. Must point at the separate risk service, which fails closed when unreachable"}
 
   sources.alpaca.trading_base_url: {basis: safeguard, change_policy: Paper host only. The loader rejects any other value}
   sources.alpaca.data_base_url: {basis: external_fact, source: "Alpaca market data API, https://docs.alpaca.markets/docs/about-market-data-api", as_of: "2026-11-17"}

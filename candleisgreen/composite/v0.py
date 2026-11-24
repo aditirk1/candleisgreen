@@ -32,13 +32,14 @@ SIGNALS = {
 }
 
 
-def _matrix(store: PointInTimeStore, master: InstrumentMaster, as_of: datetime, decision_date: date):
+def _matrix(store: PointInTimeStore, master: InstrumentMaster, as_of: datetime, decision_date: date,
+            min_days: int = 30):
     view = store.as_of(as_of)
     series, vols, vendors, ids = {}, {}, set(), []
     for inst in master.instruments():
         iid = inst["instrument_id"]
         closes = view.series(iid, "close")
-        if len(closes) < 30:
+        if len(closes) < min_days:
             continue
         adj = adjust_closes([(o.event_time.date(), o.value) for o in closes], master.actions(iid), decision_date)
         series[iid] = dict(adj)
@@ -54,7 +55,10 @@ def _matrix(store: PointInTimeStore, master: InstrumentMaster, as_of: datetime, 
 def build(store: PointInTimeStore, master: InstrumentMaster, registry: ResearchRegistry, cfg: AppConfig,
           decision_date: date, now: datetime) -> dict:
     as_of = local_to_utc(decision_date, cfg.time.decision_time_local, cfg.time.market_timezone)
-    ids, days, prices, volume, vendors = _matrix(store, master, as_of, decision_date)
+    ids, days, prices, volume, vendors = _matrix(store, master, as_of, decision_date, cfg.composite.min_history_days)
+    if len(ids) < 2 or len(days) < cfg.composite.min_history_days:
+        return {"status": "NOT AVAILABLE", "as_of": as_of.isoformat(),
+                "reason": f"{len(ids)} names with at least {cfg.composite.min_history_days} recorded closes. The run needs two or more"}
     synthetic = any(v.endswith("synthetic") for v in vendors)
     labels = ("SYNTHETIC",) if synthetic else ("SURVIVORSHIP-BIASED",)
     comp = cfg.composite

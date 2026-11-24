@@ -26,7 +26,7 @@ To see the Phase 1 screens on the offline synthetic market:
 make demo
 ```
 
-Then open http://127.0.0.1:8000. Every number in the demo is synthetic. `make screens` checks both screens with Playwright.
+Then open http://127.0.0.1:8000. Every number in the demo is synthetic. `make screens` checks all fifteen screens with Playwright.
 
 With Alpaca paper keys in `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY`, the recorder runs against the real free data:
 
@@ -34,11 +34,23 @@ With Alpaca paper keys in `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY`, the recor
 .venv/bin/python -m candleisgreen.jobs catch-up --workdir var/live
 ```
 
+To run every scheduled job (research slots, pre-open check, execution, expiry and the decision), start the risk service first, then the scheduler. Both stay on this machine. Orders go to the simulator, or to the Alpaca paper account in a broker paper mode. No live venue exists.
+
+```bash
+.venv/bin/python -m candleisgreen.risk.service --port 8765 --state-dir var/live/risk
+```
+
+```bash
+.venv/bin/python -m candleisgreen.scheduler serve --workdir var/live
+```
+
+Optional keys, all free, read from the environment only: `SEC_USER_AGENT` (filings and the 8-K check), `FRED_API_KEY` (macro vintages). Without them those parts show NOT AVAILABLE.
+
 ## Documents
 
 | File | Content |
 | --- | --- |
-| `SPEC.md` | Product spec v3.1 |
+| `SPEC.md` | Product spec v3.2 |
 | `REVIEW.md` | Review of spec v3: errors, outdated facts, disagreements, open questions |
 | `QUESTIONS.md` | Decisions for Aditi with the default in use |
 | `ARCHITECTURE.md` | Services, interfaces, config layout |
@@ -49,7 +61,7 @@ With Alpaca paper keys in `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY`, the recor
 | `TEST_RESULTS.md` | What ran and passed |
 | `HANDOFF.md` | Working state, commands, next task |
 
-Not written yet: `SOURCE_REGISTRY.md`, `RESEARCH_PROTOCOL.md`, `DESIGN_SYSTEM.md`.
+| `SOURCE_REGISTRY.md`, `RESEARCH_PROTOCOL.md`, `DESIGN_SYSTEM.md` | Sources and licenses, research rules, interface rules |
 
 ## Cost
 

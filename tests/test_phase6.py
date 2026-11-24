@@ -104,10 +104,11 @@ def test_a_week_of_follow_the_sun_jobs_runs_with_no_manual_step(tmp_path):
     jobs.run("record", tmp_path, fake=True, now=datetime(2026, 11, 13, 21, 20, tzinfo=UTC))
     report = scheduler.run_week(date(2026, 11, 14), tmp_path, fake=True)
     assert report.ok, report.failures
-    assert len(report.runs) == 7 * 8
+    assert len(report.runs) == 7 * 11
     cluster_runs = [r["detail"]["run_id"] for r in report.runs if r["job"] == "clusters"]
     assert len(set(cluster_runs)) == 1  # computed once, then reused until the refresh is due
-    assert {r["slot"] for r in report.runs} == {"asia_pacific", "europe", "us_preopen", "us", "overnight_review"}
+    assert {r["slot"] for r in report.runs} == {"asia_pacific", "europe", "us_preopen", "us_execution", "us_expiry", "us", "us_decision",
+                                                 "overnight_review"}
     preopen_runs = [r["detail"] for r in report.runs if r["job"] == "preopen"]
     assert sum(1 for d in preopen_runs if d["ran"]) == 5 and all(d.get("cancelled", []) == [] for d in preopen_runs)
     recorded = [r for r in report.runs if r["job"] == "record"]

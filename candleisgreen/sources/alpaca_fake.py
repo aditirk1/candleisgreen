@@ -101,7 +101,38 @@ class FakeMarket:
             return self._bars(params)
         if path == ACTIONS_PATH:
             return self._actions(params)
+        if path == "/v2/stocks/quotes/latest":
+            return self._quotes(params, now)
+        if path == "/v2/clock":
+            return self._clock(now)
         raise KeyError(f"fake Alpaca has no route {path}")
+
+    def _quotes(self, params: dict[str, Any], now: Optional[datetime]) -> dict:
+        """Synthetic quote around the latest close on or before today, stamped now."""
+        when = ensure_utc(now) if now else local_to_utc(self.end, "16:00", MARKET_TZ)
+        out = {}
+        for sym in params["symbols"].split(","):
+            a = next((x for x in self.assets if self.symbol_on(x, when.date()) == sym), None)
+            if a is None or (a.delisted_on and when.date() > a.delisted_on):
+                continue
+            bars = [b for d, b in self.bars_for(a) if d <= when.date()]
+            if not bars:
+                continue
+            c = bars[-1]["c"]
+            out[sym] = {"ap": round(c * 1.0004, 4), "as": 100, "ax": "V", "bp": round(c * 0.9996, 4), "bs": 100, "bx": "V",
+                        "c": ["R"], "t": when.strftime("%Y-%m-%dT%H:%M:%S.%f") + "123Z", "z": "C"}
+        return {"quotes": out}
+
+    def _clock(self, now: Optional[datetime]) -> dict:
+        from zoneinfo import ZoneInfo
+
+        from ..calendars import is_trading_day
+
+        local = ensure_utc(now).astimezone(ZoneInfo(MARKET_TZ)) if now else None
+        is_open = bool(local and is_trading_day(local.date()) and
+                       (local.hour, local.minute) >= (9, 30) and (local.hour, local.minute) < (16, 0))
+        return {"is_open": is_open, "timestamp": local.isoformat() if local else None,
+                "next_open": None, "next_close": None}
 
     def _assets(self, status: str, now: Optional[datetime]) -> list[dict]:
         today = (ensure_utc(now).date() if now else self.end)
