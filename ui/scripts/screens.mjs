@@ -63,7 +63,15 @@ await page.getByText("Evidence chain:").waitFor();
 check(await page.getByText("reproduction").first().isVisible(), "evidence chain opens from the Composite screen");
 check(await page.getByText("Failure archive").isVisible(), "failure archive shown");
 check(await page.getByText("▼ FAILED").first().isVisible(), "negative result visible");
+check(await page.getByText("Daily research digest").isVisible(), "daily research digest shown");
+check(await page.getByText("NEEDS DATA: analyst estimates").isVisible(), "missing data flagged with a free substitute");
+check((await page.getByText("xs_momentum_12_1").count()) > 0 && await page.getByRole("heading", { name: "Re-evaluation cases" }).isVisible(), "re-evaluation case listed");
+check(await page.getByText("Clark-West adjusted mean squared error").isVisible(), "Level B against Level A uses Clark-West");
+check((await page.getByText("keep the champion").count()) === 2, "synthetic comparisons never recommend a switch");
 await page.screenshot({ path: `${out}/research-terminal.png`, fullPage: true });
+await page.getByRole("button", { name: "Decline" }).click();
+await page.getByText("DECLINED").first().waitFor({ timeout: 5000 }).catch(() => {});
+check(await page.getByText("user:aditi").first().isVisible(), "promotion decided by Aditi only");
 
 await page.getByRole("button", { name: "News", exact: true }).click();
 await page.getByText("clustered by story").waitFor();
@@ -96,6 +104,15 @@ await page.getByRole("button", { name: "Advance 1 day" }).click();
 await page.waitForTimeout(600);
 check((await page.getByText(/RIGHT|WRONG/).count()) > 0, "outcome revealed after advancing past the horizon");
 await page.screenshot({ path: `${out}/learn-terminal.png`, fullPage: true });
+
+await page.getByRole("button", { name: "Global" }).click();
+await page.getByText("Follow-the-sun jobs").waitFor();
+await page.getByText("USA").first().waitFor({ timeout: 5000 }).catch(() => {});
+check((await page.getByText("research only").count()) >= 5, "every non-US market is research only on the Global screen");
+check(await page.getByText("XTKS Tokyo Stock Exchange").isVisible() && (await page.getByText("RESEARCH_ONLY").count()) >= 4, "market rule table tags non-US exchanges research only");
+check(await page.getByText("DEXUSEU").isVisible(), "FX rates from FRED shown");
+check(await page.getByText(/NOT AVAILABLE\. No free source of historical or real-time options data/).isVisible(), "entitlement map shows options as NOT AVAILABLE");
+await page.screenshot({ path: `${out}/global-terminal.png`, fullPage: true });
 
 const text = await page.locator("body").innerText();
 check(!/[—–;·]/.test(text), "no em dashes, semicolons or middle dots in visible text");

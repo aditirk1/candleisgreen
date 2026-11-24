@@ -200,8 +200,23 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         claims = research.claims()
         for c in claims:
             c["tier"] = research.tier(c["signal_id"])[0] if c.get("signal_id") else None
-        return {"claims": claims, "experiments": research.experiments(), "failures": research.failures(),
-                "trial_count": research.variant_count()}
+        exps = research.experiments()
+        models = [{"experiment_id": e["experiment_id"], "champion": e["plan"].get("champion"),
+                   "challenger": e["plan"].get("challenger"), "result": e["result"]}
+                  for e in exps if e["study_type"] == "forecast" and e["plan"].get("challenger")]
+        return {"claims": claims, "experiments": exps, "failures": research.failures(),
+                "trial_count": research.variant_count(), "digests": research.digests(3),
+                "reevaluations": research.reevaluations(), "promotions": research.promotions(), "models": models}
+
+    @app.post("/api/promotions/{pid}/{verb}")
+    def decide_promotion(pid: str, verb: str):
+        if verb not in ("approve", "decline"):
+            raise HTTPException(404, "unknown action")
+        try:
+            research.decide_promotion(pid, verb == "approve", USER, clock())
+        except ValueError as exc:
+            raise HTTPException(409, str(exc))
+        return {"status": "APPROVED" if verb == "approve" else "DECLINED"}
 
     @app.get("/api/research/chain/{claim_id}")
     def research_chain(claim_id: str):
@@ -277,6 +292,37 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         cal = preds.calibration(USER, replay_clock=limit)
         return {"predictions": rows, "calibration": {"bins": cal.bins, "brier": cal.brier,
                                                      "baseline_brier": cal.baseline_brier, "resolved": cal.resolved}}
+
+    @app.get("/api/global")
+    def global_view():
+        import json as _json
+
+        from ..core.capabilities import load_capabilities
+        from ..global_research import load_fx
+        from ..jobs import read_heartbeat
+        from ..sources import fx as fxmod
+
+        table = load_fx(workdir)
+        rates = []
+        for cur, (series, inverted) in fxmod.SERIES.items():
+            days = sorted(table.rates.get(cur, {}))
+            rates.append({"currency": cur, "series": series, "date": days[-1].isoformat() if days else None,
+                          "usd_per_unit": table.usd_per_unit(cur, days[-1]) if days else None})
+        evidence_path = workdir / "global" / "momentum_by_market.json"
+        evidence = _json.loads(evidence_path.read_text()) if evidence_path.exists() else []
+        sessions = [{"slot": s, "utc": t, "last_run": (read_heartbeat(workdir / "heartbeats" / n) or {}).get("finished_at"),
+                     "status": (read_heartbeat(workdir / "heartbeats" / n) or {}).get("status", "NOT RUN"), "job": n}
+                    for s, t in cfg.markets.sessions_utc.items() for n in [{"asia_pacific": "global_factors", "europe": "fx",
+                                                                             "us": "record", "overnight_review": "review"}[s]]]
+        caps = load_capabilities()
+        entitlements = [{"capability": k, "status": v.status.value, "label": v.label} for k, v in caps.capabilities.items()]
+        rules_path = Path(__file__).resolve().parents[2] / "config" / "markets.yaml"
+        markets = []
+        if rules_path.exists():
+            import yaml as _yaml
+            markets = _yaml.safe_load(rules_path.read_text()).get("exchanges", [])
+        return {"sessions": sessions, "fx": rates, "momentum_by_market": evidence, "entitlements": entitlements,
+                "markets": markets}
 
     @app.post("/api/proposals/{pid}/approve")
     def approve(pid: str):

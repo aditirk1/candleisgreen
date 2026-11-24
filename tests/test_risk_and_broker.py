@@ -51,6 +51,8 @@ BLOCKS = {
     "pending buys push position over 5%": dict(pending_position_value=3_000.0),
     "pending buys push cluster over 20%": dict(pending_cluster_value=19_000.0),
     "pending orders unknown": dict(pending_cluster_value=None),
+    "research-only instrument": dict(instrument_tag="research_only"),
+    "instrument tag unknown": dict(instrument_tag=None),
 }
 
 
@@ -86,7 +88,7 @@ def test_a_check_that_raises_blocks_the_order(limits, monkeypatch):
 OPTIONAL_FIELDS = [
     "kill_switch_engaged", "market_open", "market_halted", "broker_connected", "account_state_known",
     "instrument_mapping_certain", "quote", "equity", "day_start_equity", "position_value",
-    "cluster_value", "pending_position_value", "pending_cluster_value", "adv20_shares", "in_execution_window",
+    "cluster_value", "pending_position_value", "pending_cluster_value", "adv20_shares", "in_execution_window", "instrument_tag",
 ]
 
 

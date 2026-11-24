@@ -88,6 +88,7 @@
     "market_halted": false,
     "broker_connected": true,
     "account_state_known": true,
-    "instrument_mapping_certain": true
+    "instrument_mapping_certain": true,
+    "instrument_tag": "direct"
   }
 }

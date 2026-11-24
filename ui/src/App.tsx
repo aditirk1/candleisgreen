@@ -9,9 +9,10 @@ import { CompositeScreen } from "./screens/Composite";
 import { NewsScreen } from "./screens/News";
 import { ReasoningScreen } from "./screens/Reasoning";
 import { LearnScreen } from "./screens/Learn";
+import { GlobalScreen } from "./screens/Global";
 
-type Screen = "overview" | "execution" | "earnings" | "research" | "composite" | "news" | "reasoning" | "learn";
-const SCREENS: [Screen, string][] = [["overview", "Overview"], ["execution", "Execution"], ["reasoning", "Reasoning"], ["research", "Research"], ["composite", "Composite"], ["news", "News"], ["earnings", "Earnings"], ["learn", "Learn"]];
+type Screen = "overview" | "execution" | "earnings" | "research" | "composite" | "news" | "reasoning" | "learn" | "global";
+const SCREENS: [Screen, string][] = [["overview", "Overview"], ["execution", "Execution"], ["reasoning", "Reasoning"], ["research", "Research"], ["composite", "Composite"], ["news", "News"], ["earnings", "Earnings"], ["global", "Global"], ["learn", "Learn"]];
 
 const MODE_LABELS: Record<string, string> = {
   research: "Research", teaching: "Teaching and market watch", manual_simulation: "Manual simulation",
@@ -73,6 +74,7 @@ export function App() {
         {screen === "news" && <NewsScreen tick={tick} />}
         {screen === "reasoning" && <ReasoningScreen tick={tick} />}
         {screen === "learn" && <LearnScreen tick={tick} />}
+        {screen === "global" && <GlobalScreen tick={tick} />}
         {screen === "composite" && <CompositeScreen tick={tick} onEvidence={(id) => { setFocusClaim(id); setScreen("research"); }} />}
       </main>
     </>

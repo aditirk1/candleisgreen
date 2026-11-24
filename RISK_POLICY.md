@@ -37,6 +37,7 @@ A correlated cluster is defined in the spec as a hierarchical cluster on 252-day
 5. `broker`: connection must be known and up
 6. `account`: account state known, equity positive
 7. `instrument`: symbol mapping certain
+7a. `instrument_tag`: only `direct` or `proxy` instruments can receive orders. Every non-US instrument is `research_only`
 8. `quote_fresh`: quote present, for this instrument, not older than the limit, not from the future
 9. `quote_feed`: the feed is execution grade and neither side has zero size
 10. `limit_price`: the limit is no further from mid than the spread limit
@@ -70,6 +71,10 @@ A correlated cluster is defined in the spec as a hierarchical cluster on 252-day
 - Orders are sent only in the regular session, 09:35 to 10:30 ET by default, so every order has a live quote. The opening auction is not used.
 - A pre-open check at 09:00 ET may cancel orders and may never add them (planned).
 - When the Composite is not calibrated the optimizer is reduce-only.
+
+## 5a. Governance of evidence tiers
+
+The system may raise a signal's tier up to 4 on recorded evidence. A promotion above Tier 4 is only a proposal until Aditi approves it, and `set_tier` refuses it from any other actor. Demotion after a failed re-evaluation or a drift alert is automatic and logged. No research job, model update or experiment can change a risk limit: experiments cannot vary safeguards, the risk service loads its own limits, and a test fingerprints every config file before and after a full research day.
 
 ## 6. Who can change what
 

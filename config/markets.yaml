@@ -1,0 +1,48 @@
+# Market rule table (spec Global markets). One record per exchange, filled only with facts
+# read from official sources on 2026-11-24. A field that could not be verified is absent and
+# shows NOT AVAILABLE. Only US venues are direct. Every other market is research only.
+table_version: "2026-11-24"
+exchanges:
+  - mic: XNYS
+    name: New York Stock Exchange
+    tag: direct
+    timezone: America/New_York
+    hours_local: "09:30 to 16:00"
+    auctions: "Core open auction 09:30, closing auction 16:00 after a 15:50 imbalance period"
+    settlement: "T+1 since 2024-05-28"
+    early_close_local: "13:00"
+    holidays: [2026-01-01, 2026-01-19, 2026-02-16, 2026-04-03, 2026-05-25, 2026-06-19, 2026-07-03, 2026-09-07,
+               2026-11-26, 2026-12-25, 2027-01-01, 2027-01-18, 2027-02-15, 2027-03-26, 2027-05-31, 2027-06-18,
+               2027-07-05, 2027-09-06, 2027-11-25, 2027-12-24]
+    early_closes: [2026-11-27, 2026-12-24, 2027-11-26]
+    source: "https://www.nyse.com/markets/hours-calendars and https://www.sec.gov/newsroom/press-releases/2023-29"
+  - mic: XTKS
+    name: Tokyo Stock Exchange
+    tag: research_only
+    timezone: Asia/Tokyo
+    hours_local: "09:00 to 11:30 and 12:30 to 15:30"
+    settlement: "T+2"
+    lot_size: "100 shares"
+    price_limits: "Daily limits in yen from the base price, usually the previous close"
+    source: "https://www.jpx.co.jp/english/equities/trading/domestic/"
+  - mic: XHKG
+    name: Hong Kong Exchanges
+    tag: research_only
+    timezone: Asia/Hong_Kong
+    hours_local: "09:30 to 12:00 and 13:00 to 16:00"
+    auctions: "Pre-opening 09:00 to 09:30, closing auction 16:00 to a random close between 16:08 and 16:10"
+    transaction_tax: "Stamp duty 0.1% on buyer and seller (search extract of the HKEX fees page, not a fetched page)"
+    source: "https://www.hkex.com.hk/Services/Trading-hours-and-Severe-Weather-Arrangements/Trading-Hours/Securities-Market"
+  - mic: XLON
+    name: London Stock Exchange
+    tag: research_only
+    timezone: Europe/London
+    hours_local: "08:00 to 16:30 (from an older exchange document)"
+    transaction_tax: "SDRT 0.5% on electronic purchases"
+    source: "https://www.gov.uk/tax-buy-shares/buy-shares-electronically"
+  - mic: XETR
+    name: Deutsche Boerse Xetra
+    tag: research_only
+    timezone: Europe/Berlin
+    auctions: "Opening auction around 09:00, closing auction from 17:30 (trading parameters document via search extract)"
+    source: "https://cashmarket.deutsche-boerse.com/resource/blob/250890/43c50e657b0ff5fb58132fbf6e063517/data/trading-parameters-xetra.pdf"

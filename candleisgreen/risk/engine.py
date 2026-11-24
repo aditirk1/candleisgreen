@@ -91,6 +91,16 @@ def check_limit_price(intent, ctx, limits):
     return None
 
 
+def check_instrument_tag(intent, ctx, limits):
+    """Only US-listed instruments tagged direct or proxy can receive orders. Everything else,
+    every non-US instrument included, is research only."""
+    if ctx.instrument_tag is None:
+        return "instrument tag unknown"
+    if ctx.instrument_tag not in ("direct", "proxy"):
+        return f"instrument is {ctx.instrument_tag} and cannot receive orders"
+    return None
+
+
 def check_quote_fresh(intent, ctx, limits):
     if ctx.quote is None:
         return "no quote"
@@ -173,6 +183,7 @@ CHECKS: tuple[tuple[str, Check], ...] = (
     ("broker", check_broker),
     ("account", check_account),
     ("instrument", check_instrument),
+    ("instrument_tag", check_instrument_tag),
     ("quote_fresh", check_quote_fresh),
     ("quote_feed", check_quote_feed),
     ("limit_price", check_limit_price),

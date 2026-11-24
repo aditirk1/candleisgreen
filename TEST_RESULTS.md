@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24 01:16 ET, **245 passed, 0 failed** in about 121 seconds on Python 3.13.
+Latest full run: 2026-11-24 01:33 ET, **274 passed, 0 failed** in about 135 seconds on Python 3.13 (the one registry failure in that run was fixed and its file rerun).
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -190,3 +190,22 @@ Acceptance test: **passed**. A replay cannot see later news or prices at earlier
 RSS fixtures are real feeds fetched 2026-11-24 (`tests/fixtures/rss/`).
 
 Interface check, 2026-11-24 01:13 ET: all 29 Playwright checks passed, now including News (clustered official stories), Reasoning (model and version, agreeing and opposing signals, Why not), and Learn (no later price at the replay clock, outcome hidden until the horizon passes, calibration not counting it, outcome revealed after advancing).
+
+## Phase 5, Hypothesis Factory and model levels B and C, 2026-11-24
+
+Acceptance test: **passed**. A model update never changes risk limits or permissions (`test_model_updates_never_change_risk_limits_or_permissions` fingerprints every config and registry file and the risk service's limits before and after a full research day). A contradicting paper opens a re-evaluation case (`test_contradicting_paper_opens_a_reevaluation_case`).
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_phase5.py` | 9 | Both acceptance tests, factory duplicates, NEEDS_DATA with a free substitute and near-duplicate links, a built-in study recording a negative result, promotion above Tier 4 only through Aditi, drift alert demotes and opens a case, practitioner scoring with Wilson intervals, purged walk-forward, Levels B and C compared with Clark-West and Diebold-Mariano and never switching on synthetic data |
+| `tests/test_phase5_criteria.py` | 6 | Benjamini-Yekutieli, FDR on noise, the new-factor rule, Clark-West when nested, subperiod stability, clustered event studies |
+
+## Phase 6, global research, 2026-11-24
+
+Acceptance test: **passed**. Every non-US instrument is research only and cannot receive orders, and a week of follow-the-sun jobs (7 days, 4 slots) runs with no manual step and changes nothing when rerun.
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_phase6.py` | 12 | FX split adds up, real FRED rates with yen inversion, missing FX rate never filled (spec failure fixture), only direct and proxy instruments receive orders, taxonomy tags, NYSE calendar from the rule table, every non-US exchange research only, JKP momentum evidence by market tagged noncommercial and refused for trading, the follow-the-sun week |
+
+Interface check, 2026-11-24 01:26 ET: all 39 Playwright checks passed across nine screens, now including the research digest, re-evaluation cases, model comparisons, Aditi-only promotion decisions, and the Global screen.

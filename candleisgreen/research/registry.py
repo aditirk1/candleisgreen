@@ -51,6 +51,17 @@ CREATE TABLE IF NOT EXISTS signal_tiers (
 CREATE TABLE IF NOT EXISTS composite_runs (
     composite_run_id TEXT PRIMARY KEY, as_of TEXT NOT NULL, record_json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS reevaluations (
+    case_id TEXT PRIMARY KEY, signal_id TEXT NOT NULL, trigger_claim_id TEXT NOT NULL, opened_at TEXT NOT NULL,
+    status TEXT NOT NULL, result_json TEXT
+);
+CREATE TABLE IF NOT EXISTS promotions (
+    proposal_id TEXT PRIMARY KEY, signal_id TEXT NOT NULL, to_tier INTEGER NOT NULL, evidence_json TEXT NOT NULL,
+    proposed_at TEXT NOT NULL, status TEXT NOT NULL, decided_by TEXT, decided_at TEXT
+);
+CREATE TABLE IF NOT EXISTS digests (
+    digest_date TEXT PRIMARY KEY, digest_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS frozen_weights (
     signal_id TEXT PRIMARY KEY, weight REAL NOT NULL, frozen_at TEXT NOT NULL
 );
@@ -59,6 +70,14 @@ CREATE TABLE IF NOT EXISTS frozen_weights (
 
 class PlanNotRegisteredError(RuntimeError):
     pass
+
+
+class GovernanceError(PermissionError):
+    """Promotion above Tier 4 needs Aditi's approval. Nothing automatic can grant it."""
+
+
+APPROVER = "user:aditi"
+AUTO_MAX_TIER = 4
 
 
 class PlanFrozenError(RuntimeError):
@@ -214,7 +233,11 @@ class ResearchRegistry:
 
     # Signal tiers and Composite runs ---------------------------------------------------------
 
-    def set_tier(self, signal_id: str, tier: int, status: str, evidence: dict, now: datetime) -> None:
+    def set_tier(self, signal_id: str, tier: int, status: str, evidence: dict, now: datetime,
+                 actor: str = "system:research") -> None:
+        current = self.tier(signal_id)[0]
+        if tier > AUTO_MAX_TIER and tier > current and actor != APPROVER:
+            raise GovernanceError(f"promotion to Tier {tier} needs Aditi's approval")
         self.conn.execute("INSERT OR REPLACE INTO signal_tiers VALUES (?,?,?,?,?)",
                           (signal_id, tier, status, canonical_json(evidence), iso_utc(now)))
         self._log("signal_tier", signal_id, {"tier": tier, "status": status, "evidence": evidence}, now)
@@ -225,6 +248,66 @@ class ResearchRegistry:
         if not rows:
             return 1, "DISCOVERED", {}
         return rows[0][0], rows[0][1], json.loads(rows[0][2])
+
+    # Governance ----------------------------------------------------------------------------
+
+    def propose_promotion(self, signal_id: str, to_tier: int, evidence: dict, now: datetime) -> str:
+        pid = make_id("promo", {"signal": signal_id, "tier": to_tier, "at": now})
+        self.conn.execute("INSERT OR IGNORE INTO promotions VALUES (?,?,?,?,?,?,?,?)",
+                          (pid, signal_id, to_tier, canonical_json(evidence), iso_utc(now), "PENDING", None, None))
+        self._log("promotion_proposed", pid, {"signal_id": signal_id, "to_tier": to_tier, "evidence": evidence}, now)
+        return pid
+
+    def decide_promotion(self, proposal_id: str, approve: bool, actor: str, now: datetime) -> None:
+        if actor != APPROVER:
+            raise GovernanceError("only Aditi can decide a promotion")
+        row = self.conn.execute("SELECT signal_id, to_tier, evidence_json, status FROM promotions WHERE proposal_id = ?",
+                                (proposal_id,)).fetchone()
+        if row is None or row[3] != "PENDING":
+            raise ValueError("no pending promotion with that ID")
+        status = "APPROVED" if approve else "DECLINED"
+        self.conn.execute("UPDATE promotions SET status = ?, decided_by = ?, decided_at = ? WHERE proposal_id = ?",
+                          (status, actor, iso_utc(now), proposal_id))
+        self._log("promotion_decided", proposal_id, {"status": status}, now, actor)
+        if approve:
+            self.set_tier(row[0], row[1], "ELIGIBLE_FOR_REVIEW" if row[1] == 5 else "PAPER", json.loads(row[2]), now, actor)
+
+    def promotions(self) -> list[dict]:
+        return _rows(self.conn.execute("SELECT * FROM promotions ORDER BY proposed_at"))
+
+    # Re-evaluation cases -------------------------------------------------------------------
+
+    def open_reevaluation(self, signal_id: str, trigger_claim_id: str, now: datetime) -> str:
+        cid = make_id("case", {"signal": signal_id, "trigger": trigger_claim_id})
+        cur = self.conn.execute("INSERT OR IGNORE INTO reevaluations VALUES (?,?,?,?,?,?)",
+                                (cid, signal_id, trigger_claim_id, iso_utc(now), "OPEN", None))
+        if cur.rowcount:
+            self._log("reevaluation_opened", cid, {"signal_id": signal_id, "trigger_claim_id": trigger_claim_id}, now)
+        return cid
+
+    def close_reevaluation(self, case_id: str, result: dict, now: datetime) -> None:
+        self.conn.execute("UPDATE reevaluations SET status = 'CLOSED', result_json = ? WHERE case_id = ?",
+                          (canonical_json(result), case_id))
+        self._log("reevaluation_closed", case_id, result, now)
+
+    def reevaluations(self, status: Optional[str] = None) -> list[dict]:
+        sql, args = "SELECT * FROM reevaluations", ()
+        if status:
+            sql, args = sql + " WHERE status = ?", (status,)
+        out = _rows(self.conn.execute(sql + " ORDER BY opened_at", args))
+        for r in out:
+            raw = r.pop("result_json")
+            r["result"] = json.loads(raw) if raw else None
+        return out
+
+    # Digests -------------------------------------------------------------------------------
+
+    def save_digest(self, digest_date: str, digest: dict) -> None:
+        self.conn.execute("INSERT OR REPLACE INTO digests VALUES (?,?)", (digest_date, json.dumps(digest, default=str)))
+
+    def digests(self, limit: int = 10) -> list[dict]:
+        return [json.loads(r[0]) for r in self.conn.execute(
+            "SELECT digest_json FROM digests ORDER BY digest_date DESC LIMIT ?", (limit,)).fetchall()]
 
     def save_run(self, run_id: str, as_of: datetime, record: dict) -> None:
         self.conn.execute("INSERT OR REPLACE INTO composite_runs VALUES (?,?,?)",

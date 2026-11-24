@@ -151,6 +151,20 @@ class InstrumentMaster:
             "ORDER BY observed_at DESC, (status = 'delisted') DESC LIMIT 1", [instrument_id]).fetchall())
         return row[0] if row else None
 
+    def tag(self, instrument_id: str, us_exchanges: tuple[str, ...]) -> str:
+        """direct: a US listing with market data. proxy: a US-listed ADR or fund on foreign exposure.
+        research_only: everything else, every non-US instrument included."""
+        inst = _first(self.conn.execute("SELECT vendor, name FROM instruments WHERE instrument_id = ?",
+                                        [instrument_id]).fetchall())
+        if inst is None or inst[0] != "alpaca":
+            return "research_only"
+        ex = _first(self.conn.execute("SELECT exchange FROM symbol_history WHERE instrument_id = ? "
+                                      "ORDER BY last_seen_at DESC LIMIT 1", [instrument_id]).fetchall())
+        if ex is None or ex[0].upper() not in us_exchanges:
+            return "research_only"
+        name = (inst[1] or "").upper()
+        return "proxy" if ("ADR" in name.split() or "DEPOSITARY" in name) else "direct"
+
     def instruments(self) -> list[dict]:
         cur = self.conn.execute("SELECT * FROM instruments ORDER BY instrument_id")
         cols = [c[0] for c in cur.description]

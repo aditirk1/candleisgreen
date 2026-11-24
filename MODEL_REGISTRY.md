@@ -124,8 +124,8 @@ None of these exists in code. Each enters at Tier 1 and moves only through the g
 | 3 | `st_reversal_5` (built, Tier 3 on academic evidence) | A | short-term reversal (JKP) | cross_sectional | 5 | Universe return |
 | 3 | `buy_and_hold` | A | none | benchmark | none | Cash |
 | 3 | Two published factor reproductions, one expected to pass and one expected to fail | A | to be chosen from the claim cards | cross_sectional | per paper | Per paper |
-| 5 | Regularized linear, GARCH and HAR volatility, shrinkage covariance, event-study regressions | B | several | several | several | The Level A model in the same family |
-| 5 | Elastic net, calibrated logistic regression, gradient-boosted trees | C | several | several | several | The Level B model in the same family |
+| 5 | `level_b_ridge` (built, compared with Clark-West against `level_a_momentum_ols`). GARCH and HAR volatility, event-study regressions planned | B | several | cross_sectional | 21 | The Level A model in the same family |
+| 5 | `level_c_gbt` (built, compared with Diebold-Mariano against `level_b_ridge`). Elastic net and calibrated logistic regression planned | C | several | cross_sectional | 21 | The Level B model in the same family |
 | later | Sequence models, embeddings, reinforcement learning, meta-labeling | D | research only | | | Level C, net of costs |
 
 ## 5. Signal families

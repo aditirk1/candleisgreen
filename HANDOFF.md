@@ -1,6 +1,6 @@
 # HANDOFF.md
 
-Last updated: 2026-11-24 01:18 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
+Last updated: 2026-11-24 01:35 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
 
 ## Timeline note
 
@@ -24,7 +24,10 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 
 10. **Phase 4, news and teaching.** Acceptance test passed. Lawful RSS from official feeds with safe parsing and story clustering, the News, Reasoning and Learn screens, predict-first with Brier scoring and calibration, and an as-known-then replay that cannot see later news, prices or corrections.
 
-Full suite: 245 passed. Details in `TEST_RESULTS.md`.
+11. **Phase 5, Hypothesis Factory and model levels B and C.** Acceptance test passed. Daily factory with duplicate, novelty and data checks and a digest, decision rules by study type, re-evaluation cases, Aditi-only promotion above Tier 4, drift monitoring, practitioner scoring, and ridge and boosted-tree models compared out of sample.
+12. **Phase 6, global research.** Acceptance test passed. Instrument taxonomy with a risk check that blocks non-US instruments, a market rule table from official sources, the NYSE calendar, FRED FX with the local and FX split, JKP momentum evidence by market, follow-the-sun scheduling on APScheduler, and the Global screen.
+
+Full suite: 274 passed. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 

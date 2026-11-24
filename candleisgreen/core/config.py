@@ -260,8 +260,21 @@ class ReproductionConfig(_Section):
     interval_z: float = Field(gt=0)
 
 
+class CriteriaConfig(_Section):
+    new_factor_min_t: float = Field(gt=0)
+    fdr_level: float = Field(gt=0, lt=1)
+    forecast_significance: float = Field(gt=0, lt=1)
+    forecast_subperiods: int = Field(gt=1)
+    forecast_min_subperiods_passed: int = Field(gt=0)
+    event_significance: float = Field(gt=0, lt=1)
+    practitioner_min_claims: int = Field(gt=0)
+    practitioner_interval_level: float = Field(gt=0, lt=1)
+    novelty_similarity: float = Field(gt=0, le=1)
+
+
 class ResearchConfig(_Section):
     reproduction: ReproductionConfig
+    criteria: CriteriaConfig
     default_half_spread: float = Field(ge=0)
     monthly_hac_lag: int = Field(ge=0)
     osap_release: str
@@ -282,6 +295,11 @@ class NewsConfig(_Section):
     max_summary_chars: int = Field(gt=0)
 
 
+class MarketsConfig(_Section):
+    us_exchanges: tuple[str, ...]
+    sessions_utc: dict[str, str]
+
+
 class AppConfig(_Section):
     config_version: str
     spec_version: str
@@ -295,6 +313,7 @@ class AppConfig(_Section):
     sizing: SizingConfig
     research: ResearchConfig
     news: NewsConfig
+    markets: MarketsConfig
 
     @model_validator(mode="after")
     def _sizing_inside_hard_limits(self) -> "AppConfig":

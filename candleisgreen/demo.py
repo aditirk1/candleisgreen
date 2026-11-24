@@ -98,6 +98,35 @@ def build(workdir: Path) -> None:
                                  "Chosen as the expected failure because the dataset rates its reconstruction 3_distant. "
                                  "The reproduction table was viewed before choosing, so this is not a blind pre-registration.")):
             run_published_factor(claims[name], ls[name], sid, research, cfg, rec2, f"osap {cfg.research.osap_release}", note)
+    # Phase 5: one Hypothesis Factory day, a model comparison and a pending promotion request.
+    from .research import factory
+    from .research.champion import compare
+    from .models import supervised
+    from .composite.v0 import _matrix
+    import numpy as np
+
+    lib = factory.Library({"xs_momentum_12_1": "cross sectional momentum past twelve month return skipping the most recent month",
+                           "st_reversal_5": "short term reversal previous week return"},
+                          {c["signal_id"]: c["claim_id"] for c in research.claims() if c.get("signal_id")})
+    factory.run_daily([
+        {"title": "Momentum crashes after market rebounds", "stance": "contradicts", "about_signal": "xs_momentum_12_1",
+         "definition": "momentum suffers large losses after market rebounds"},
+        {"title": "Analyst forecast dispersion predicts returns", "data_required": ["analyst estimates"]},
+        {"title": "Seasonal returns in industry portfolios", "study_type": "reproduction"},
+    ], research, lib, {"osap"}, cfg, rec2)
+    ids, days, prices, volume, vendors = _matrix(store, master, rec2, d2)
+    X, y, _ = supervised.panel(prices)
+    preds = {k: supervised.walk_forward(X, y, make, feats, 300, 21, 21) for k, (make, feats) in supervised.MODELS.items()}
+    mask = np.isfinite(y) & np.all([np.isfinite(p) for p in preds.values()], axis=0)
+    def platform_claim(title):
+        return research.add_claim({"source_type": "platform", "title": title, "market": "US equities",
+                                   "target": "21-day residual return", "definition": "walk-forward model comparison"}, rec2)
+
+    compare(research, platform_claim("Level B ridge challenges the Level A momentum regression"), supervised.LEVEL_A, supervised.LEVEL_B, y[mask], preds[supervised.LEVEL_A][mask],
+            preds[supervised.LEVEL_B][mask], True, 21, cfg, rec2, ("SYNTHETIC",))
+    compare(research, platform_claim("Level C boosted trees challenge Level B ridge"), supervised.LEVEL_B, supervised.LEVEL_C, y[mask], preds[supervised.LEVEL_B][mask],
+            preds[supervised.LEVEL_C][mask], False, 21, cfg, rec2, ("SYNTHETIC",))
+    research.propose_promotion("st_reversal_5", 5, {"note": "demo request, synthetic shadow record"}, rec2)
     build_v0(store, master, research, cfg, d2, rec2)
     # Phase 4: real government RSS items from the recorded fixtures.
     from .sources.rss import NewsStore, ingest
@@ -110,6 +139,11 @@ def build(workdir: Path) -> None:
                    datetime(2026, 11, 24, 6, 0, tzinfo=UTC), cfg)
     news.close()
     research.close()
+    # Phase 6: one round of the follow-the-sun research jobs (FX and global factors).
+    from .scheduler import run_slot
+
+    for slot, when in (("asia_pacific", datetime(2026, 11, 20, 8, 0, tzinfo=UTC)), ("europe", datetime(2026, 11, 20, 17, 0, tzinfo=UTC))):
+        run_slot(slot, when, workdir, cfg, True)
     write_heartbeat(workdir, "record", "ok", rec2, {"sessions": [d2.isoformat()], "synthetic": True})
     store.close()
 

@@ -206,7 +206,8 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
             broker_connected=True, account_state_known=account_ok, instrument_mapping_certain=mapped, quote=snap.quote,
             equity=equity, day_start_equity=day_start, position_value=positions.get(p.instrument_id, 0.0) * snap.quote.mid,
             cluster_value=long_value, pending_position_value=pending.get(p.instrument_id, 0.0) * snap.quote.mid,
-            pending_cluster_value=pending_value, adv20_shares=adv, in_execution_window=in_window)
+            pending_cluster_value=pending_value, adv20_shares=adv, in_execution_window=in_window,
+            instrument_tag=master.tag(p.instrument_id, cfg.markets.us_exchanges))
         decision = risk.evaluate(intent, ctx)
         journal.record_risk(intent, decision, now)
         if decision.verdict is not RiskVerdict.APPROVED:

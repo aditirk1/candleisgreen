@@ -167,3 +167,19 @@ parameters:
   news.live_view_hours: {basis: provisional, review: "Spec NEWS LIVE view length"}
   news.recent_view_days: {basis: provisional, review: "Spec RECENT view length"}
   news.max_summary_chars: {basis: safeguard, change_policy: Keeps stored text to summaries. Full articles are never stored}
+
+  research.criteria.new_factor_min_t: {basis: empirical, source: "Harvey, Liu and Zhu (2016), RFS 29(1): a newly discovered cross-sectional factor should clear a t-ratio of about 3.0. Applies to that case only"}
+  research.criteria.fdr_level: {basis: provisional, review: Conventional false discovery rate level}
+  research.criteria.forecast_significance: {basis: provisional, review: One-sided level for forecast comparisons}
+  research.criteria.forecast_subperiods: {basis: provisional, review: Number of subperiods a forecast must hold in}
+  research.criteria.forecast_min_subperiods_passed: {basis: provisional, review: Subperiods that must show an improvement}
+  research.criteria.event_significance: {basis: provisional, review: Level for abnormal-return intervals in event studies}
+  research.criteria.practitioner_min_claims: {basis: provisional, review: "Spec judgment call: 30 scored claims before a practitioner domain becomes a signal. With 30 binary claims a 50% baseline is only excluded near a 68% hit rate"}
+  research.criteria.practitioner_interval_level: {basis: provisional, review: Interval used to show a practitioner beats the baseline}
+  research.criteria.novelty_similarity: {basis: provisional, review: Definition overlap above which a new claim is linked to an existing signal instead of tested as new}
+
+  markets.us_exchanges: {basis: safeguard, change_policy: "Aditi approves. Only these venues can hold direct instruments"}
+  markets.sessions_utc.asia_pacific: {basis: provisional, review: "After the Asia-Pacific close. Global factor files update rarely, so the time matters little"}
+  markets.sessions_utc.europe: {basis: provisional, review: "After the FRED H.10 release window. Revisit if rates arrive later"}
+  markets.sessions_utc.us: {basis: provisional, review: "After the 16:00 ET close plus the 15-minute free-data delay, before the 16:30 ET decision"}
+  markets.sessions_utc.overnight_review: {basis: provisional, review: "After the US jobs, before Asia opens"}

@@ -209,6 +209,7 @@ class RiskContext(Contract):
     pending_cluster_value: Optional[float] = None  # open buy orders in its cluster
     adv20_shares: Optional[float] = None
     in_execution_window: Optional[bool] = None
+    instrument_tag: Optional[str] = None  # direct, proxy or research_only
 
 
 class RiskVerdict(str, Enum):

@@ -16,6 +16,7 @@ dependencies = [
   "defusedxml>=0.7",
   "fastapi>=0.160",
   "uvicorn>=0.30",
+  "apscheduler>=3.11,<4",
 ]
 
 [project.optional-dependencies]

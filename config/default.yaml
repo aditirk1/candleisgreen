@@ -3,7 +3,7 @@
 # config/parameters.yaml as empirical, safeguard, provisional or external_fact,
 # and that basis decides who may change it and how it is shown.
 # Bump config_version on every edit. The loader rejects unknown keys.
-config_version: "3.2.4"
+config_version: "3.2.6"
 spec_version: "3.2"
 
 time:
@@ -195,6 +195,17 @@ research:
     # Spec decision criteria: same sign, and inside the paper's interval or at least half its size.
     min_fraction_of_paper: 0.5
     interval_z: 1.96
+  # Decision criteria by study type (spec Research pipeline). All provisional, none universal.
+  criteria:
+    new_factor_min_t: 3.0
+    fdr_level: 0.05
+    forecast_significance: 0.05
+    forecast_subperiods: 3
+    forecast_min_subperiods_passed: 2
+    event_significance: 0.05
+    practitioner_min_claims: 30
+    practitioner_interval_level: 0.90
+    novelty_similarity: 0.6
   # Half spread assumed in research portfolios when no historical quote exists.
   default_half_spread: 0.0005
   # Newey-West lag for monthly academic returns.
@@ -212,6 +223,12 @@ news:
   live_view_hours: 72
   recent_view_days: 90
   max_summary_chars: 500
+
+markets:
+  # Listings on these venues can be tagged direct. Everything else is research only (spec principle 11).
+  us_exchanges: [NYSE, NASDAQ, ARCA, AMEX, BATS, NYSEARCA, NYSEAMERICAN, IEX]
+  # Follow-the-sun job slots, as UTC times of day.
+  sessions_utc: {asia_pacific: "08:00", europe: "17:00", us: "21:20", overnight_review: "02:00"}
 
 sizing:
   # Phase 1 sizing for a single Level A model. Must stay at or under the hard position limit.

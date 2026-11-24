@@ -102,6 +102,20 @@ candleisgreen/
   risk/                     engine.py is built
   broker/                   base.py and simulator.py are built
   pipeline.py               Phase 0 offline flow (built)
+  trading.py                daily decision and next-session executor (built)
+  journal.py                proposals, approvals, fills, marks, audited (built)
+  universe.py               decision-time universe (built)
+  jobs.py                   record, catch-up, fallback, heartbeat (built)
+  scheduler.py              follow-the-sun slots on APScheduler, simulated week runner (built)
+  calendars.py              exchange calendars from config/markets.yaml (built)
+  earnings.py               earnings scorecard, no beat or miss (built)
+  execution_quality.py      slippage by window (built)
+  reasoning.py              Reasoning and Why not from recorded facts (built)
+  global_research.py        FX refresh and per-market factor evidence (built)
+  demo.py                   offline demo on synthetic data (built)
+  api/                      localhost workstation API (built)
+  research/                 registry, academic studies, factory, criteria, practitioners, champion, monitor (built)
+  teaching/                 replay and predict first (built)
 ui/                         planned, Phase 1
 tests/                      pytest suite and fixtures
 ```

@@ -50,7 +50,7 @@ def make_ctx(**overrides):
                     feed="iex_realtime"),
         equity=100_000.0, day_start_equity=100_000.0, position_value=0.0, cluster_value=0.0,
         pending_position_value=0.0, pending_cluster_value=0.0, adv20_shares=2_000_000.0,
-        in_execution_window=True,
+        in_execution_window=True, instrument_tag="direct",
     )
     base.update(overrides)
     return RiskContext(**base)

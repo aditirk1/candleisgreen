@@ -24,6 +24,7 @@ from .core.timeutil import ensure_utc, local_to_utc, utc_now
 from .data.instruments import InstrumentMaster
 from .data.pit_store import PointInTimeStore
 from .sources import recorder
+from .calendars import is_trading_day
 from .sources.alpaca import AlpacaData, HttpTransport, TooEarlyError
 
 HEARTBEAT = "heartbeat.json"
@@ -70,7 +71,7 @@ def catch_up(data: AlpacaData, store: PointInTimeStore, master: InstrumentMaster
     done = []
     day = first
     while day <= end:
-        if day.weekday() < 5 and day not in recorded:
+        if is_trading_day(day) and day not in recorded:
             try:
                 recorder.record_session(day, data, store, master, now, cfg)
                 done.append(day)
