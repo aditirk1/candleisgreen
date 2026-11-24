@@ -51,3 +51,8 @@ Choices made where the spec was silent, or where the review changed it. Newest l
 | D-045 | 2026-11-24 | Research portfolios have a gross leverage cap (`composite.research_portfolio.max_gross_leverage`, a safeguard) | Volatility scaling levered without limit when measured volatility was near zero |
 | D-046 | 2026-11-24 | Composite v0 platform records are RETROSPECTIVE, reconstructed by walk-forward | Spec decision Q9. The prospective record starts when the forward recorder runs live |
 | D-047 | 2026-11-24 | Open Source Asset Pricing fixtures are committed with attribution (CC BY 4.0). Kenneth French files are fetched when needed and never committed | French files carry no license text |
+| D-048 | 2026-11-24 | News items are usable only from the time the platform first saw them, never from an earlier publication time | A replay must not show a story before it could have been read |
+| D-049 | 2026-11-24 | Feeds are parsed with defusedxml, and only titles, links and summaries up to the configured length are stored | Feed content is untrusted. The spec keeps summaries, not full text |
+| D-050 | 2026-11-24 | Stories are clustered by title word overlap within a time window, both provisional | Simplest method that merges reposts of one announcement |
+| D-051 | 2026-11-24 | Replay predictions record both the replay clock and the wall clock. Their outcomes and their calibration counts stay hidden until the replay clock passes the horizon | Predict first, then reveal. Found and fixed a leak where the calibration table counted an unrevealed outcome |
+| D-052 | 2026-11-24 | The Reasoning screen is built only from recorded facts: journal, audit log, latest Composite run, news and prices | Spec principle 8: nothing invented |

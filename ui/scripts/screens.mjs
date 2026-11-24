@@ -65,6 +65,38 @@ check(await page.getByText("Failure archive").isVisible(), "failure archive show
 check(await page.getByText("▼ FAILED").first().isVisible(), "negative result visible");
 await page.screenshot({ path: `${out}/research-terminal.png`, fullPage: true });
 
+await page.getByRole("button", { name: "News", exact: true }).click();
+await page.getByText("clustered by story").waitFor();
+await page.locator("tbody tr").nth(9).waitFor({ timeout: 5000 }).catch(() => {});
+check((await page.locator("tbody tr").count()) >= 10, "News shows clustered official stories");
+await page.screenshot({ path: `${out}/news-terminal.png`, fullPage: true });
+
+await page.getByRole("button", { name: "Reasoning" }).click();
+await page.getByText("Data freshness").waitFor();
+check(await page.getByText("ts_momentum_252_21 1.0.0").isVisible(), "Reasoning shows the forecast's model and version");
+check(await page.getByText("Agreeing and opposing signals").isVisible(), "Reasoning shows agreeing and opposing signals");
+await page.getByLabel("Ticker").fill("DNCO");
+await page.getByRole("button", { name: "Explain" }).click();
+await page.getByText("Why not?").waitFor();
+check(await page.getByText(/not positive/).first().isVisible(), "Why not explains a down-trending ticker");
+await page.screenshot({ path: `${out}/reasoning-terminal.png`, fullPage: true });
+
+await page.getByRole("button", { name: "Learn" }).click();
+await page.getByText("Replay, as known then").waitFor();
+await page.locator("table").first().locator("tbody tr").first().waitFor();
+const lastBefore = await page.locator("table").first().locator("tbody tr").last().locator("td").first().innerText();
+check(lastBefore <= "2026-10-01", `replay clock 2026-10-01 17:30 ET shows no later price (last ${lastBefore})`);
+await page.getByRole("button", { name: /Record prediction/ }).click();
+await page.getByText("Prediction recorded").waitFor();
+await page.getByText("NOT YET REVEALED").first().waitFor({ timeout: 5000 }).catch(() => {});
+check(await page.getByText("NOT YET REVEALED").first().isVisible(), "outcome hidden until the replay clock passes the horizon");
+check(await page.getByText("from 0 resolved predictions").isVisible(), "calibration does not count an unrevealed outcome");
+await page.getByRole("button", { name: "Advance 5 days" }).click();
+await page.getByRole("button", { name: "Advance 1 day" }).click();
+await page.waitForTimeout(600);
+check((await page.getByText(/RIGHT|WRONG/).count()) > 0, "outcome revealed after advancing past the horizon");
+await page.screenshot({ path: `${out}/learn-terminal.png`, fullPage: true });
+
 const text = await page.locator("body").innerText();
 check(!/[—–;·]/.test(text), "no em dashes, semicolons or middle dots in visible text");
 check(!/manual_simulation|auto_simulation/.test(text), "modes shown in plain words");

@@ -160,3 +160,10 @@ parameters:
   research.osap_release: {basis: external_fact, source: "Open Source Asset Pricing data release, https://www.openassetpricing.com", as_of: "2026-11-24"}
   research.default_half_spread: {basis: provisional, review: Replace with measured spreads from recorded quotes once enough exist}
   composite.research_portfolio.max_gross_leverage: {basis: safeguard, change_policy: "Aditi approves. Stops volatility scaling from levering without limit when measured volatility is near zero"}
+
+  news.feeds: {basis: provisional, review: Official public feeds only. Add a feed only after reading its terms}
+  news.cluster_similarity: {basis: provisional, review: Title word overlap above which two items are the same story}
+  news.cluster_window_hours: {basis: provisional, review: How far apart two items can be and still be the same story}
+  news.live_view_hours: {basis: provisional, review: "Spec NEWS LIVE view length"}
+  news.recent_view_days: {basis: provisional, review: "Spec RECENT view length"}
+  news.max_summary_chars: {basis: safeguard, change_policy: Keeps stored text to summaries. Full articles are never stored}

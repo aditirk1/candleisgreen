@@ -99,6 +99,16 @@ def build(workdir: Path) -> None:
                                  "The reproduction table was viewed before choosing, so this is not a blind pre-registration.")):
             run_published_factor(claims[name], ls[name], sid, research, cfg, rec2, f"osap {cfg.research.osap_release}", note)
     build_v0(store, master, research, cfg, d2, rec2)
+    # Phase 4: real government RSS items from the recorded fixtures.
+    from .sources.rss import NewsStore, ingest
+
+    rss_dir = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "rss"
+    news = NewsStore(workdir / "news.sqlite")
+    for feed, fname in (("sec_press", "sec_press"), ("sec_litigation", "sec_lit"), ("fed_press", "fed_press")):
+        if (rss_dir / f"{fname}.xml").exists():
+            ingest(next(f for f in cfg.news.feeds if f.name == feed), (rss_dir / f"{fname}.xml").read_bytes(), news,
+                   datetime(2026, 11, 24, 6, 0, tzinfo=UTC), cfg)
+    news.close()
     research.close()
     write_heartbeat(workdir, "record", "ok", rec2, {"sessions": [d2.isoformat()], "synthetic": True})
     store.close()

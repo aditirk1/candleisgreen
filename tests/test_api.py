@@ -38,3 +38,23 @@ def test_api_reports_an_unreachable_risk_service(tmp_path):
     api = TestClient(create_app(tmp_path, "http://127.0.0.1:9", env.cfg, clock=lambda: EXEC_NOW))
     assert api.get("/api/status").json()["risk_service"]["status"] == "UNREACHABLE"
     assert api.post("/api/kill-switch", json={"engaged": True}).status_code == 503
+
+
+def test_replay_and_predictions_through_the_api(tmp_path):
+    from candleisgreen.trading import run_decision
+
+    env = build_env(tmp_path, "manual_simulation")
+    run_decision(DECISION_DATE, SESSION_DATE, env.store, env.master, env.journal, env.cfg, DECIDE_NOW)
+    env.store.close()
+    api = TestClient(create_app(tmp_path, "http://127.0.0.1:9", env.cfg, clock=lambda: EXEC_NOW))
+    assert api.get("/api/replay", params={"symbol": "UPCO", "cursor": "2027-01-01T00:00:00+00:00"}).status_code == 400
+    view = api.get("/api/replay", params={"symbol": "UPCO", "cursor": "2026-10-01T21:30:00+00:00"}).json()
+    assert max(p["date"] for p in view["prices"]) <= "2026-10-01"
+    pid = api.post("/api/predictions", json={"symbol": "UPCO", "direction": "up", "horizon_days": 5, "probability": 0.7,
+                                             "replay_cursor": "2026-10-01T21:30:00+00:00"}).json()["prediction_id"]
+    early = api.get("/api/predictions", params={"cursor": "2026-10-02T21:30:00+00:00"}).json()
+    assert early["predictions"][0]["status"] == "NOT YET REVEALED" and early["calibration"]["resolved"] == 0
+    later = api.get("/api/predictions", params={"cursor": "2026-10-08T21:30:00+00:00"}).json()
+    assert later["predictions"][0]["outcome"] in (0, 1) and later["calibration"]["resolved"] == 1
+    why = api.get("/api/reasoning", params={"symbol": "DNCO"}).json()
+    assert why["why_not"] and "not positive" in why["why_not"]

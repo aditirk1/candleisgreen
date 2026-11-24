@@ -1,6 +1,6 @@
 # HANDOFF.md
 
-Last updated: 2026-11-24 01:14 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
+Last updated: 2026-11-24 01:18 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
 
 ## Timeline note
 
@@ -22,7 +22,9 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 
 9. **Phase 3, research engine and the first Composite.** Acceptance test passed. Experiment registry with frozen pre-registered plans, trial counts and a failure archive, claim cards and an evidence graph, reproduction and replication on real Open Source Asset Pricing returns (momentum passes, betting against beta fails as expected), cross-sectional momentum and short-term reversal baselines, Composite v0 through every step with each signal's evidence chain, and the Research and Composite screens.
 
-Full suite: 237 passed. Details in `TEST_RESULTS.md`.
+10. **Phase 4, news and teaching.** Acceptance test passed. Lawful RSS from official feeds with safe parsing and story clustering, the News, Reasoning and Learn screens, predict-first with Brier scoring and calibration, and an as-known-then replay that cannot see later news, prices or corrections.
+
+Full suite: 245 passed. Details in `TEST_RESULTS.md`.
 
 ## Half done
 
@@ -60,9 +62,7 @@ make phase0
 
 ## Exact next step
 
-Phase 4 (news and teaching). First atomic task: `candleisgreen/sources/rss.py`, lawful RSS ingestion with feed URLs in config, a content hash per item, publication and ingestion times, and duplicate clustering. Then the Reasoning screen for one candidate, predict-first scoring with the Brier score, and one full historical replay that cannot see later news or prices.
-
-Live keys needed before live runs: `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY` (paper), `SEC_USER_AGENT`.
+Phase 5 (Hypothesis Factory and model levels B and C). First atomic task: `candleisgreen/research/factory.py`, the daily research loop that turns new claim cards into pre-registered experiments, checks novelty against the signal library, marks NEEDS_DATA with the missing dataset, and publishes a daily digest. Then champion and challenger tracking, drift monitoring wired to the deterioration test, practitioner claim scoring, and a re-evaluation case when a new paper contradicts an active signal. Acceptance: a model update never changes risk limits or permissions, and a contradicting paper opens a re-evaluation case.
 
 Commands:
 

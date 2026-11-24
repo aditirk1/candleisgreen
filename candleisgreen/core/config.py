@@ -267,6 +267,21 @@ class ResearchConfig(_Section):
     osap_release: str
 
 
+class FeedConfig(_Section):
+    name: str
+    url: str
+    license: str
+
+
+class NewsConfig(_Section):
+    feeds: tuple[FeedConfig, ...]
+    cluster_similarity: float = Field(gt=0, le=1)
+    cluster_window_hours: float = Field(gt=0)
+    live_view_hours: float = Field(gt=0)
+    recent_view_days: float = Field(gt=0)
+    max_summary_chars: int = Field(gt=0)
+
+
 class AppConfig(_Section):
     config_version: str
     spec_version: str
@@ -279,6 +294,7 @@ class AppConfig(_Section):
     models: ModelsConfig
     sizing: SizingConfig
     research: ResearchConfig
+    news: NewsConfig
 
     @model_validator(mode="after")
     def _sizing_inside_hard_limits(self) -> "AppConfig":

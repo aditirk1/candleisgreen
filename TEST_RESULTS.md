@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24 01:10 ET, **237 passed, 0 failed** in about 106 seconds on Python 3.13.
+Latest full run: 2026-11-24 01:16 ET, **245 passed, 0 failed** in about 121 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -177,3 +177,16 @@ Acceptance test: **passed**. The full evidence chain is shown in the interface, 
 Academic data: trimmed real Open Source Asset Pricing files, release 2026.10, CC BY 4.0 (`tests/fixtures/osap/`).
 
 Interface check, 2026-11-24 01:12 ET: all 21 Playwright checks passed, now including the Composite screen (every signal listed, RETROSPECTIVE and SYNTHETIC labels, PROVISIONAL and SAFEGUARD tags on exclusion reasons) and the Research screen (evidence chain opened from the Composite screen, failure archive, negative result visible).
+
+## Phase 4, news and teaching, 2026-11-24
+
+Acceptance test: **passed**. A replay cannot see later news or prices at earlier timestamps (`test_replay_cannot_see_later_prices_news_or_corrections`). A September close corrected in late October shows its original value until the replay clock passes the correction time, then the corrected vintage.
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_phase4.py` | 7 | Real SEC and Federal Reserve feeds parse with hashes and short summaries, never usable before first seen, ingesting twice adds nothing, duplicate stories cluster, hostile XML is refused, tickers linked from exchange mentions, the replay acceptance test, predict-first with Brier score and a calibration table that never counts an unrevealed outcome |
+| `tests/test_api.py` | 3 | Adds replay refusing a future clock, a replay prediction hidden until the clock passes its horizon, and Why not for a down-trending ticker |
+
+RSS fixtures are real feeds fetched 2026-11-24 (`tests/fixtures/rss/`).
+
+Interface check, 2026-11-24 01:13 ET: all 29 Playwright checks passed, now including News (clustered official stories), Reasoning (model and version, agreeing and opposing signals, Why not), and Learn (no later price at the replay clock, outcome hidden until the horizon passes, calibration not counting it, outcome revealed after advancing).

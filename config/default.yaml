@@ -3,7 +3,7 @@
 # config/parameters.yaml as empirical, safeguard, provisional or external_fact,
 # and that basis decides who may change it and how it is shown.
 # Bump config_version on every edit. The loader rejects unknown keys.
-config_version: "3.2.3"
+config_version: "3.2.4"
 spec_version: "3.2"
 
 time:
@@ -200,6 +200,18 @@ research:
   # Newey-West lag for monthly academic returns.
   monthly_hac_lag: 6
   osap_release: "2026.10"
+
+news:
+  # Lawful RSS feeds only (spec principle 11). Summaries and hashes are kept, never full articles.
+  feeds:
+    - {name: sec_press, url: "https://www.sec.gov/news/pressreleases.rss", license: us_government_public}
+    - {name: sec_litigation, url: "https://www.sec.gov/enforcement-litigation/litigation-releases/rss", license: us_government_public}
+    - {name: fed_press, url: "https://www.federalreserve.gov/feeds/press_all.xml", license: us_government_public}
+  cluster_similarity: 0.6
+  cluster_window_hours: 72
+  live_view_hours: 72
+  recent_view_days: 90
+  max_summary_chars: 500
 
 sizing:
   # Phase 1 sizing for a single Level A model. Must stay at or under the hard position limit.

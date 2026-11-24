@@ -23,6 +23,11 @@ from ..execution_quality import by_window
 from ..jobs import heartbeat_stale, read_heartbeat
 from ..journal import Journal
 from ..research.registry import ResearchRegistry
+from ..reasoning import explain
+from ..sources.rss import NewsStore
+from ..teaching.predictions import PredictionError, Predictions
+from ..teaching.replay import Replay
+from ..data.instruments import InstrumentMaster
 from ..risk.client import RiskClient
 
 USER = "user:aditi"
@@ -37,6 +42,14 @@ class RejectBody(BaseModel):
     reason: str = "rejected by user"
 
 
+class PredictionBody(BaseModel):
+    symbol: str
+    direction: str
+    horizon_days: int
+    probability: float
+    replay_cursor: Optional[str] = None
+
+
 def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, clock=utc_now) -> FastAPI:
     cfg = cfg or load_config()
     workdir = Path(workdir)
@@ -45,6 +58,24 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
                       f"config:{cfg.config_version}:{cfg.config_hash}", shared_across_threads=True)
     risk = RiskClient(risk_url, timeout=2.0)
     research = ResearchRegistry(workdir / "research.sqlite", audit, shared_across_threads=True)
+    news = NewsStore(workdir / "news.sqlite", shared_across_threads=True)
+    preds = Predictions(workdir / "teaching.sqlite", shared_across_threads=True)
+
+    def with_store(fn):
+        """Short read-only access to the price database. Returns None when it is busy."""
+        try:
+            store = PointInTimeStore(workdir / "pit.duckdb", read_only=True)
+        except Exception:
+            return None
+        try:
+            return fn(store, _master(store))
+        finally:
+            store.close()
+
+    def _master(store):
+        m = InstrumentMaster.__new__(InstrumentMaster)
+        m.conn, m.vendor = store.connection, "alpaca"
+        return m
     app = FastAPI(title="CandleIsGreen workstation", docs_url=None, redoc_url=None)
     venue = "SIMULATION" if "simulation" in cfg.execution.mode else "PAPER"
 
@@ -183,6 +214,69 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
     def composite():
         run = research.latest_run()
         return run or {"status": "NOT AVAILABLE", "reason": "No Composite run has been recorded"}
+
+    @app.get("/api/news")
+    def news_view(view: str = "live"):
+        now = clock()
+        from datetime import timedelta
+        span = timedelta(hours=cfg.news.live_view_hours) if view == "live" else timedelta(days=cfg.news.recent_view_days)
+        return {"view": view.upper(), "clusters": news.clusters(now, since=now - span)}
+
+    @app.get("/api/reasoning")
+    def reasoning(symbol: str):
+        now = clock()
+        def run(store, master):
+            def freshness(iid):
+                obs = store.as_of(now).series(iid, "close")
+                return {"last_close_date": obs[-1].event_time.date().isoformat(), "usable_from": obs[-1].first_usable_at.isoformat(),
+                        "vendor": obs[-1].vendor} if obs else {"status": "NOT AVAILABLE"}
+            return explain(symbol.upper(), now, journal, audit, research, news, master.instrument_for_symbol, freshness)
+        out = with_store(run)
+        return out or {"symbol": symbol, "status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
+
+    @app.get("/api/replay")
+    def replay(symbol: str, cursor: str):
+        when = datetime.fromisoformat(cursor)
+        if when.tzinfo is None:
+            raise HTTPException(400, "cursor needs a time zone")
+        if when > clock():
+            raise HTTPException(400, "a replay cannot start in the future")
+        out = with_store(lambda store, master: Replay(store, news, master, when, clock()).view(symbol.upper()))
+        return out or {"status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
+
+    @app.post("/api/predictions")
+    def predict(body: PredictionBody):
+        wall = clock()
+        made = datetime.fromisoformat(body.replay_cursor) if body.replay_cursor else wall
+        def run(store, master):
+            pid = preds.add(USER, body.symbol.upper(), master, body.direction, body.horizon_days, body.probability, made,
+                            wall, "replay" if body.replay_cursor else "live")
+            preds.resolve(store, wall)
+            return pid
+        try:
+            pid = with_store(run)
+        except PredictionError as exc:
+            raise HTTPException(400, str(exc))
+        if pid is None:
+            raise HTTPException(503, "price data is busy")
+        return {"prediction_id": pid}
+
+    @app.get("/api/predictions")
+    def predictions(cursor: Optional[str] = None):
+        from datetime import timedelta
+        with_store(lambda store, master: preds.resolve(store, clock()))
+        limit = datetime.fromisoformat(cursor) if cursor else None
+        rows = preds.list(USER)
+        for r in rows:
+            due = datetime.fromisoformat(r["made_at"]) + timedelta(days=r["horizon_days"])
+            if r["context"] == "replay" and (limit is None or due > limit):
+                r["outcome"] = None
+                r["status"] = "NOT YET REVEALED"
+            else:
+                r["status"] = "RESOLVED" if r["outcome"] is not None else "OPEN"
+        cal = preds.calibration(USER, replay_clock=limit)
+        return {"predictions": rows, "calibration": {"bins": cal.bins, "brier": cal.brier,
+                                                     "baseline_brier": cal.baseline_brier, "resolved": cal.resolved}}
 
     @app.post("/api/proposals/{pid}/approve")
     def approve(pid: str):
