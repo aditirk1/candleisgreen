@@ -91,9 +91,7 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
             store.close()
 
     def _master(store):
-        m = InstrumentMaster.__new__(InstrumentMaster)
-        m.conn, m.vendor = store.connection, "alpaca"
-        return m
+        return InstrumentMaster.reader(store.connection)
     app = FastAPI(title="CandleIsGreen workstation", docs_url=None, redoc_url=None)
     venue = "SIMULATION" if "simulation" in cfg.execution.mode else "PAPER"
 

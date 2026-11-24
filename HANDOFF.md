@@ -30,7 +30,7 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 13. **Safety extras.** Hard-limit changes through the risk service (tighten now, loosen after 24 hours with Aditi's confirmation) and a pre-open check that only cancels risky buys.
 14. **All fifteen screens.** Opportunities, Markets, Experts, Backtests, Audit and Rules, and Settings join the earlier nine. Command bar with coded commands and plain phrases, Guide mode with plain labels and hover definitions, Explain this screen, and a first-run tour.
 
-Full suite: 281 passed. Playwright: 59 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+Full suite: 283 passed. Playwright: 59 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 
@@ -44,7 +44,6 @@ Full suite: 281 passed. Playwright: 59 checks. Details in `TEST_RESULTS.md`. Pha
 - Macro ingestion from FRED and ALFRED vintages. Biotech ingestion from ClinicalTrials.gov.
 - Teaching: crisis library (shows NOT AVAILABLE until data covers the dates), counterfactual, market autopsy, spaced review, concept map.
 - Correlation clustering job with its stability test. Callers still supply cluster labels and a missing one blocks the book.
-- The pre-open check is not yet a scheduled job.
 - Tier 5 shadow tracking process for a Composite signal that reaches Tier 4.
 
 ## Commands
@@ -76,4 +75,4 @@ make screens
 
 ## Exact next step
 
-Schedule the pre-open check in `candleisgreen/jobs.py` before the execution window, then build the correlation clustering job (spec decision Q7) with its stability test, so the 20% cluster cap no longer depends on caller labels. After that, the Research Capture Inbox and the macro and biotech ingestion.
+Build the correlation clustering job (spec decision Q7) with its stability test, so the 20% cluster cap no longer depends on caller labels. After that, the Research Capture Inbox and the macro and biotech ingestion.

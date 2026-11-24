@@ -12,6 +12,8 @@ time:
   # Orders are sliced inside this regular-session window on the next trading day.
   execution_window_start_local: "09:35"
   execution_window_end_local: "10:30"
+  # Pre-open check before the window. It can only cancel buys.
+  preopen_check_local: "09:00"
 
 universe:
   min_price: 5.0

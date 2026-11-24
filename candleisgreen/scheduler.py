@@ -54,7 +54,14 @@ def _review(now, workdir, cfg, fake):
         reg.close()
 
 
+def _preopen(now, workdir, cfg, fake):
+    from . import preopen
+
+    return preopen.scheduled(now, workdir, cfg, fake)
+
+
 JOBS: dict[str, list[tuple[str, Job]]] = {
+    "us_preopen": [("preopen", _preopen)],
     "asia_pacific": [("global_factors", _global_factors)],
     "europe": [("fx", _fx)],
     "us": [("record", _record)],
@@ -78,6 +85,10 @@ def slot_times(day: date, cfg: AppConfig) -> list[tuple[datetime, str]]:
     for slot, hhmm in cfg.markets.sessions_utc.items():
         h, m = (int(x) for x in hhmm.split(":"))
         out.append((datetime.combine(day, time(h, m), tzinfo=UTC), slot))
+    # The pre-open check follows New York local time, so it moves with daylight saving.
+    from .core.timeutil import local_to_utc
+
+    out.append((local_to_utc(day, cfg.time.preopen_check_local, cfg.time.market_timezone), "us_preopen"))
     return sorted(out)
 
 
@@ -116,6 +127,9 @@ def serve(workdir: Path, fake: bool) -> None:  # pragma: no cover - long-running
         h, m = (int(x) for x in hhmm.split(":"))
         sched.add_job(lambda s=slot: run_slot(s, datetime.now(UTC), workdir, cfg, fake), "cron", hour=h, minute=m,
                       id=slot, coalesce=True, misfire_grace_time=3600)
+    h, m = (int(x) for x in cfg.time.preopen_check_local.split(":"))
+    sched.add_job(lambda: run_slot("us_preopen", datetime.now(UTC), workdir, cfg, fake), "cron", hour=h, minute=m,
+                  timezone=cfg.time.market_timezone, id="us_preopen", coalesce=True, misfire_grace_time=1200)
     sched.start()
 
 

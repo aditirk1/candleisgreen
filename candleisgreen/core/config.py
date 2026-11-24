@@ -25,6 +25,7 @@ class TimeConfig(_Section):
     decision_time_local: str
     execution_window_start_local: str
     execution_window_end_local: str
+    preopen_check_local: str
 
 
 class ResearchUniverseConfig(_Section):

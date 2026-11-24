@@ -96,6 +96,13 @@ class InstrumentMaster:
         self.vendor = vendor
         self._exec(_DDL)
 
+    @classmethod
+    def reader(cls, conn: duckdb.DuckDBPyConnection, vendor: str = "alpaca") -> "InstrumentMaster":
+        """For a read-only store: skips table creation. Write methods then fail."""
+        m = cls.__new__(cls)
+        m.conn, m.vendor = conn, vendor
+        return m
+
     def _exec(self, sql: str, args: Optional[list] = None) -> None:
         """Run a write statement and consume its result, as DuckDB 2.0 requires."""
         self.conn.execute(sql, args or []).fetchall()

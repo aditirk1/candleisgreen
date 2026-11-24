@@ -97,3 +97,57 @@ def test_shared_store_survives_concurrent_requests(tmp_path):
 
     with ThreadPoolExecutor(16) as pool:
         assert set(pool.map(read, range(2000))) == {200}
+
+
+class _Assets:
+    def __init__(self, rows=None, fail=False):
+        self.rows, self.fail = rows or [], fail
+
+    def assets(self, status):
+        if self.fail:
+            raise ConnectionError("broker down")
+        return self.rows
+
+
+def _decided_env(tmp_path):
+    from candleisgreen.trading import run_decision
+    from tests.phase1_env import DECIDE_NOW, DECISION_DATE, SESSION_DATE, build_env
+
+    env = build_env(tmp_path, "manual_simulation")
+    run_decision(DECISION_DATE, SESSION_DATE, env.store, env.master, env.journal, env.cfg, DECIDE_NOW)
+    buys = [p for p in env.journal.proposals(SESSION_DATE) if p.side == "buy"]
+    env.store.close()
+    return env, buys
+
+
+def test_scheduled_preopen_cancels_a_halted_buy_and_fails_closed(tmp_path):
+    from datetime import datetime, timezone
+
+    from candleisgreen import preopen
+    from tests.phase1_env import SESSION_DATE
+
+    env, buys = _decided_env(tmp_path)
+    assert len(buys) >= 2
+    at_nine = datetime(2026, 11, 20, 14, 0, tzinfo=timezone.utc)  # 09:00 ET
+    halted = buys[0].symbol
+    rows = [{"symbol": p.symbol, "tradable": p.symbol != halted} for p in buys]
+    out = preopen.scheduled(at_nine, tmp_path, env.cfg, fake=True, assets_source=_Assets(rows))
+    assert [c["symbol"] for c in out["cancelled"]] == [halted]
+    statuses = {p.symbol: p.status for p in env.journal.proposals(SESSION_DATE)}
+    assert statuses[halted] == "cancelled" and all(statuses[p.symbol] == "proposed" for p in buys[1:])
+    out = preopen.scheduled(at_nine, tmp_path, env.cfg, fake=True, assets_source=_Assets(fail=True))
+    assert {c["symbol"] for c in out["cancelled"]} == {p.symbol for p in buys[1:]}
+    assert all("could not be checked" in c["reasons"][0] for c in out["cancelled"])
+    assert all(p.status == "cancelled" for p in env.journal.proposals(SESSION_DATE) if p.side == "buy")
+
+
+def test_preopen_slot_follows_new_york_time(tmp_path):
+    from datetime import date
+
+    from candleisgreen.core.config import load_config
+    from candleisgreen.scheduler import slot_times
+
+    cfg = load_config()
+    summer = dict((s, t) for t, s in slot_times(date(2026, 7, 1), cfg))["us_preopen"]
+    winter = dict((s, t) for t, s in slot_times(date(2026, 12, 1), cfg))["us_preopen"]
+    assert (summer.hour, winter.hour) == (13, 14)
