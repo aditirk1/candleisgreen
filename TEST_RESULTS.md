@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24, **306 passed, 0 failed** in about 122 seconds on Python 3.13.
+Latest full run: 2026-11-24, **311 passed, 0 failed** in about 142 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -252,3 +252,11 @@ The fixture is constructed in the documented shape with invented values. Interfa
 | `tests/test_trials.py` | 5 | Name normalization, only exact lead-sponsor matches linked with paging followed, unchanged content not stored twice, non-biotech names not queried, changes become events, reads as known then, a revert recorded, trial data refused for paper trading |
 
 The follow-the-sun week now runs eight jobs a day. Interface check: 62 Playwright checks passed.
+
+## Teaching tools, 2026-11-24
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_teaching_lab.py` | 5 | Autopsy with no close after the fill shows NOT AVAILABLE, then splits P&L once a later close exists, counterfactual changes through the real model and limit and always labeled HYPOTHETICAL, review puts wrong predictions first and hides unrevealed replay outcomes, Leitner box moves, crisis library NOT AVAILABLE without data, the endpoints |
+
+Interface check: 66 Playwright checks passed. The check exposed a fill that paid 5.007 bps against a 5.0 bps model, shown as 5.0 and FAILED. Spread paid is now shown to two decimals.

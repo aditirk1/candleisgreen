@@ -199,3 +199,5 @@ parameters:
   markets.sessions_utc.europe: {basis: provisional, review: "After the FRED H.10 release window. Revisit if rates arrive later"}
   markets.sessions_utc.us: {basis: provisional, review: "After the 16:00 ET close plus the 15-minute free-data delay, before the 16:30 ET decision"}
   markets.sessions_utc.overnight_review: {basis: provisional, review: "After the US jobs, before Asia opens"}
+  teaching.review_intervals_days: {basis: provisional, review: "A common Leitner ladder. Adjust from Aditi's measured recall"}
+  teaching.crises: {basis: provisional, review: "Episode windows chosen around well-known market dates. Check each against index data once licensed data covers it"}

@@ -33,8 +33,9 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 16. **Research Capture Inbox.** On the Research screen. Stores a hash, the time and a short summary, extracts testable claims and forecasts into claim cards for the nightly research loop, and asks for the passage when a link or file cannot be read.
 17. **Macro vintages.** FRED API `series/observations` over the full real-time period, every revision stored as a vintage, usable from 17:00 New York time on its release date, shown on the Global screen. NOT AVAILABLE without a key.
 18. **Clinical trials.** Forward snapshots from the ClinicalTrials.gov API v2 for names with biotech SIC codes, linked only on an exact lead-sponsor match to the SEC entity name. Changes between snapshots become trial events. Shown on Markets. Trial data is research only by license.
+19. **Teaching tools.** Market autopsy for each simulated fill, a counterfactual that runs the real trend model and risk limit and is labeled HYPOTHETICAL, spaced review with wrong predictions first and replay outcomes kept hidden, and a crisis library that stays NOT AVAILABLE until stored data covers each episode. The glossary now lives in `config/glossary.json`, shared by Guide mode and the review deck.
 
-Full suite: 306 passed. Playwright: 62 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+Full suite: 311 passed. Playwright: 66 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 
@@ -47,7 +48,7 @@ Full suite: 306 passed. Playwright: 62 checks. Details in `TEST_RESULTS.md`. Pha
 - Phase 7 (live trading). Needs a separate written decision from Aditi.
 - FDA advisory committee calendar for biotech events. FDA action dates must come from press releases and 8-K filings.
 - Read the ClinicalTrials.gov terms by hand. The page renders with JavaScript and could not be read automatically.
-- Teaching: crisis library (shows NOT AVAILABLE until data covers the dates), counterfactual, market autopsy, spaced review, concept map.
+- Teaching: concept map and daily lesson, experiment lab, decision reconstruction beyond the Reasoning screen.
 - Tier 5 shadow tracking process for a Composite signal that reaches Tier 4.
 
 ## Commands
@@ -79,4 +80,4 @@ make screens
 
 ## Exact next step
 
-Teaching features from the spec table: market autopsy after each simulated trade, counterfactual (labeled hypothetical), spaced review from wrong predictions, and the crisis library showing NOT AVAILABLE until data covers its dates. Then the Composite and trading integration with Tier 5 shadow tracking. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.
+The Composite and trading integration with Tier 5 shadow tracking: a shadow book for any signal that reaches Tier 4, recorded prospectively and checked by `promotion_check`. Then the concept map and daily lesson. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.

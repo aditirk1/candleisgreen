@@ -5,6 +5,7 @@ config carries a content hash that every run and audit record can reference.
 """
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
@@ -338,6 +339,17 @@ class MarketsConfig(_Section):
     sessions_utc: dict[str, str]
 
 
+class CrisisEpisode(_Section):
+    name: str
+    start: date
+    end: date
+
+
+class TeachingConfig(_Section):
+    review_intervals_days: tuple[int, ...]
+    crises: tuple[CrisisEpisode, ...]
+
+
 class AppConfig(_Section):
     config_version: str
     spec_version: str
@@ -353,6 +365,7 @@ class AppConfig(_Section):
     research: ResearchConfig
     news: NewsConfig
     markets: MarketsConfig
+    teaching: TeachingConfig
 
     @model_validator(mode="after")
     def _sizing_inside_hard_limits(self) -> "AppConfig":

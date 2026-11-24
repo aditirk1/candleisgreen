@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getJSON, post } from "../api";
 import { timeET } from "../format";
+import { LearnLab } from "./LearnLab";
 
 type Pred = { prediction_id: string; symbol: string; direction: string; horizon_days: number; probability: number; made_at: string; context: string; outcome: number | null; status: string };
 type Cal = { bins: { range: string; count: number; mean_stated: number | null; hit_rate: number | null }[]; brier: number | null; baseline_brier: number; resolved: number };
@@ -65,6 +66,7 @@ export function LearnScreen({ tick }: { tick: number }) {
             <tbody>{(preds?.calibration.bins ?? []).map((b) => <tr key={b.range}><td>{b.range}</td><td className="num">{b.count}</td><td className="num">{b.hit_rate === null ? "NOT AVAILABLE" : Math.round(b.hit_rate * 100)}</td></tr>)}</tbody></table>
         </section>
       </div>
+      <LearnLab tick={tick} cursor={cursor} />
     </>
   );
 }

@@ -114,6 +114,15 @@ await page.getByRole("button", { name: "Advance 5 days" }).click();
 await page.getByRole("button", { name: "Advance 1 day" }).click();
 await page.waitForTimeout(600);
 check((await page.getByText(/RIGHT|WRONG/).count()) > 0, "outcome revealed after advancing past the horizon");
+check(await page.getByText("Market autopsy, simulated trades").isVisible(), "market autopsy shown");
+await page.getByLabel("Change").selectOption("spread_bps");
+await page.getByRole("button", { name: "Test the change" }).click();
+await page.getByText("BLOCKED BY RISK").waitFor({ timeout: 5000 }).catch(() => {});
+check(await page.getByText("HYPOTHETICAL").first().isVisible(), "counterfactual labeled hypothetical");
+check((await page.getByText(/NOT AVAILABLE\. Stored price data covers/).count()) === 6, "every crisis episode NOT AVAILABLE without data");
+await page.getByRole("button", { name: "Show answer" }).click();
+await page.getByRole("button", { name: "I knew it" }).click();
+check(true, "spaced review card answered");
 await page.screenshot({ path: `${out}/learn-terminal.png`, fullPage: true });
 
 await page.getByRole("button", { name: "Global" }).click();

@@ -62,6 +62,10 @@ class CaptureBody(BaseModel):
     filename: Optional[str] = None
 
 
+class ReviewBody(BaseModel):
+    correct: bool
+
+
 class LimitBody(BaseModel):
     key: str
     value: Optional[float] = None
@@ -87,6 +91,9 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
     preds = Predictions(workdir / "teaching.sqlite", shared_across_threads=True)
     from ..research.inbox import Inbox, InboxError
     inbox = Inbox(workdir / "inbox.sqlite", cfg.research.inbox, shared_across_threads=True)
+    from ..teaching import lab
+    review = lab.Review(workdir / "review.sqlite", cfg.teaching.review_intervals_days, shared_across_threads=True)
+    glossary_terms = json.loads((Path(__file__).resolve().parents[2] / "config" / "glossary.json").read_text())["terms"]
 
     def with_store(fn):
         """Short read-only access to the price database. Returns None when it is busy."""
@@ -359,6 +366,37 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         macro = with_store(lambda store, master: macro_view(store, cfg, clock()))
         return {"sessions": sessions, "fx": rates, "momentum_by_market": evidence, "entitlements": entitlements,
                 "markets": markets, "macro": macro if macro is not None else []}
+
+    @app.get("/api/autopsy")
+    def autopsy_view():
+        rows = with_store(lambda store, master: lab.autopsy(journal, audit.records(), store, master, cfg, clock()))
+        return {"rows": rows if rows is not None else [], "status": "OK" if rows is not None else "NOT AVAILABLE"}
+
+    @app.get("/api/counterfactual")
+    def counterfactual_view(symbol: str, change: str, amount: float = 0.0):
+        try:
+            out = with_store(lambda store, master: lab.counterfactual(store, master, cfg, symbol.upper(), clock(), change, amount))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        return out or {"label": lab.HYPOTHETICAL, "status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
+
+    @app.get("/api/review")
+    def review_due(cursor: Optional[str] = None):
+        limit = datetime.fromisoformat(cursor) if cursor else None
+        review.sync(USER, preds.list(USER), glossary_terms, clock(), replay_clock=limit)
+        return {"cards": review.due(USER, clock())}
+
+    @app.post("/api/review/{card_id}")
+    def review_answer(card_id: str, body: ReviewBody):
+        try:
+            return review.answer(USER, card_id, body.correct, clock())
+        except KeyError:
+            raise HTTPException(404, "unknown card")
+
+    @app.get("/api/crises")
+    def crises_view():
+        rows = with_store(lambda store, master: lab.crisis_library(store, list(cfg.teaching.crises), clock()))
+        return {"episodes": rows if rows is not None else []}
 
     @app.get("/api/inbox")
     def inbox_list():
