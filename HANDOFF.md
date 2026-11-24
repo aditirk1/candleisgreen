@@ -28,9 +28,10 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 12. **Phase 6, global research.** Acceptance test passed. Instrument taxonomy with a risk check that blocks non-US instruments, a market rule table from official sources, the NYSE calendar, FRED FX with the local and FX split, JKP momentum evidence by market, follow-the-sun scheduling on APScheduler, and the Global screen.
 
 13. **Safety extras.** Hard-limit changes through the risk service (tighten now, loosen after 24 hours with Aditi's confirmation) and a pre-open check that only cancels risky buys.
+15. **Correlation clusters.** Monthly residual-return clustering with a stability test, sector fallback when unstable, and the executor counting exposure per cluster.
 14. **All fifteen screens.** Opportunities, Markets, Experts, Backtests, Audit and Rules, and Settings join the earlier nine. Command bar with coded commands and plain phrases, Guide mode with plain labels and hover definitions, Explain this screen, and a first-run tour.
 
-Full suite: 283 passed. Playwright: 59 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+Full suite: 289 passed. Playwright: 59 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 
@@ -43,7 +44,6 @@ Full suite: 283 passed. Playwright: 59 checks. Details in `TEST_RESULTS.md`. Pha
 - Research Capture Inbox.
 - Macro ingestion from FRED and ALFRED vintages. Biotech ingestion from ClinicalTrials.gov.
 - Teaching: crisis library (shows NOT AVAILABLE until data covers the dates), counterfactual, market autopsy, spaced review, concept map.
-- Correlation clustering job with its stability test. Callers still supply cluster labels and a missing one blocks the book.
 - Tier 5 shadow tracking process for a Composite signal that reaches Tier 4.
 
 ## Commands
@@ -75,4 +75,4 @@ make screens
 
 ## Exact next step
 
-Build the correlation clustering job (spec decision Q7) with its stability test, so the 20% cluster cap no longer depends on caller labels. After that, the Research Capture Inbox and the macro and biotech ingestion.
+The Research Capture Inbox, then macro ingestion from FRED with ALFRED vintages, then biotech ingestion from ClinicalTrials.gov. Also pass the clustering labels into the Composite optimizer's book check, which still takes caller-supplied clusters.

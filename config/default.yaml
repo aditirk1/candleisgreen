@@ -139,6 +139,16 @@ risk:
     execution_grade_feeds: [iex_realtime, fixture_realtime]
   loosening_delay_hours: 24
 
+clustering:
+  # Correlation clusters for the cluster limit (decision Q7). Residual daily returns, average linkage.
+  lookback_days: 252
+  min_observations: 200
+  # Correlation distance sqrt((1 - rho) / 2). 0.5 joins names with average residual correlation above 0.5.
+  max_distance: 0.5
+  # Adjusted Rand index against the last stable run. Below this, orders fall back to sector clusters.
+  min_stability: 0.5
+  refresh_days: 28
+
 execution:
   mode: auto_simulation
   # Must stay false. The loader refuses any other value.

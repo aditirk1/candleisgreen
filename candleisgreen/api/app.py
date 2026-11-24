@@ -145,6 +145,15 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
             alerts.append({"symbol": p.symbol, "event": "order blocked", "detail": p.reason.split("\n")[0], "time": p.updated_at})
         if heartbeat_stale(workdir, clock(), cfg.sources.recorder.heartbeat_max_age_hours):
             alerts.insert(0, {"symbol": "", "event": "data job missed its schedule", "detail": "feed STALE", "time": clock().isoformat()})
+        def cluster_alert(store, master):
+            from ..clusters import UNSTABLE, latest_run
+            last = latest_run(store.connection)
+            return last if last and last.status == UNSTABLE else None
+        unstable = with_store(cluster_alert)
+        if unstable:
+            alerts.insert(0, {"symbol": "", "event": "clusters unstable, sector limits in use",
+                              "detail": f"stability {unstable.stability if unstable.stability is not None else 'NOT AVAILABLE'}",
+                              "time": unstable.as_of.isoformat()})
         return {
             "venue": venue, "account_value": acct["equity"], "cash": acct["cash"],
             "todays_change": acct["equity"] - prev, "todays_change_pct": (acct["equity"] - prev) / prev if prev else None,

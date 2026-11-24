@@ -24,7 +24,12 @@ Values live in `config/default.yaml` under `risk.hard_limits`. A test (`test_har
 
 Every value here is classified as a safeguard in `config/parameters.yaml`, so no experiment, search or optimizer can vary it.
 
-A correlated cluster is defined in the spec as a hierarchical cluster on 252-day residual return correlation, cut at 0.5 and recomputed monthly (`QUESTIONS.md` Q7). The cluster mapping is planned. Until it exists the caller must supply `cluster_value`, and a missing value blocks the order.
+Correlated clusters come from `candleisgreen/clusters.py` (decision Q7). Each month the overnight slot clusters residual daily returns (equal-weighted market removed) over `clustering.lookback_days` with average linkage, cut at `clustering.max_distance`. Every clustering setting is provisional.
+
+- Stability is the adjusted Rand index against the last stable run. Below `clustering.min_stability` the run is UNSTABLE, orders use Fama-French 12 sectors as clusters with unknown sectors pooled, and Overview shows an alert.
+- With no run yet, the same sector fallback applies.
+- Under a stable run, if the order's name or any held or pending name has no cluster, cluster exposure cannot be computed and the order is blocked.
+- The executor sums held and pending value in the order's cluster only. Before this job existed it summed the whole book, which was stricter.
 
 ## 3. Order of checks
 

@@ -178,6 +178,16 @@ class HardLimits(_Section):
     execution_grade_feeds: tuple[str, ...] = Field(min_length=1)
 
 
+class ClusteringConfig(_Section):
+    """Correlation clusters for the cluster limit (Q7). All provisional."""
+
+    lookback_days: int = Field(gt=20)
+    min_observations: int = Field(gt=20)
+    max_distance: float = Field(gt=0, le=1)
+    min_stability: float = Field(ge=-1, le=1)
+    refresh_days: int = Field(gt=0)
+
+
 class RiskConfig(_Section):
     hard_limits: HardLimits
     loosening_delay_hours: int = Field(ge=0)
@@ -308,6 +318,7 @@ class AppConfig(_Section):
     universe: UniverseConfig
     composite: CompositeConfig
     risk: RiskConfig
+    clustering: ClusteringConfig
     execution: ExecutionConfig
     sources: SourcesConfig
     models: ModelsConfig

@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24 01:45 ET, **281 passed, 0 failed** in about 144 seconds on Python 3.13.
+Latest full run: 2026-11-24, **289 passed, 0 failed** in about 121 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -220,3 +220,11 @@ Interface check, 2026-11-24 01:26 ET: all 39 Playwright checks passed across nin
 Interface check, 2026-11-24 01:44 ET: all 59 Playwright checks passed across fifteen screens on fresh demo data, with no server errors. New checks cover the first-run tour, Opportunities with its evidence pane, Markets with a chart and watchlist, Backtests with trial counts beside every Sharpe, Experts, hard-limit changes on Audit and Rules, Settings, the command bar (`UPCO NEWS`, `RULES`, a plain "why didn't we buy" phrase) and Guide mode (plain labels, Explain this screen, venue label and kill switch still shown).
 
 A first run found a real bug: two simultaneous requests shared one SQLite connection without a lock and one returned an error. Shared connections now go through `candleisgreen/core/sqlite_shared.py`, which runs and fetches each statement under a lock.
+
+## Pre-open job and correlation clusters, 2026-11-24
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_safety_extras.py` | 8 | Adds the scheduled pre-open check cancelling a halted buy, cancelling every buy when asset status cannot be read, and its slot following New York daylight saving |
+| `tests/test_clusters.py` | 6 | Planted groups recovered, market-only correlation not merged into one cluster, stability score, monthly runs stored and reused, sector fallback when unstable, a name outside a stable clustering blocked at execution while a covered name fills |
+| `tests/test_phase6.py` | updated | The follow-the-sun week now has six jobs a day, including the pre-open check and a clustering computed once and reused |

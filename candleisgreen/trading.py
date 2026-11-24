@@ -19,6 +19,7 @@ from .core.config import AppConfig
 from .core.licenses import load_licenses
 from .core.schemas import OrderIntent, Quote, RiskContext, RiskVerdict, Side, Venue
 from .core.timeutil import ensure_utc, in_local_window, local_to_utc
+from .clusters import cluster_key
 from .data.adjust import adjust_closes
 from .data.instruments import InstrumentMaster
 from .data.pit_store import PointInTimeStore
@@ -70,6 +71,19 @@ def _last_closes(store: PointInTimeStore, iids, when: datetime, with_vendor: boo
         if series:
             out[iid] = (series[-1].value, series[-1].vendor) if with_vendor else series[-1].value
     return out
+
+
+def _cluster_exposure(store, master, instrument_id, now, positions, pending, mark, mid):
+    """Held and pending value in the order's cluster. None, which blocks the order, when the order's
+    cluster or that of any held or pending name is unknown (decision Q7)."""
+    keys = {i: cluster_key(store.connection, master, i, now)[0]
+            for i in {instrument_id} | {i for i, q in positions.items() if q > 0} | set(pending)}
+    if any(k is None for k in keys.values()):
+        return None, None
+    key = keys[instrument_id]
+    held = sum(q * mark.get(i, 0.0) for i, q in positions.items() if q > 0 and keys[i] == key)
+    waiting = sum(q * mark.get(i, mid) for i, q in pending.items() if keys[i] == key)
+    return held, waiting
 
 
 def run_decision(decision_date: date, session_date: date, store: PointInTimeStore, master: InstrumentMaster,
@@ -195,8 +209,8 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
         hist = journal.equity_history()
         day_start = hist[-1][1] if hist else journal.cash()
         pending = journal.pending_buys()
-        pending_value = sum(q * mark.get(i, snap.quote.mid) for i, q in pending.items())
-        long_value = sum(q * mark.get(i, 0.0) for i, q in positions.items() if q > 0)
+        cluster_value, pending_cluster = _cluster_exposure(store, master, p.instrument_id, now, positions, pending,
+                                                           mark, snap.quote.mid)
         vols = store.as_of(decision_time).series(p.instrument_id, "volume")[-cfg.universe.dollar_volume_window_days:]
         adv = sum(o.value for o in vols) / len(vols) if vols else None
         mapped = master.instrument_for_symbol(p.symbol) == p.instrument_id and \
@@ -205,8 +219,8 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
             now=now, kill_switch_engaged=False, market_open=snap.market_open, market_halted=snap.halted,
             broker_connected=True, account_state_known=account_ok, instrument_mapping_certain=mapped, quote=snap.quote,
             equity=equity, day_start_equity=day_start, position_value=positions.get(p.instrument_id, 0.0) * snap.quote.mid,
-            cluster_value=long_value, pending_position_value=pending.get(p.instrument_id, 0.0) * snap.quote.mid,
-            pending_cluster_value=pending_value, adv20_shares=adv, in_execution_window=in_window,
+            cluster_value=cluster_value, pending_position_value=pending.get(p.instrument_id, 0.0) * snap.quote.mid,
+            pending_cluster_value=pending_cluster, adv20_shares=adv, in_execution_window=in_window,
             instrument_tag=master.tag(p.instrument_id, cfg.markets.us_exchanges))
         decision = risk.evaluate(intent, ctx)
         journal.record_risk(intent, decision, now)

@@ -113,6 +113,11 @@ parameters:
   composite.optimizer.alpha_horizon_days: {basis: provisional, review: One trading month}
 
   risk.hard_limits.max_position_pct_equity: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  clustering.lookback_days: {basis: provisional, review: "One year of daily returns, from the Q7 assumption. Check stability with shorter and longer windows"}
+  clustering.min_observations: {basis: provisional, review: Names with fewer days are left out of the clustering and blocked while clusters are stable}
+  clustering.max_distance: {basis: provisional, review: "Cut height for average linkage. Compare cluster counts and stability across cuts once real data exists"}
+  clustering.min_stability: {basis: provisional, review: "Adjusted Rand index below which a run counts as unstable. No published threshold applies, so this is a starting value"}
+  clustering.refresh_days: {basis: provisional, review: Monthly refresh from decision Q7}
   risk.hard_limits.max_cluster_pct_equity: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
   risk.hard_limits.max_order_pct_adv20: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
   risk.hard_limits.max_spread_pct: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}

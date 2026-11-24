@@ -802,8 +802,8 @@ Aditi's decisions of 2026-11-22 on the review questions. Each lists its assumpti
 | --- | --- |
 | Decision | Fama-French sector limits plus correlation-based clusters. The 20% cluster cap stays configurable. Cluster stability is tested, exposure includes current positions and pending orders, and overlapping classifications cannot bypass aggregate limits |
 | Assumptions | Monthly clustering on 252 days of residual returns is stable enough to be useful. If not, sector limits carry the load |
-| Implementation | Built: pending orders in the position and cluster checks, separate sector and cluster checks in `evaluate_portfolio`, an UNKNOWN bucket in the optimizer and the book check. Planned, Phase 3: the clustering job and its stability test |
-| Validation test | Built: tests for pending buys pushing a position or cluster over its limit, sector and cluster counted separately, and unknown sectors pooled. Planned: a stability score between consecutive monthly clusterings below its provisional threshold triggers the sector-only fallback |
+| Implementation | Built: pending orders in the position and cluster checks, separate sector and cluster checks in `evaluate_portfolio`, an UNKNOWN bucket in the optimizer and the book check. Built: the monthly clustering job (`clusters.py`) on residual returns with its stability test and sector fallback |
+| Validation test | Built: tests for pending buys pushing a position or cluster over its limit, sector and cluster counted separately, and unknown sectors pooled. Built: `tests/test_clusters.py` recovers planted groups, keeps market-only correlation from forming one cluster, falls back to sectors when stability drops below `clustering.min_stability`, and blocks a name a stable clustering does not cover |
 | Failure behavior | Unknown pending orders or cluster membership block the order. An unstable clustering falls back to sector limits and raises an alert |
 
 ### Q8. Shadow period and promotion

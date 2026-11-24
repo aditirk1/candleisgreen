@@ -104,7 +104,9 @@ def test_a_week_of_follow_the_sun_jobs_runs_with_no_manual_step(tmp_path):
     jobs.run("record", tmp_path, fake=True, now=datetime(2026, 11, 13, 21, 20, tzinfo=UTC))
     report = scheduler.run_week(date(2026, 11, 14), tmp_path, fake=True)
     assert report.ok, report.failures
-    assert len(report.runs) == 7 * 5
+    assert len(report.runs) == 7 * 6
+    cluster_runs = [r["detail"]["run_id"] for r in report.runs if r["job"] == "clusters"]
+    assert len(set(cluster_runs)) == 1  # computed once, then reused until the refresh is due
     assert {r["slot"] for r in report.runs} == {"asia_pacific", "europe", "us_preopen", "us", "overnight_review"}
     preopen_runs = [r["detail"] for r in report.runs if r["job"] == "preopen"]
     assert sum(1 for d in preopen_runs if d["ran"]) == 5 and all(d.get("cancelled", []) == [] for d in preopen_runs)
@@ -112,7 +114,7 @@ def test_a_week_of_follow_the_sun_jobs_runs_with_no_manual_step(tmp_path):
     sessions = sorted({s for r in recorded for s in r["detail"].get("sessions", [])})
     assert "2026-11-26" not in sessions  # Thanksgiving is skipped by the calendar
     assert sessions[:3] == ["2026-11-16", "2026-11-17", "2026-11-18"]
-    for name in ("global_factors", "fx", "preopen", "record", "review"):
+    for name in ("global_factors", "fx", "preopen", "record", "review", "clusters"):
         assert jobs.read_heartbeat(tmp_path / "heartbeats" / name)["status"] == "ok"
     again = scheduler.run_week(date(2026, 11, 14), tmp_path, fake=True)  # rerunning the week changes nothing
     assert again.ok and all(not r["detail"].get("sessions") for r in again.runs if r["job"] == "record")

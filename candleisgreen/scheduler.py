@@ -54,6 +54,19 @@ def _review(now, workdir, cfg, fake):
         reg.close()
 
 
+def _clusters(now, workdir, cfg, fake):
+    from . import clusters
+    from .data.instruments import InstrumentMaster
+    from .data.pit_store import PointInTimeStore
+
+    store = PointInTimeStore(workdir / "pit.duckdb")
+    try:
+        r = clusters.run(now, store, InstrumentMaster(store.connection), cfg)
+        return {"run_id": r.run_id, "status": r.status, "names": len(r.labels), "stability": r.stability}
+    finally:
+        store.close()
+
+
 def _preopen(now, workdir, cfg, fake):
     from . import preopen
 
@@ -65,7 +78,7 @@ JOBS: dict[str, list[tuple[str, Job]]] = {
     "asia_pacific": [("global_factors", _global_factors)],
     "europe": [("fx", _fx)],
     "us": [("record", _record)],
-    "overnight_review": [("review", _review)],
+    "overnight_review": [("review", _review), ("clusters", _clusters)],
 }
 
 
