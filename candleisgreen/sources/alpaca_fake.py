@@ -82,14 +82,17 @@ class FakeMarket:
 
     def bars_for(self, a: FakeAsset) -> list[tuple[date, dict]]:
         out = []
+        prev = None
         for i, day in enumerate(self.days):
             if a.delisted_on and day > a.delisted_on:
                 break
             c = self.close(a, i, day)
             vol = 2_000_000 + 10_000 * (i % 13)
             t = local_to_utc(day, "00:00", MARKET_TZ)
-            out.append((day, {"t": t.strftime("%Y-%m-%dT%H:%M:%SZ"), "o": round(c * 0.997, 2), "h": round(c * 1.01, 2),
-                              "l": round(c * 0.99, 2), "c": c, "v": vol, "n": 15000, "vw": round(c * 1.001, 2)}))
+            o = round(prev if prev is not None else c * 0.997, 2)  # opens at the prior close, so down days show as down candles
+            out.append((day, {"t": t.strftime("%Y-%m-%dT%H:%M:%SZ"), "o": o, "h": round(max(o, c) * 1.004, 2),
+                              "l": round(min(o, c) * 0.996, 2), "c": c, "v": vol, "n": 15000, "vw": round((o + c) / 2, 2)}))
+            prev = c
         return out
 
     # API surface ---------------------------------------------------------------------------

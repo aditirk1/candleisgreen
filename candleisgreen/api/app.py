@@ -249,7 +249,7 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         return {
             "venue": venue, "mode": cfg.execution.mode, "now": now.isoformat(),
             "data": {"kind": "SYNTHETIC" if synthetic else ("LIVE" if vendors else "NONE"),
-                     "note": "Demo data. Every price is invented" if synthetic else ("Recorded market data, delayed" if vendors else "No price data recorded yet")},
+                     "note": "Every price is invented" if synthetic else ("Recorded market data, delayed" if vendors else "No price data recorded yet")},
             "market": {"status": "OPEN" if is_open else "CLOSED", "trading_day": trading_day, "local_time": local.strftime("%H:%M")},
             "account": {"value": acct["equity"], "cash": acct["cash"], "starting_value": start,
                         "change_since_last_decision": acct["equity"] - prev,
