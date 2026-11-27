@@ -23,15 +23,16 @@ import { RulesScreen } from "./screens/Rules";
 import { SettingsScreen } from "./screens/Settings";
 import { CompanyScreen } from "./screens/Company";
 import { AssetClassesScreen } from "./screens/AssetClasses";
+import { OwnershipScreen } from "./screens/Ownership";
 
 // Screen IDs stay the same as before, so links, the command bar and the URL hash keep working.
-export type Screen = "assets" | "company" | "overview" | "opportunities" | "execution" | "reasoning" | "research" | "composite" | "markets" | "news" | "earnings" | "experts" | "backtests" | "learn" | "global" | "rules" | "settings";
+export type Screen = "ownership" | "assets" | "company" | "overview" | "opportunities" | "execution" | "reasoning" | "research" | "composite" | "markets" | "news" | "earnings" | "experts" | "backtests" | "learn" | "global" | "rules" | "settings";
 type Dest = "home" | "discover" | "markets" | "intelligence" | "portfolio" | "learn" | "workspace" | "settings";
 const DESTS: { id: Dest; label: string; tabs: [Screen, string][] }[] = [
   { id: "home", label: "Home", tabs: [["overview", "Home"]] },
   { id: "discover", label: "Discover", tabs: [["opportunities", "Opportunities"], ["reasoning", "Reasoning"]] },
   { id: "markets", label: "Markets", tabs: [["markets", "Instruments"], ["company", "Company"], ["assets", "Asset classes"], ["earnings", "Earnings"], ["global", "Global"]] },
-  { id: "intelligence", label: "Intelligence", tabs: [["news", "News"]] },
+  { id: "intelligence", label: "Intelligence", tabs: [["news", "News"], ["ownership", "Insiders and institutions"]] },
   { id: "portfolio", label: "Portfolio", tabs: [["execution", "Orders and approvals"], ["rules", "Risk and rules"]] },
   { id: "learn", label: "Learn", tabs: [["learn", "Learn"]] },
   { id: "workspace", label: "Research workspace", tabs: [["research", "Research"], ["composite", "Composite"], ["backtests", "Backtests"], ["experts", "Experts"]] },
@@ -175,6 +176,7 @@ export function App() {
                 {screen === "markets" && <MarketsScreen tick={tick} initial={symbol} />}
                 {screen === "company" && <CompanyScreen tick={tick} initial={symbol} />}
                 {screen === "assets" && <AssetClassesScreen tick={tick} />}
+                {screen === "ownership" && <OwnershipScreen tick={tick} ticker={symbol} />}
                 {screen === "experts" && <ExpertsScreen tick={tick} />}
                 {screen === "backtests" && <BacktestsScreen tick={tick} />}
                 {screen === "rules" && <RulesScreen tick={tick} onChange={refresh} />}

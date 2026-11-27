@@ -44,15 +44,18 @@ class HttpSecTransport:
         self.last = 0.0
         self.lock = threading.Lock()
 
-    def get_json(self, url: str) -> Any:
+    def get_bytes(self, url: str) -> bytes:
         with self.lock:
             wait = self.min_gap - (time.monotonic() - self.last)
             if wait > 0:
                 time.sleep(wait)
             self.last = time.monotonic()
-        req = urllib.request.Request(url, headers={"User-Agent": self.ua, "Accept": "application/json"})
+        req = urllib.request.Request(url, headers={"User-Agent": self.ua})
         with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            return resp.read()
+
+    def get_json(self, url: str) -> Any:
+        return json.loads(self.get_bytes(url).decode("utf-8"))
 
 
 class FixtureSecTransport:
@@ -61,9 +64,11 @@ class FixtureSecTransport:
     def __init__(self, directory: Path):
         self.dir = Path(directory)
 
+    def get_bytes(self, url: str) -> bytes:
+        return (self.dir / url.split("://", 1)[1].replace("/", "__")).read_bytes()
+
     def get_json(self, url: str) -> Any:
-        name = url.split("://", 1)[1].replace("/", "__")
-        return json.loads((self.dir / name).read_text())
+        return json.loads(self.get_bytes(url).decode("utf-8"))
 
 
 def cik10(cik: str | int) -> str:
@@ -80,6 +85,10 @@ class SecClient:
 
     def companyfacts(self, cik: str) -> dict:
         return self.t.get_json(f"{self.cfg.data_base_url}/api/xbrl/companyfacts/CIK{cik10(cik)}.json")
+
+    def document(self, cik: str, accession: str, filename: str) -> bytes:
+        """A filing document from the EDGAR archive, by accession number and file name."""
+        return self.t.get_bytes(f"{self.cfg.archives_base_url}/{int(cik)}/{accession.replace('-', '')}/{filename}")
 
     def tickers(self) -> dict[str, str]:
         raw = self.t.get_json(self.cfg.tickers_url)

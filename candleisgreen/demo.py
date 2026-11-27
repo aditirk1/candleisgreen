@@ -84,6 +84,13 @@ def build(workdir: Path) -> None:
     if fixtures.exists():
         sec.ingest_issuer(sec.SecClient(sec.FixtureSecTransport(fixtures), cfg.sources.sec), "320193", "AAPL",
                           store, master, rec2, cfg)
+        # Insider and 13F filings from the fixtures: real public SEC filings.
+        from .sources import ownership
+        root = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
+        ownership.ingest_insiders(sec.SecClient(sec.FixtureSecTransport(root / "sec_insiders"), cfg.sources.sec), "320193", store.connection)
+        # The fixture set includes one constructed purchase for tests. The demo shows only the real filings.
+        store.connection.execute("DELETE FROM insider_transactions WHERE accession LIKE '0000999999-%'").fetchall()
+        ownership.ingest_13f(sec.SecClient(sec.FixtureSecTransport(root / "sec_13f"), cfg.sources.sec), "1067983", store.connection)
     # Phase 3: published factors through the evidence pipeline, then Composite v0.
     from .composite.v0 import build as build_v0
     from .research.academic import load_osap

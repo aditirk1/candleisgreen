@@ -18,7 +18,7 @@ const ownText = (loc) => loc.evaluate((el) => { const c = el.cloneNode(true); c.
 // Screens sit under six destinations plus the Research workspace and Settings. Old screen names map to [destination, tab].
 const NAV = { Overview: ["Home"], Opportunities: ["Discover", "Opportunities"], Reasoning: ["Discover", "Reasoning"],
   Execution: ["Portfolio", "Orders and approvals"], "Audit and Rules": ["Portfolio", "Risk and rules"], Markets: ["Markets", "Instruments"],
-  Earnings: ["Markets", "Earnings"], Global: ["Markets", "Global"], News: ["Intelligence"], Learn: ["Learn"],
+  Earnings: ["Markets", "Earnings"], Global: ["Markets", "Global"], News: ["Intelligence", "News"], Ownership: ["Intelligence", "Insiders and institutions"], Learn: ["Learn"],
   Research: ["Research workspace", "Research"], Composite: ["Research workspace", "Composite"], Backtests: ["Research workspace", "Backtests"],
   Experts: ["Research workspace", "Experts"], Settings: ["Settings"] };
 const nav = async (name) => {
@@ -246,6 +246,15 @@ check((await page.getByText("Paper trading", { exact: true }).count()) >= 1 && (
 await page.getByText("Options", { exact: true }).click();
 check(await page.getByText(/indicative options feed/).isVisible(), "options explain why they cannot be traded");
 await page.screenshot({ path: `${out}/asset-classes-light.png`, fullPage: true });
+texts.push(await ownText(page.locator("body")));
+await nav("Ownership");
+await page.getByText("Insider transactions, SEC Form 4").waitFor();
+check(await page.getByText("RESEARCH ONLY.").isVisible(), "insider and institutional data labeled research only");
+check(await page.getByRole("columnheader", { name: "Disclosed" }).isVisible() && await page.getByRole("columnheader", { name: "Traded" }).isVisible(), "transaction and disclosure dates shown separately");
+check(await page.getByText("10b5-1 plan").first().isVisible(), "pre-scheduled sales flagged");
+check(await page.getByText(/BERKSHIRE HATHAWAY/).isVisible() && await page.getByText(/not a complete or current portfolio/).isVisible(), "13F holdings shown with their limits");
+check((await page.getByText(/^NOT AVAILABLE\. Not built/).count()) >= 3, "unbuilt political and procurement modules labeled not available");
+await page.screenshot({ path: `${out}/ownership-light.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 await nav("Backtests");
 await page.getByText(/Trials recorded/).waitFor();

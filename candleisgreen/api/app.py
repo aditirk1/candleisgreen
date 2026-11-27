@@ -750,6 +750,33 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         rows = with_store(lambda store, master: lab.crisis_library(store, list(cfg.teaching.crises), clock()))
         return {"episodes": rows if rows is not None else []}
 
+    @app.get("/api/intelligence/ownership")
+    def ownership_view(symbol: Optional[str] = None):
+        """Insider transactions, large-holder filings and 13F holdings as disclosed by the clock. Research only."""
+        from ..core.capabilities import load_capabilities
+        from ..sources import ownership as own
+        now = clock()
+        caps = load_capabilities()
+        modules = ["insider_transactions", "institutional_holdings", "large_holder_filings", "congressional_disclosures",
+                   "government_procurement", "regulatory_actions", "political_sector_exposure"]
+
+        def run(store, master):
+            cik = None
+            if symbol:
+                rows = store.connection.execute("SELECT cik FROM issuers WHERE upper(ticker) = ?", [symbol.upper()]).fetchall()
+                cik = rows[0][0] if rows else None
+            holdings = own.holdings_as_of(store.connection, now)
+            return {"insiders": own.insiders_as_of(store.connection, now, symbol)[:200],
+                    "large_holders": own.large_holders_as_of(store.connection, now, cik)[:50],
+                    "holdings": holdings[:200], "holdings_total": len(holdings)}
+        data = with_store(run) or {"insiders": [], "large_holders": [], "holdings": [], "holdings_total": 0}
+        return {**data, "symbol": symbol, "research_only": True,
+                "sources": [{"module": m, "status": caps.get(m).status.value, "label": caps.get(m).label} for m in modules],
+                "caveats": ["Transaction or quarter-end dates and disclosure dates are shown separately. Records count only from disclosure",
+                            "A 13F is a delayed snapshot of long positions. It is not a complete or current portfolio and not evidence of skill",
+                            "Sales flagged as 10b5-1 were scheduled in advance under a trading plan",
+                            "Nothing here feeds an order until a pre-registered test passes"]}
+
     @app.get("/api/asset-classes")
     def asset_classes():
         """Each asset class with what the capability registry allows: research, historical prices, paper execution."""

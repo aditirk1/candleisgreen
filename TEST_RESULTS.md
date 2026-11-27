@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-27, **349 passed, 0 failed** in about 210 seconds on Python 3.13.
+Latest full run: 2026-11-27, **357 passed, 0 failed** in about 221 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -310,3 +310,12 @@ Interface check: 99 Playwright checks passed, including the six destinations and
 ## Company pages, priority 6, 2026-11-27
 
 `tests/test_company.py` (3 tests): an SEC-only company has sourced financials with period and age, an honest NOT AVAILABLE for valuation without a price, unparsed revenue model and risk factors labeled, a priced demo company without filings shows price risks and the trend view, and price to earnings needs every input with a source. Interface check: 104 Playwright checks passed, including the company chart, SEC filing links, the age column and the labeled gaps.
+
+## Asset classes and ownership intelligence, priorities 7 and 8, 2026-11-27
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_asset_classes.py` | 2 | Every asset class facet names a real capability, and only stocks and ETFs can be paper traded |
+| `tests/test_ownership.py` | 3 | A real Form 4 parses with transaction and disclosure dates apart and the 10b5-1 flag, ingestion is safe to rerun and point in time, a purchase is recognized, a real 13F sums rows per security and stays invisible until its disclosure |
+
+Interface check: 111 Playwright checks passed.

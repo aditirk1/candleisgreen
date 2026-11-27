@@ -77,6 +77,34 @@ capabilities:
     status: not_available
     sources: []
     reason: Alpaca's free plan includes crypto prices, but no recorder for them is built yet
+  insider_transactions:
+    status: limited
+    sources: [sec_edgar_form4]
+    reason: Research only until a pre-registered test passes. Non-derivative Form 4 transactions only, usable from EDGAR acceptance time
+  institutional_holdings:
+    status: limited
+    sources: [sec_edgar_13f]
+    reason: Quarter-end long positions in 13(f) securities, filed up to 45 days later. Never a complete or current portfolio and no evidence of skill. CUSIPs are not mapped to tickers because no free CUSIP map exists
+  large_holder_filings:
+    status: limited
+    sources: [sec_edgar_submissions]
+    reason: Filing dates of Schedules 13D and 13G from the issuer's EDGAR filing list. The holder and stake inside each filing are not parsed yet
+  congressional_disclosures:
+    status: not_available
+    sources: []
+    reason: Not built. Periodic transaction reports reach the public up to 45 days after a trade, and many House reports are scanned documents. The source terms need checking before any automated collection
+  government_procurement:
+    status: not_available
+    sources: []
+    reason: Not built. USAspending.gov publishes federal awards. Its terms and response format need checking first. Award dates and announcement dates would be kept apart
+  regulatory_actions:
+    status: not_available
+    sources: []
+    reason: Not built beyond News. SEC and Federal Reserve press releases already arrive through News. A Federal Register integration would need its terms and format checked first
+  political_sector_exposure:
+    status: not_available
+    sources: []
+    reason: Not built. Needs recorded companies with industry codes and a pre-registered event study before any exposure is shown
   options_data_and_flow:
     status: not_available
     reason: No free source of historical or real-time options data

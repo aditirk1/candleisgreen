@@ -42,6 +42,26 @@ def _macro(now, workdir, cfg, fake):
     return refresh_macro(workdir, now, cfg, fake)
 
 
+def _ownership(now, workdir, cfg, fake):
+    """Form 4 and large-holder filings for tracked SEC issuers, and 13F filings for listed managers. Research only."""
+    if fake:
+        return {"ran": False, "reason": "the synthetic market has no SEC issuers"}
+    from .data.pit_store import PointInTimeStore
+    from .sources import ownership, sec
+    try:
+        client = sec.SecClient(sec.HttpSecTransport(cfg.sources.sec), cfg.sources.sec)
+    except sec.MissingUserAgentError as exc:
+        return {"ran": False, "status": "NOT AVAILABLE", "reason": str(exc)}
+    store = PointInTimeStore(workdir / "pit.duckdb")
+    try:
+        ciks = [r[0] for r in store.connection.execute("SELECT cik FROM issuers").fetchall()]
+        insiders = sum(ownership.ingest_insiders(client, c, store.connection, limit=10)["transactions_added"] for c in ciks)
+        managers = [ownership.ingest_13f(client, m, store.connection) for m in cfg.sources.sec.managers_13f]
+    finally:
+        store.close()
+    return {"ran": True, "issuers": len(ciks), "insider_transactions_added": insiders, "managers": len(managers)}
+
+
 def _trials(now, workdir, cfg, fake):
     from .global_research import refresh_trials
 
@@ -117,7 +137,7 @@ JOBS: dict[str, list[tuple[str, Job]]] = {
     "asia_pacific": [("global_factors", _global_factors)],
     "europe": [("fx", _fx), ("macro", _macro)],
     "us": [("record", _record)],
-    "overnight_review": [("review", _review), ("clusters", _clusters), ("trials", _trials)],
+    "overnight_review": [("review", _review), ("clusters", _clusters), ("trials", _trials), ("ownership", _ownership)],
 }
 
 
