@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { getJSON, post } from "../api";
+import { humanize, vendorName } from "../labels";
 import { timeET, usd, sideLabel } from "../format";
 
 type Autopsy = { fill_id: string; symbol: string; side: string; quantity: number; fill_price: number; filled_at: string; expected_catalyst: string; window: { end: string; status: string }; spread_paid_bps: number | null; what_happened: string; pnl: { total_usd: number; price_move_usd: number; spread_cost_usd: number; market_usd: number | null; specific_usd: number | null; market_method: string } | null; assumptions: { assumption: string; result: string }[] };
@@ -57,8 +58,8 @@ export function LearnLab({ tick, cursor, part }: { tick: number; cursor: string;
               {lesson.formula && <><dt>Formula</dt><dd>{lesson.formula}</dd></>}
               {lesson.typical && <><dt>Typical range</dt><dd>{lesson.typical}</dd></>}
               <dt>Today's example</dt><dd>{lesson.example}</dd>
-              {lesson.event && <><dt>Source</dt><dd className="muted">{lesson.event.vendor}, known from {timeET(lesson.event.known_from)}</dd></>}
-              <dt>Learn first</dt><dd>{lesson.prerequisites.length ? lesson.prerequisites.join(", ") : "Nothing. This is a starting point"}</dd>
+              {lesson.event && <><dt>Source</dt><dd className="muted">{vendorName(lesson.event.vendor)}, known from {timeET(lesson.event.known_from)}</dd></>}
+              <dt>Learn first</dt><dd>{lesson.prerequisites.length ? lesson.prerequisites.map((p) => concepts?.terms[p] ?? humanize(p)).join(", ") : "Nothing. This is a starting point"}</dd>
             </dl>)}
         </section>
         <section className="panel"><h2>Concept map, in learning order</h2>

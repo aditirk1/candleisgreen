@@ -74,21 +74,23 @@ check(!earningsText.includes("beat") && !earningsText.includes("miss"), "no beat
 await page.screenshot({ path: `${out}/earnings-terminal.png`, fullPage: true });
 
 await nav("Composite");
-await page.getByText("Composite run").waitFor();
-check((await page.getByText("xs_momentum_12_1").count()) > 0, "Composite lists each signal");
-check(await page.getByText("RETROSPECTIVE").first().isVisible(), "Composite run labeled retrospective");
-check(await page.getByText("SYNTHETIC").first().isVisible(), "synthetic data labeled on the Composite screen");
-check((await page.getByText(/PROVISIONAL|SAFEGUARD/).count()) > 0, "exclusion reasons carry their parameter basis");
+await page.getByRole("heading", { name: "How the signals combine" }).waitFor();
+check(await page.getByText("Momentum, 12-month winners against losers").isVisible(), "Composite lists each signal by a plain name");
+check(await page.getByText(/Results are back-tested, not recorded in advance/).isVisible(), "Composite run labeled back-tested");
+check(await page.getByText(/come from demo data, so they are not evidence/).isVisible(), "demo data labeled on the Composite screen");
+await page.getByText("Momentum, 12-month winners against losers").click();
+check((await page.getByText(/\((safety rule|starting setting, under review|from published research)\)/).count()) > 0, "exclusion reasons say where each threshold comes from");
+check((await page.getByText(/Evidence level \d of 6\. Trading needs level/).count()) > 0, "exclusion reasons are written in plain words");
 await page.screenshot({ path: `${out}/composite-terminal.png`, fullPage: true });
-await page.getByRole("button", { name: "Evidence chain" }).first().click();
-await page.getByText("Evidence chain:").waitFor();
-check(await page.getByText("reproduction").first().isVisible(), "evidence chain opens from the Composite screen");
-check(await page.getByText("Failure archive").isVisible(), "failure archive shown");
-check(await page.getByText("▼ FAILED").first().isVisible(), "negative result visible");
+await page.getByRole("button", { name: "See the research behind it" }).first().click();
+await page.getByRole("heading", { name: /^Evidence: / }).waitFor();
+check(await page.getByText("Reproduce the published result").first().isVisible(), "evidence opens from the Composite screen");
+check(await page.getByText("Failure archive, ideas that did not hold up").isVisible(), "failure archive shown");
+check(await page.getByText("▼ Did not hold up").first().isVisible(), "negative result visible");
 await tab("Research sections", "Today");
 check(await page.getByText("Daily research digest").isVisible(), "daily research digest shown");
-check(await page.getByText("NEEDS DATA: analyst estimates").isVisible(), "missing data flagged with a free substitute");
-check((await page.getByText("xs_momentum_12_1").count()) > 0 && await page.getByRole("heading", { name: "Re-evaluation cases" }).isVisible(), "re-evaluation case listed");
+check(await page.getByText(/Needs data: analyst estimates/).isVisible(), "missing data flagged with a free substitute");
+check(await page.getByRole("heading", { name: "Signals under review" }).isVisible() && (await page.getByRole("cell", { name: "Momentum, 12-month winners against losers" }).count()) > 0, "signal review listed");
 check(await page.getByText("Clark-West adjusted mean squared error").isVisible(), "Level B against Level A uses Clark-West");
 check((await page.getByText("keep the champion").count()) === 2, "synthetic comparisons never recommend a switch");
 await tab("Research sections", "Capture inbox");
@@ -104,8 +106,8 @@ check(true, "inbox asks for input instead of fetching a link");
 await page.screenshot({ path: `${out}/research-terminal.png`, fullPage: true });
 await tab("Research sections", "Today");
 await page.getByRole("button", { name: "Decline" }).click();
-await page.getByText("DECLINED").first().waitFor({ timeout: 5000 }).catch(() => {});
-check(await page.getByText("user:aditi").first().isVisible(), "promotion decided by Aditi only");
+await page.getByRole("cell", { name: "Declined" }).first().waitFor({ timeout: 5000 }).catch(() => {});
+check(await page.getByRole("cell", { name: "You", exact: true }).first().isVisible(), "promotion decided by Aditi only");
 
 await nav("News");
 await page.getByRole("button", { name: "90 days", exact: true }).click();
@@ -135,7 +137,7 @@ await page.screenshot({ path: `${out}/news-terminal.png`, fullPage: true });
 
 await nav("Reasoning");
 await page.getByText("Data freshness").waitFor();
-check(await page.getByText("ts_momentum_252_21 1.0.0").isVisible(), "Reasoning shows the forecast's model and version");
+check((await page.getByText("Trend model, 12-month price trend").count()) > 0, "Reasoning names the forecast's model in plain words");
 check(await page.getByText("Agreeing and opposing signals").isVisible(), "Reasoning shows agreeing and opposing signals");
 await page.getByLabel("Ticker").fill("DNCO");
 await page.getByRole("button", { name: "Explain" }).click();
@@ -184,12 +186,12 @@ await page.getByRole("button", { name: "I knew it" }).click();
 check(true, "spaced review card answered");
 
 await nav("Global");
-await page.getByText("Follow-the-sun jobs").waitFor();
-await page.getByText("USA").first().waitFor({ timeout: 5000 }).catch(() => {});
+await page.getByText("Scheduled jobs through the day").waitFor();
+await page.getByText("United States").first().waitFor({ timeout: 5000 }).catch(() => {});
 check((await page.getByText("research only").count()) >= 5, "every non-US market is research only on the Global screen");
-check(await page.getByText("XTKS Tokyo Stock Exchange").isVisible() && (await page.getByText("RESEARCH_ONLY").count()) >= 4, "market rule table tags non-US exchanges research only");
-check(await page.getByText("DEXUSEU").isVisible(), "FX rates from FRED shown");
-check(await page.getByText("UNRATE").isVisible() && (await page.getByText(/no vintage stored yet/).count()) >= 1, "macro shows the stored vintage and NOT AVAILABLE for series without one");
+check(await page.getByRole("row", { name: /Tokyo Stock Exchange Research only/ }).isVisible() && (await page.getByRole("cell", { name: "Research only", exact: true }).count()) >= 4, "market rule table tags non-US exchanges research only");
+check(await page.getByText("Euro (EUR)").isVisible(), "FX rates from FRED shown");
+check(await page.getByText("Unemployment rate").isVisible() && (await page.getByText(/No published value recorded yet/).count()) >= 1, "macro shows the stored vintage and NOT AVAILABLE for series without one");
 check(await page.getByText(/NOT AVAILABLE\. No free source of historical or real-time options data/).isVisible(), "entitlement map shows options as NOT AVAILABLE");
 await page.screenshot({ path: `${out}/global-terminal.png`, fullPage: true });
 
@@ -221,7 +223,7 @@ await nav("Markets");
 await page.getByLabel("Search instruments").fill("UPCO");
 await page.locator("tbody tr").first().click();
 await page.locator("[aria-label='Price chart'] canvas").first().waitFor();
-check(await page.getByText("UPCO closes, as recorded").waitFor({ timeout: 5000 }).then(() => true, () => false), "Markets charts a selected instrument");
+check(await page.getByText("UPCO daily prices").waitFor({ timeout: 5000 }).then(() => true, () => false), "Markets charts a selected instrument");
 await page.getByRole("button", { name: "Add UPCO to watchlist" }).click();
 check(await page.getByRole("button", { name: "Remove UPCO from watchlist" }).isVisible(), "watchlist add works");
 await page.screenshot({ path: `${out}/markets-terminal.png`, fullPage: true });
@@ -257,9 +259,9 @@ check((await page.getByText(/^NOT AVAILABLE\. Not built/).count()) >= 3, "unbuil
 await page.screenshot({ path: `${out}/ownership-light.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 await nav("Backtests");
-await page.getByText(/Trials recorded/).waitFor();
-check((await page.getByText("xs_momentum_12_1").count()) > 0 && (await page.getByText("Sharpe", { exact: true }).count()) > 0, "Backtests shows each signal with a Sharpe ratio");
-check(await page.getByRole("columnheader", { name: "Trials" }).isVisible(), "trial count beside every Sharpe");
+await page.getByRole("heading", { name: "Backtests" }).waitFor();
+check((await page.getByText("Momentum, 12-month winners against losers").count()) > 0 && (await page.getByText("Return per unit of risk").count()) > 0, "Backtests shows each signal with a Sharpe ratio");
+check(await page.getByText(/versions tested in total, which matters because/).isVisible(), "trial count shown beside the Sharpe ratios");
 await page.screenshot({ path: `${out}/backtests-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 
@@ -270,24 +272,25 @@ await page.screenshot({ path: `${out}/experts-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 
 await nav("Audit and Rules");
-await page.getByText("Hash chain verified").waitFor();
-await page.getByLabel("New value for max_position_pct_equity").fill("0.04");
-await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("button", { name: "Request" }).click();
+await page.getByText(/Log verified\. No record has been changed/).waitFor();
+const posRow = page.getByRole("row", { name: /^Largest position, share of account/ });
+await page.getByLabel("New value for Largest position, share of account").fill("0.04");
+await posRow.getByRole("button", { name: "Request" }).click();
 await page.getByText(/Applied now/).waitFor();
 check(true, "tightening a hard limit applies at once");
-await page.getByLabel("New value for max_position_pct_equity").fill("0.5");
-await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("button", { name: "Request" }).click();
+await page.getByLabel("New value for Largest position, share of account").fill("0.5");
+await posRow.getByRole("button", { name: "Request" }).click();
 await page.getByText(/needs confirmation/).waitFor();
-await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("button", { name: "Confirm" }).click();
+await posRow.getByRole("button", { name: "Confirm" }).click();
 await page.getByText(/Not confirmed/).waitFor();
 check(true, "loosening waits and cannot be confirmed early");
-check((await page.getByText("PROVISIONAL", { exact: false }).count()) > 0, "parameters listed with their basis");
+check((await page.getByRole("cell", { name: "Starting setting, under review" }).count()) > 0, "parameters listed with their basis");
 check(await page.getByText("ON.", { exact: true }).isVisible() && await page.getByText(/Up to 3\.0% of the account per stock and 30% in total/).isVisible(), "short selling shown as on at 3% per stock and 30% in total");
 await page.getByRole("button", { name: "Turn off now" }).click();
 await page.getByText("OFF.", { exact: true }).waitFor();
 check(true, "turning shorting off applies at once");
 await page.getByRole("button", { name: "Request turning on" }).click();
-await page.getByText(/max_short_position_pct_equity waits until/).waitFor();
+await page.getByText(/Largest short position, share of account waits until/).waitFor();
 check(await page.getByRole("button", { name: "Confirm turning on" }).waitFor({ timeout: 5000 }).then(() => true, () => false), "turning shorting on waits for the delay and a confirmation");
 await page.getByRole("button", { name: "Confirm turning on" }).click();
 await page.getByText(/not confirmed/).first().waitFor();
@@ -296,7 +299,7 @@ await page.screenshot({ path: `${out}/rules-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 
 await nav("Settings");
-await page.getByText("Credentials and providers").waitFor();
+await page.getByText("API keys and data sources").waitFor();
 check(await page.getByText("APCA_API_KEY_ID").isVisible(), "credential status listed");
 check(await page.getByText("Live trading").isVisible(), "live trading shown as not built");
 await page.screenshot({ path: `${out}/settings-terminal.png`, fullPage: true });
@@ -312,7 +315,7 @@ await page.getByText("Why not?").waitFor();
 check(await page.getByText(/not in the tradable universe/).first().isVisible(), "plain phrase opens Why not for DLST");
 await page.getByLabel("Command").fill("RULES");
 await page.getByLabel("Command").press("Enter");
-await page.getByText("Hard limits").waitFor();
+await page.getByRole("heading", { name: "Hard limits" }).waitFor();
 check(true, "command RULES opens Audit and Rules");
 
 await page.getByRole("group", { name: "Display mode" }).getByRole("button", { name: "Advanced" }).click();
@@ -361,6 +364,36 @@ for (const theme of ["light", "dark"]) {
   await page.locator("[aria-label='Price chart'] canvas").first().waitFor();
   check(true, `price chart drawn in the ${theme} theme`);
 }
+// Focus mode is for people. Code names, config paths, record IDs and hashes stay in Advanced mode's technical details.
+const INTERNAL = [/\b[a-z0-9]+_[a-z0-9_]+\b/, /\b[a-z_]+\.[a-z_]+\.[a-z_.]+\b/, /config\/\S+/, /\.ya?ml\b/, /\b(?:inst|claim|exp|run|var|promo|case|fc|cap|story|clu|card|obs)_[a-z0-9]+/, /\b[0-9a-f]{16,}\b/, /\[[a-z_.]+\]/];
+const focusLeaks = [];
+// Web addresses such as papers.example.org are fine. Only dotted config paths count.
+const isHost = (m) => /\.(org|com|gov|net|io|edu)$/.test(m);
+const leaks = (where, t) => { for (const rx of INTERNAL) for (const m of t.matchAll(new RegExp(rx, "g"))) if (!isHost(m[0])) { focusLeaks.push(`${where}: ${m[0]}`); break; } };
+for (const name of ["Overview", "Opportunities", "Reasoning", "Markets", "Earnings", "Global", "News", "Ownership", "Execution", "Audit and Rules", "Composite", "Backtests", "Experts", "Settings"]) {
+  await nav(name);
+  await page.waitForTimeout(700);
+  const t = await ownText(page.locator("main"));
+  leaks(name, t);
+}
+await nav("Research");
+for (const sub of ["Today", "Research ideas", "Capture inbox"]) {
+  await tab("Research sections", sub);
+  await page.waitForTimeout(500);
+  const t = await ownText(page.locator("main"));
+  leaks(`Research ${sub}`, t);
+}
+await nav("Opportunities");
+await page.locator("tr.clickable").first().click();
+await page.getByRole("dialog").getByText("Conclusion").waitFor();
+const dt = await ownText(page.getByRole("dialog"));
+leaks("drawer", dt);
+await page.keyboard.press("Escape");
+check(focusLeaks.length === 0, `Focus mode shows no code names, config paths or record IDs (${focusLeaks.join(" | ")})`);
+await page.getByRole("group", { name: "Display mode" }).getByRole("button", { name: "Advanced" }).click();
+await nav("Composite");
+check(await page.getByText("Technical details").first().waitFor({ timeout: 5000 }).then(() => true, () => false), "Advanced mode keeps the technical details");
+await page.getByRole("group", { name: "Display mode" }).getByRole("button", { name: "Focus" }).click();
 const text = texts.join("\n");
 check(!/[—–;·]/.test(text), "no em dashes, semicolons or middle dots in visible text");
 check(!/manual_simulation|auto_simulation/.test(text), "modes shown in plain words");

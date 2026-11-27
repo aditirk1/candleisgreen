@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getJSON } from "../api";
+import { licenseName, modelName, plainReason, signalName, vendorName } from "../labels";
+import { Tech } from "../stock";
 import { Bar, PriceChart } from "../chart";
 import { pct, sideLabel, signed, timeET } from "../format";
 
@@ -63,13 +65,13 @@ export function StockPanel({ symbol, tick, onClose, onGo }: { symbol: string; ti
               <h3>Conclusion</h3>
               {s.proposal
                 ? <p><strong>{sideLabel(s.proposal.side)} {s.proposal.quantity} shares</strong> proposed for {s.proposal.session_date}, status {s.proposal.status}.</p>
-                : <p><strong>No trade proposed.</strong> {r?.why_not ?? ""}</p>}
+                : <p><strong>No trade proposed.</strong> {plainReason(r?.why_not)}</p>}
               <p>{s.system_view}</p>
               <p className="muted small">Horizon: about one month, decided again each trading day. Signal strength ranks names. It is not a forecast return or a probability, because the model is not calibrated.</p>
             </section>
             <div className="price-line">
               <span className="big">{s.price.last?.toFixed(2) ?? "NOT AVAILABLE"}</span>
-              <span className="muted small">USD, close {s.price.date}, {s.price.source}</span>
+              <span className="muted small">USD, close {s.price.date}. {vendorName(s.price.source)}</span>
             </div>
             <div className="changes">
               {Object.entries(s.price.change).map(([k, v]) => { const c = signed(v, (x) => pct(x, 1)); return <div key={k}><div className="muted small">{k} (%)</div><div className={c.cls}>{c.text}</div></div>; })}
@@ -81,22 +83,22 @@ export function StockPanel({ symbol, tick, onClose, onGo }: { symbol: string; ti
             </section>
             <details className="block" open>
               <summary>Model reasoning</summary>
-              {fc ? <p>{fc.model_id} {fc.model_version}, signal strength {fc.signal_strength.toFixed(2)}, {fc.record_type}, issued from data known at {timeET(fc.as_of)}. Calibration: {fc.calibration_status.replace(/_/g, " ").toLowerCase()}.</p>
+              {fc ? <p>{modelName(fc.model_id)}, signal strength {fc.signal_strength.toFixed(2)}, decided from data known at {timeET(fc.as_of)}. {fc.calibration_status === "calibrated" ? "Calibrated." : "Not calibrated, so the strength is a ranking, not a forecast."}</p>
                 : <p className="muted">No forecast at the last decision.</p>}
             </details>
             <details className="block">
               <summary>Supporting and opposing signals</summary>
               {!r || r.status !== "OK" || !r.composite.run_id ? <p className="muted">NOT AVAILABLE. No Composite run covers this name.</p> : (<>
-                <p>Supporting: {r.composite.agreeing.length ? r.composite.agreeing.map(([k, v]) => `${k} ${v.toFixed(3)}`).join(", ") : "none"}.</p>
-                <p>Opposing: {r.composite.opposing.length ? r.composite.opposing.map(([k, v]) => `${k} ${v.toFixed(3)}`).join(", ") : "none"}.</p>
-                {r.composite.exclusions.length > 0 && <p className="muted small">Excluded: {r.composite.exclusions.map((e) => e.signal_id).join(", ")}.</p>}
+                <p>Supporting: {r.composite.agreeing.length ? r.composite.agreeing.map(([k]) => signalName(k)).join(", ") : "none"}.</p>
+                <p>Opposing: {r.composite.opposing.length ? r.composite.opposing.map(([k]) => signalName(k)).join(", ") : "none"}.</p>
+                {r.composite.exclusions.length > 0 && <p className="muted small">Left out until they have more evidence: {r.composite.exclusions.map((e) => signalName(e.signal_id)).join(", ")}.</p>}
               </>)}
             </details>
             <details className="block">
               <summary>Risk checks and uncertainty</summary>
-              {r?.risk ? <p>Last risk check {r.risk.verdict} at {timeET(r.risk.decided_at)}{r.risk.reasons.length ? `: ${r.risk.reasons.join(". ")}` : ""}.</p> : <p className="muted">No order has reached the risk service.</p>}
+              {r?.risk ? <p>Last risk check {r.risk.verdict === "approved" ? "passed" : "blocked the order"} at {timeET(r.risk.decided_at)}{r.risk.reasons.length ? `: ${r.risk.reasons.map(plainReason).join(". ")}` : ""}.</p> : <p className="muted">No order has reached the risk service.</p>}
               <p className="muted small">How much it swings: {s.price.volatility_annual === null ? "NOT AVAILABLE" : `${pct(s.price.volatility_annual, 0)}% a year`}.
-                {r?.composite.uncertainty?.length ? ` Chance each signal's edge is real: ${r.composite.uncertainty.map((u) => `${u.signal_id} ${(u.prob_positive * 100).toFixed(0)}%`).join(", ")}.` : ""}</p>
+                {r?.composite.uncertainty?.length ? ` Chance each signal's edge is real: ${r.composite.uncertainty.map((u) => `${signalName(u.signal_id)} ${(u.prob_positive * 100).toFixed(0)}%`).join(", ")}.` : ""}</p>
             </details>
             <details className="block">
               <summary>News and catalysts</summary>
@@ -105,8 +107,9 @@ export function StockPanel({ symbol, tick, onClose, onGo }: { symbol: string; ti
             </details>
             <details className="block">
               <summary>Data provenance</summary>
-              <p className="muted small">Prices: {r?.freshness.vendor ?? s.price.source}, last close {r?.freshness.last_close_date ?? s.price.date}, usable from {timeET(r?.freshness.usable_from)}.
-                {fc ? ` Forecast data snapshot ${fc.data_snapshot_id}, licenses ${fc.data_licenses.join(", ")}.` : ""} Composite score {s.composite_score === null ? "NOT AVAILABLE" : s.composite_score.toFixed(2)}.</p>
+              <p className="muted small">Prices from {vendorName(r?.freshness.vendor ?? s.price.source)}, last close {r?.freshness.last_close_date ?? s.price.date}, known from {timeET(r?.freshness.usable_from)}.
+                {fc ? ` Data used: ${fc.data_licenses.map(licenseName).join(", ")}.` : ""}</p>
+              {fc && <Tech><p>Model {fc.model_id} {fc.model_version}. Data snapshot {fc.data_snapshot_id}. Composite score {s.composite_score === null ? "none" : s.composite_score.toFixed(3)}.</p></Tech>}
             </details>
             <div className="drawer-links">
               <button onClick={() => onGo("reasoning", s.symbol)}>Full reasoning</button>

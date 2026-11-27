@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getJSON } from "../api";
-import { pct, sideLabel, signed, usd } from "../format";
+import { vendorName } from "../labels";
+import { pct, sideLabel, signed } from "../format";
 import { Term } from "../guide";
 import { Ticker, useStock } from "../stock";
 import { useMode } from "../theme";
@@ -35,7 +36,7 @@ export function OpportunitiesScreen({ tick }: { tick: number; onReason: (symbol:
           {[["all", "All"], ["long", "Buys"], ["short", "Sells and shorts"]].map(([k, l]) => <button key={k} className={dir === k ? "active" : ""} onClick={() => setDir(k)}>{l}</button>)}
         </div>
       </div>
-      <p className="muted">Click a row for the evidence. {data.note}.</p>
+      <p className="muted">Click a row for the evidence.</p>
       <div className="panel flush">
         <table className="rows"><thead><tr>
           {th("symbol", "Ticker")}<th>Proposal</th>
@@ -57,7 +58,7 @@ export function OpportunitiesScreen({ tick }: { tick: number; onReason: (symbol:
                 <td>{r.status}</td></tr>);
           })}</tbody></table>
       </div>
-      {rows[0]?.metrics?.as_of && <p className="muted small">Prices to {rows[0].metrics.as_of}, {rows[0].metrics.source}. Last price {usd(rows[0].metrics.price)} for {rows[0].symbol}.</p>}
+      {rows[0]?.metrics?.as_of && <p className="muted small">Prices up to {rows[0].metrics.as_of}. Source: {vendorName(rows[0].metrics.source)}.</p>}
     </section>
   );
 }

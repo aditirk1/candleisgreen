@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getJSON } from "../api";
+import { tagName, typeName, vendorName } from "../labels";
 import { Bar, PriceChart } from "../chart";
 import { useMode } from "../theme";
 
@@ -35,21 +36,21 @@ export function MarketsScreen({ tick, initial }: { tick: number; initial?: strin
     <div className="grid2 chart-first">
       <section className="panel"><h2>Instruments</h2>
         <input aria-label="Search instruments" placeholder="Search ticker or name" value={filter} onChange={(e) => setFilter(e.target.value)} className="field" />
-        <table><thead><tr><th>Ticker</th><th>Name</th>{mode === "advanced" && <><th>Tag</th><th>Sector (FF12)</th><th>Status</th></>}</tr></thead>
+        <table><thead><tr><th>Ticker</th><th>Name</th>{mode === "advanced" && <><th>Trading</th><th>Industry</th><th>Status</th></>}</tr></thead>
           <tbody>{list.map((i) => (
             <tr key={i.instrument_id} onClick={() => { setSymbol(i.symbol); setQ(i.symbol); }} style={{ cursor: "pointer" }} className={s?.instrument_id === i.instrument_id ? "selected" : ""}>
-              <td>{i.symbol}</td><td>{i.name ?? "NOT AVAILABLE"}{i.status !== "active" ? <span className="muted small"> ({i.status})</span> : null}</td>{mode === "advanced" && <><td>{i.tag.toUpperCase()}</td><td>{i.sector}</td><td>{i.status.toUpperCase()}</td></>}</tr>))}
+              <td>{i.symbol}</td><td>{i.name ?? "NOT AVAILABLE"}{i.status !== "active" ? <span className="muted small"> ({i.status})</span> : null}</td>{mode === "advanced" && <><td>{tagName(i.tag)}</td><td>{i.sector === "UNKNOWN" ? "Not classified" : i.sector}</td><td>{i.status}</td></>}</tr>))}
           </tbody></table>
       </section>
-      <section className="panel"><h2>{s ? `${s.symbol} closes, as recorded` : "No instrument"}</h2>
+      <section className="panel"><h2>{s ? `${s.symbol} daily prices` : "No instrument"}</h2>
         {s && <>
           {bars.length === 0 ? <p className="na">NOT AVAILABLE. No recorded prices.</p> : <PriceChart bars={bars} height={420} label="Price chart" />}
           <dl className="facts">
-            <dt>Type</dt><dd>{s.type}{s.type_inferred ? " (inferred)" : ""}</dd>
-            <dt>Tag</dt><dd>{s.tag.toUpperCase()}{s.tag === "research_only" ? ". Orders blocked" : ""}</dd>
-            <dt>Sector</dt><dd>{s.sector}</dd>
+            <dt>Type</dt><dd>{typeName(s.type)}{s.type_inferred ? ", inferred from its name" : ""}</dd>
+            <dt>Trading</dt><dd>{tagName(s.tag)}{s.tag === "research_only" ? ". Orders blocked" : ""}</dd>
+            <dt>Industry</dt><dd>{s.sector === "UNKNOWN" ? "Not classified" : s.sector}</dd>
             <dt>Composite score</dt><dd>{data.composite_score === null ? "NOT AVAILABLE" : data.composite_score.toFixed(3)}</dd>
-            <dt>Vendor</dt><dd>{data.history.at(-1)?.vendor ?? "NOT AVAILABLE"}</dd>
+            <dt>Price source</dt><dd>{vendorName(data.history.at(-1)?.vendor) || "Not available"}</dd>
           </dl></>}
         {s && <button onClick={() => toggle(s.symbol)}>{watch.includes(s.symbol) ? `Remove ${s.symbol} from watchlist` : `Add ${s.symbol} to watchlist`}</button>}
         {(data.trials ?? []).length > 0 && (<>

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { getJSON, post } from "../api";
+import { EVERYDAY_PARAM_SECTIONS, RESEARCH_PARAM_PREFIXES, eventName, limitName, paramName, plainReason } from "../labels";
+import { useMode } from "../theme";
+const BASIS: Record<string, string> = { empirical: "Published research", safeguard: "Safety rule", provisional: "Starting setting, under review", external_fact: "Published fact" };
+function actorName(a: string): string { return a === "user:aditi" ? "You" : a.startsWith("system:") || a.startsWith("service:") || a.startsWith("broker:") ? "System" : a; }
 import { timeET } from "../format";
 import { Term } from "../guide";
 
@@ -18,7 +22,7 @@ function ShortSelling({ L, onDone }: { L: NonNullable<Limits>; onDone: (msg: str
     for (const [key, value] of values) {
       const r = await post("/api/limits/request", { key, value });
       const b = await r.json().catch(() => ({}));
-      out.push(r.ok ? (b.status === "APPLIED" ? `${key} applied` : `${key} waits until ${timeET(b.confirmable_from)}`) : `${key} refused. ${b.detail ?? r.status}`);
+      out.push(r.ok ? (b.status === "APPLIED" ? `${limitName(key)} applied` : `${limitName(key)} waits until ${timeET(b.confirmable_from)}`) : `${limitName(key)} refused. ${plainReason(b.detail ?? String(r.status))}`);
     }
     onDone(out.join(". "));
   }
@@ -27,7 +31,7 @@ function ShortSelling({ L, onDone }: { L: NonNullable<Limits>; onDone: (msg: str
     for (const k of pending) {
       const r = await post("/api/limits/confirm", { key: k });
       const b = await r.json().catch(() => ({}));
-      out.push(r.ok ? `${k} confirmed` : `${k} not confirmed. ${b.detail ?? r.status}`);
+      out.push(r.ok ? `${limitName(k)} confirmed` : `${limitName(k)} not confirmed. ${plainReason(b.detail ?? String(r.status))}`);
     }
     onDone(out.join(". "));
   }
@@ -39,7 +43,7 @@ function ShortSelling({ L, onDone }: { L: NonNullable<Limits>; onDone: (msg: str
       <p className="muted small">A short profits when a price falls and loses when it rises, with no limit on the loss. Only stocks the broker lists as easy to borrow can be shorted. Total long plus short exposure stays within {(Number(L.effective.max_gross_exposure_pct_equity) * 100).toFixed(0)}% of the account, so nothing is borrowed to trade.</p>
       {pending.length > 0 ? (
         <>
-          <p>Waiting: {pending.map((k) => `${k} to ${L.pending[k].value} from ${timeET(L.pending[k].confirmable_from)}`).join(", ")}.</p>
+          <p>Waiting: {pending.map((k) => `${limitName(k)} to ${L.pending[k].value} from ${timeET(L.pending[k].confirmable_from)}`).join(", ")}.</p>
           <button onClick={confirmAll}>Confirm turning on</button>
         </>
       ) : !on ? (
@@ -57,6 +61,7 @@ function ShortSelling({ L, onDone }: { L: NonNullable<Limits>; onDone: (msg: str
 }
 
 export function RulesScreen({ tick, onChange }: { tick: number; onChange: () => void }) {
+  const mode = useMode();
   const [data, setData] = useState<Data | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [edit, setEdit] = useState<Record<string, string>>({});
@@ -68,31 +73,33 @@ export function RulesScreen({ tick, onChange }: { tick: number; onChange: () => 
     const value = Number(edit[key]);
     const r = await post("/api/limits/request", { key, value });
     const body = await r.json().catch(() => ({}));
-    setMsg(r.ok ? (body.status === "APPLIED" ? `${key} set to ${value}. Applied now` : `${key} change to ${value} waits until ${timeET(body.confirmable_from)} and needs confirmation`) : `Refused. ${body.detail ?? r.status}`);
+    setMsg(r.ok ? (body.status === "APPLIED" ? `${limitName(key)} set to ${value}. Applied now` : `${limitName(key)} change to ${value} waits until ${timeET(body.confirmable_from)} and needs confirmation`) : `Refused. ${body.detail ?? r.status}`);
     onChange();
   }
   async function confirm(key: string) {
     const r = await post("/api/limits/confirm", { key });
     const body = await r.json().catch(() => ({}));
-    setMsg(r.ok ? `${key} loosening confirmed` : `Not confirmed. ${body.detail ?? r.status}`);
+    setMsg(r.ok ? `${limitName(key)} loosening confirmed` : `Not confirmed. ${body.detail ?? r.status}`);
     onChange();
   }
   const L = data.limits;
-  const params = data.parameters.filter((p) => basis === "all" || p.basis === basis);
+  const everyday = (p: { path: string }) => EVERYDAY_PARAM_SECTIONS.some((s) => p.path.startsWith(s)) && !RESEARCH_PARAM_PREFIXES.some((s) => p.path.startsWith(s)) && !p.path.endsWith("_url");
+  const params = data.parameters.filter((p) => (basis === "all" || p.basis === basis) && (mode === "advanced" || everyday(p)));
+  const hidden = data.parameters.filter((p) => !everyday(p)).length;
   return (
     <>
       {L && <ShortSelling L={L} onDone={(m) => { setMsg(m); onChange(); }} />}
       <section className="panel"><h2>Hard limits</h2>
         {!L ? <p className="loss">Risk service unreachable. Limits cannot be read or changed.</p> : (
           <>
-            <p className="muted">A tighter value applies now. A looser value waits {L.delay_hours} hours and then needs a second confirmation. Only Aditi can change a limit.</p>
+            <p className="muted">A tighter value applies now. A looser value waits {L.delay_hours} hours and then needs a second confirmation. Only you can change a limit.</p>
             <table><thead><tr><th>Limit</th><th className="num">Base</th><th className="num">Effective</th><th>Pending</th><th>New value</th><th></th></tr></thead>
               <tbody>{L.editable.map((k) => {
                 const pend = L.pending[k];
                 return (
-                  <tr key={k}><td>{k}</td><td className="num">{String(L.base[k])}</td><td className="num">{String(L.effective[k])}</td>
+                  <tr key={k}><td>{limitName(k)}</td><td className="num">{String(L.base[k])}</td><td className="num">{String(L.effective[k])}</td>
                     <td>{pend ? `${pend.value} from ${timeET(pend.confirmable_from)}` : "None"}</td>
-                    <td><input aria-label={`New value for ${k}`} className="field" value={edit[k] ?? ""} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} /></td>
+                    <td><input aria-label={`New value for ${limitName(k)}`} className="field" value={edit[k] ?? ""} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} /></td>
                     <td><button onClick={() => request(k)} disabled={!edit[k]}>Request</button>{pend && <button onClick={() => confirm(k)}>Confirm</button>}</td></tr>);
               })}</tbody></table>
           </>)}
@@ -100,21 +107,22 @@ export function RulesScreen({ tick, onChange }: { tick: number; onChange: () => 
       </section>
       <div className="grid2">
         <section className="panel"><h2>Audit log</h2>
-          <p className={data.chain_ok ? "gain" : "loss"}>{data.chain_ok ? "✓ Hash chain verified" : "✗ Hash chain broken"}</p>
-          <div className="scroll"><table><thead><tr><th className="num">Seq</th><th>Time</th><th>Actor</th><th>Event</th><th>Entity</th></tr></thead>
+          <p className={data.chain_ok ? "gain" : "loss"}>{data.chain_ok ? "✓ Log verified. No record has been changed or removed." : "✗ Log check failed. A record was changed or removed."}</p>
+          <div className="scroll"><table><thead><tr><th>Time</th><th>Who</th><th>What happened</th>{mode === "advanced" && <th>Record</th>}</tr></thead>
             <tbody>{data.records.map((r) => (
-              <tr key={r.seq}><td className="num">{r.seq}</td><td>{timeET(r.time)}</td><td>{r.actor}</td><td>{r.event}</td><td className="muted">{r.entity}</td></tr>))}
+              <tr key={r.seq}><td>{timeET(r.time)}</td><td>{actorName(r.actor)}</td><td>{eventName(r.event)}</td>{mode === "advanced" && <td className="muted small">{r.seq}, {r.entity}</td>}</tr>))}
             </tbody></table></div>
         </section>
-        <section className="panel"><h2>Parameters by <Term k="basis">basis</Term></h2>
+        <section className="panel"><h2>Settings and <Term k="basis">where each comes from</Term></h2>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
             {["all", "empirical", "safeguard", "provisional", "external_fact"].map((b) => (
-              <button key={b} className={basis === b ? "active" : ""} onClick={() => setBasis(b)}>{b.toUpperCase()}</button>))}
+              <button key={b} className={basis === b ? "active" : ""} onClick={() => setBasis(b)}>{b === "all" ? "All" : BASIS[b]}</button>))}
           </div>
-          <div className="scroll"><table><thead><tr><th>Parameter</th><th>Basis</th></tr></thead>
+          <div className="scroll"><table><thead><tr><th>Setting</th><th>Where it comes from</th></tr></thead>
             <tbody>{params.map((p) => (
-              <tr key={p.path} title={[p.label, p.note].filter(Boolean).join("\n")}><td>{p.path}</td><td>{p.basis.toUpperCase()}</td></tr>))}
+              <tr key={p.path} title={mode === "advanced" ? [p.path, p.label, p.note].filter(Boolean).join("\n") : ""}><td>{paramName(p.path)}{mode === "advanced" && <div className="muted small">{p.path}</div>}</td><td>{BASIS[p.basis] ?? p.basis}</td></tr>))}
             </tbody></table></div>
+          {mode !== "advanced" && <p className="muted small">Showing settings that shape trades. {hidden} research engine settings appear in Advanced mode.</p>}
         </section>
       </div>
     </>

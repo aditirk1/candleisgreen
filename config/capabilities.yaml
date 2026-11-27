@@ -48,7 +48,7 @@ capabilities:
   short_selling_us:
     status: limited
     sources: [alpaca_paper_trading]
-    reason: Easy-to-borrow US stocks only, within Aditi's short limits of 3% per stock and 30% in total. Hard-to-borrow names need a locate and are never shorted. Alpaca requires at least 2,000 USD of equity
+    reason: Easy-to-borrow US stocks only, within your short limits of 3% per stock and 30% in total. Hard-to-borrow names need a locate and are never shorted. Alpaca requires at least 2,000 USD of equity
   options_trading:
     status: not_available
     sources: []

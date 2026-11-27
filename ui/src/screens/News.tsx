@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getJSON } from "../api";
 import { pct, signed, timeET } from "../format";
-import { Ticker } from "../stock";
+import { Tech, Ticker } from "../stock";
 import { load, save, useMode } from "../theme";
 
 type Move = { ticker: string; session: string | null; move: number | null; reason?: string };
@@ -126,7 +126,8 @@ export function NewsScreen({ tick, ticker }: { tick: number; ticker?: string }) 
             {showRoutine ? "Hide" : "Show"} routine announcements ({routine.length})
           </button>)}
         {showRoutine && <div className="stories">{routine.map(card)}</div>}
-        <p className="muted small">Official sources only. Ranking: {data.ranking?.method ?? "see config/news_rules.yaml"}. Read and saved marks stay in this browser.</p>
+        <p className="muted small">Official sources only. Most relevant puts stories that name a listed company, especially one you hold, and interest rate news first.</p>
+        <Tech><p>Ranking: {data.ranking?.method}. Read and saved marks are kept in this browser.</p></Tech>
       </>)}
     </section>
   );

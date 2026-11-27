@@ -231,7 +231,7 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
             for k, v in lim.get("pending", {}).items():
                 ready = datetime.fromisoformat(v["confirmable_from"]) <= now
                 attention.append({"severity": "action" if ready else "info",
-                                  "text": f"Limit change {k} to {v['value']} {'can be confirmed now' if ready else 'waits until ' + v['confirmable_from'][:16]}",
+                                  "text": f"Limit change {k} to {v['value']} {'can be confirmed now' if ready else 'waits until ' + datetime.fromisoformat(v['confirmable_from']).astimezone(ZoneInfo(cfg.time.market_timezone)).strftime('%Y-%m-%d %H:%M ET')}",
                                   "screen": "rules"})
         except Exception:
             pass

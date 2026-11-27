@@ -19,7 +19,9 @@ Last updated: 2026-11-27. Working branch: `ux-redesign-intelligence`, draft pull
 
 Also: candlestick charts with volume and ranges everywhere prices are shown (`/api/bars`), the Home crash on blocked orders fixed earlier, and demo candles that open at the prior close.
 
-`make ci`: 357 passed. Frontend production build passes. Playwright: 111 checks passed.
+Plain language pass (D-127 to D-129): every screen, the Research workspace tabs and the evidence drawer show plain names instead of code names (for example "Momentum, 12-month winners against losers" for `xs_momentum_12_1`, "Largest position, share of account" for `max_position_pct_equity`). Reasons from the backend are rewritten in `ui/src/labels.ts`. IDs, hashes, versions and config paths moved into Advanced mode's "Technical details". The API is unchanged.
+
+`make ci`: 357 passed. Frontend production build passes. Playwright: 114 checks passed, including a guard that Focus mode shows no code names, config paths, record IDs or hashes.
 
 ### Unavailable, with the reason shown in the app
 

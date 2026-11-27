@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { Execution, getJSON, OrderRow, post } from "../api";
+import { modelName, plainReason } from "../labels";
 import { sideLabel, timeET, usd } from "../format";
 
 function Orders({ rows, actions }: { rows: OrderRow[]; actions?: (r: OrderRow) => ReactElement }) {
@@ -9,7 +10,7 @@ function Orders({ rows, actions }: { rows: OrderRow[]; actions?: (r: OrderRow) =
       <tbody>{rows.map((r) => (
         <tr key={r.proposal_id}><td>{r.symbol}</td><td>{sideLabel(r.side)}</td><td className="num">{r.quantity}</td>
           <td className="num">{r.signal_strength === null ? "NOT AVAILABLE" : r.signal_strength.toFixed(2)}</td>
-          <td className="muted">{r.model}</td><td>{r.status.toUpperCase()}</td><td className="muted" title={r.reason}>{r.reason.split("\n")[0]}</td>
+          <td className="muted">{modelName(r.model)}</td><td>{r.status.replace(/_/g, " ")}</td><td className="muted" title={plainReason(r.reason)}>{plainReason(r.reason.split("\n")[0])}</td>
           {actions && <td>{actions(r)}</td>}</tr>))}
       </tbody></table>
   );

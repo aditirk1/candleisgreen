@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getJSON } from "../api";
+import { plainReason, vendorName } from "../labels";
 import { PriceChart } from "../chart";
 import { MODE_LABELS, pct, sideLabel, signed, timeET, usd } from "../format";
 import { Ticker } from "../stock";
@@ -71,7 +72,7 @@ export function HomeScreen({ tick, onGo }: { tick: number; onGo: (screen: string
         <section className="panel attention"><h2>Needs attention</h2>
           {h.needs_attention.length === 0 ? <p className="muted">Nothing needs your attention.</p> : (
             <ul className="plain list">{h.needs_attention.map((n, i) => (
-              <li key={i} className={`sev-${n.severity}`}><span aria-hidden>{ICON[n.severity] ?? "●"}</span> <span>{n.text}</span>
+              <li key={i} className={`sev-${n.severity}`}><span aria-hidden>{ICON[n.severity] ?? "●"}</span> <span>{plainReason(n.text)}</span>
                 <button className="link right" onClick={() => onGo(n.screen)}>Open</button></li>))}
             </ul>)}
         </section>
@@ -106,7 +107,7 @@ export function HomeScreen({ tick, onGo }: { tick: number; onGo: (screen: string
           {h.positions.length === 0 ? <p className="muted">No positions.</p> : (
             <table><thead><tr><th>Ticker</th><th className="num">Shares</th><th className="num">Value (USD)</th><th className="num">Weight (%)</th></tr></thead>
               <tbody>{h.positions.map((p) => (
-                <tr key={p.instrument_id} title={p.price_source}><td><Ticker symbol={p.symbol} /></td><td className="num">{p.quantity}</td>
+                <tr key={p.instrument_id} title={`Price source: ${vendorName(p.price_source)}`}><td><Ticker symbol={p.symbol} /></td><td className="num">{p.quantity}</td>
                   <td className="num">{usd(p.market_value)}</td><td className="num">{pct(p.weight)}</td></tr>))}
               </tbody></table>)}
         </section>

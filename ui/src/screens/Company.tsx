@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { getJSON } from "../api";
+import { vendorName } from "../labels";
 import { Bar, PriceChart } from "../chart";
 import { sideLabel, timeET } from "../format";
 
@@ -66,7 +67,7 @@ export function CompanyScreen({ tick, initial }: { tick: number; initial?: strin
           <p>{c.signals.system_view}</p>
           <p className="muted small">{c.tag === "research_only" ? "Research only. Orders are blocked." : "Tradable in the simulator and the paper account."} Composite score {c.signals.composite_score === null ? "NOT AVAILABLE" : c.signals.composite_score.toFixed(2)}.</p>
         </section>
-        <section className="panel"><h2>Price and volume{c.price ? `, close ${c.price.value.toFixed(2)} USD on ${c.price.date}, ${c.price.source}` : ""}</h2>
+        <section className="panel"><h2>Price and volume{c.price ? `, close ${c.price.value.toFixed(2)} USD on ${c.price.date}, ${vendorName(c.price.source)}` : ""}</h2>
           {bars.length === 0 ? <p className="na">NOT AVAILABLE. No recorded prices for this company.</p> : <PriceChart bars={bars} height={360} label="Company price chart" />}
         </section>
         <div className="grid2 even">

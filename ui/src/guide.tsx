@@ -34,6 +34,6 @@ export const EXPLAIN: Record<string, string[]> = {
   backtests: ["Each row is a signal's walk-forward research portfolio after costs. The trial count sits beside every result."],
   global: ["Sessions, FX from FRED and the data entitlement map. Non-US instruments are research only."],
   learn: ["Replay a past session with only what was known then, make a prediction, then reveal the outcome."],
-  rules: ["The audit log is hash-chained. A break in the chain shows here at once.", "Hard limits: a tighter value applies now. A looser value waits and needs a second confirmation. Only Aditi can change them.", "Every config value shows its basis."],
+  rules: ["The audit log is sealed. If any record is changed or removed, it shows here at once.", "Hard limits: a tighter value applies now. A looser value waits and needs a second confirmation. Only you can change them.", "Every config value shows its basis."],
   settings: ["Credentials show SET or NOT SET only. Values never leave the environment.", "Monthly cost is 0 USD by rule."],
 };

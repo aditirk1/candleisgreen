@@ -43,7 +43,7 @@
   },
   "tier": {
    "plain": "How much evidence",
-   "meaning": "Evidence tier from 1 (idea) to 6. Academic evidence stops at 3. Tier 4 needs a test on real data. Tier 5 needs prospective results and Aditi",
+   "meaning": "Evidence tier from 1 (idea) to 6. Academic evidence stops at 3. Tier 4 needs a test on real data. Tier 5 needs results recorded in advance and your approval",
    "typical": "Only tiers 4 and up can carry capital"
   },
   "economic": {
@@ -52,7 +52,7 @@
   },
   "basis": {
    "plain": "Why this number",
-   "meaning": "Empirical comes from a cited result. Safeguard limits damage and only Aditi changes it. Provisional is a starting setting under review. External fact has a source and a date"
+   "meaning": "Empirical comes from a cited result. Safeguard limits damage and only you change it. Provisional is a starting setting under review. External fact has a source and a date"
   },
   "adv20": {
    "plain": "Normal daily trading",
@@ -62,7 +62,7 @@
   "daily_return": {
    "plain": "How much it moved in a day",
    "meaning": "Change in closing price from one session to the next, as a fraction of the earlier close",
-   "formula": "r = close_t / close_(t-1) minus 1",
+   "formula": "Daily return = (today's close divided by yesterday's close) minus 1",
    "typical": "Large US stocks usually move under 2 percent a day"
   },
   "standard_error": {

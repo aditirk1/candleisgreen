@@ -166,3 +166,6 @@ details.block > *:not(summary) { margin-top: 6px; }
 }
 .grid2.chart-first { grid-template-columns: minmax(260px, 1fr) 2fr; }
 @media (max-width: 900px) { .grid2.chart-first { grid-template-columns: 1fr; } }
+details.tech { border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 6px 10px; font-size: var(--fs-xs); color: var(--text-muted); }
+details.tech summary { cursor: pointer; font-weight: 600; }
+.tech-body { font-family: var(--font-num); word-break: break-all; margin-top: 6px; }

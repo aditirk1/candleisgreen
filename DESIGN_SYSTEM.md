@@ -47,6 +47,8 @@ Focus mode (default) shows conclusions and the columns a decision needs. Advance
 
 No em dashes, semicolons, middle dots, tildes as separators, filler, metaphors, slogans or exclamation marks. Units go in column headers. Times are 24-hour with zone (14:32 ET) and dates ISO. Gains and losses always carry a sign or arrow, never color alone. A missing value reads NOT AVAILABLE with its reason. `ui/scripts/screens.mjs` checks the visible text of every screen for banned punctuation on every run.
 
+Never show an identifier. Signal, source, license, limit, setting, event and status IDs go through `ui/src/labels.ts`. Backend reasons go through `plainReason`. Anything the user does not need to decide something (run IDs, claim IDs, hashes, versions, config paths, raw reasons) goes inside `<Tech>`, which renders a "Technical details" fold in Advanced mode only. Pages address the user as "you". The Playwright run fails if Focus mode shows a code name, config path, record ID or hash.
+
 ## Status strip
 
 Always visible in the top bar: the venue label (PAPER or SIMULATION), mode in plain words, time, a status chip that appears only when a part is failing, the search and command box, Focus and Advanced, the theme switch and the kill switch.
