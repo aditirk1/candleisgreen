@@ -297,4 +297,4 @@ Interface check: 79 Playwright checks passed, now including the light theme, sto
 | --- | --- | --- |
 | `tests/test_short_selling.py` | 15 | Off by default, a short within every limit approved, each short rule blocks (borrow refused, borrow unknown, per-stock, pending shorts, total short, gross exposure, missing data), no long-to-short flip, covering always allowed even after the loss stop, gross counting in the book check, turning on waits 24 hours and needs Aditi, a downtrend shorted end to end through the risk service process within the 3% limit, and no short proposed while the limits are 0 |
 
-Interface check: 82 Playwright checks passed, including the Short selling card starting OFF and its request waiting for the delay and a confirmation.
+Interface check: 84 Playwright checks passed. The Short selling card shows ON at 3% and 30%, turning off applies at once, and turning back on waits for the delay and a confirmation. The demo now holds a real DNCO short. The run also found a latent bug: Overview failed whenever an order was blocked, because proposals never loaded their update time. Fixed.

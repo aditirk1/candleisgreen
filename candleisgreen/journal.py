@@ -61,6 +61,8 @@ class Proposal:
     status: str
     reason: str
     client_order_id: Optional[str]
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 
 class Journal:
@@ -100,7 +102,7 @@ class Journal:
         row = self.conn.execute("SELECT * FROM proposals WHERE proposal_id = ?", (pid,)).fetchone()
         if row is None:
             raise KeyError(pid)
-        return Proposal(*row[:14])
+        return Proposal(*row[:16])
 
     def proposals(self, session_date: Optional[date] = None, status: Optional[str] = None) -> list[Proposal]:
         sql, args = "SELECT * FROM proposals WHERE 1=1", []
@@ -110,7 +112,7 @@ class Journal:
         if status:
             sql += " AND status = ?"
             args.append(status)
-        return [Proposal(*r[:14]) for r in self.conn.execute(sql + " ORDER BY created_at, symbol", args).fetchall()]
+        return [Proposal(*r[:16]) for r in self.conn.execute(sql + " ORDER BY created_at, symbol", args).fetchall()]
 
     def set_status(self, pid: str, status: str, actor: str, now: datetime, reason: str = "",
                    client_order_id: Optional[str] = None) -> None:

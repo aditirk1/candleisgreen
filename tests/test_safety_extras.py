@@ -115,7 +115,7 @@ def _decided_env(tmp_path):
 
     env = build_env(tmp_path, "manual_simulation")
     run_decision(DECISION_DATE, SESSION_DATE, env.store, env.master, env.journal, env.cfg, DECIDE_NOW)
-    buys = [p for p in env.journal.proposals(SESSION_DATE) if p.side == "buy"]
+    buys = [p for p in env.journal.proposals(SESSION_DATE) if p.side in ("buy", "sell_short")]  # orders that add risk
     env.store.close()
     return env, buys
 
@@ -138,7 +138,7 @@ def test_scheduled_preopen_cancels_a_halted_buy_and_fails_closed(tmp_path):
     out = preopen.scheduled(at_nine, tmp_path, env.cfg, fake=True, assets_source=_Assets(fail=True))
     assert {c["symbol"] for c in out["cancelled"]} == {p.symbol for p in buys[1:]}
     assert all("could not be checked" in c["reasons"][0] for c in out["cancelled"])
-    assert all(p.status == "cancelled" for p in env.journal.proposals(SESSION_DATE) if p.side == "buy")
+    assert all(p.status == "cancelled" for p in env.journal.proposals(SESSION_DATE) if p.side in ("buy", "sell_short"))
 
 
 def test_preopen_slot_follows_new_york_time(tmp_path):

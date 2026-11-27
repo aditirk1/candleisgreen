@@ -57,7 +57,7 @@ def test_replay_and_predictions_through_the_api(tmp_path):
     later = api.get("/api/predictions", params={"cursor": "2026-10-08T21:30:00+00:00"}).json()
     assert later["predictions"][0]["outcome"] in (0, 1) and later["calibration"]["resolved"] == 1
     why = api.get("/api/reasoning", params={"symbol": "DNCO"}).json()
-    assert why["why_not"] and "not positive" in why["why_not"]
+    assert why["proposal"]["side"] == "sell_short"  # a downtrend is a short candidate now that shorting is on
 
 
 def test_workstation_screens_through_the_api(tmp_path):

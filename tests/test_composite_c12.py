@@ -210,7 +210,9 @@ def test_risk_check_rejects_an_injected_book(cfg):
     clusters = {"a": "c1", "b": "c1", "c": "c2", "d": "c1", "e": "c1", "f": "c1"}
     assert evaluate_portfolio({"a": 0.08}, clusters, limits)  # position over 5%
     assert evaluate_portfolio({k: 0.045 for k in "abdef"}, clusters, limits)  # cluster at 22.5%
-    assert evaluate_portfolio({"a": -0.01}, clusters, limits)  # short
+    assert evaluate_portfolio({"a": -0.04}, clusters, limits)  # short over the 3% short limit
+    off = limits.model_copy(update={"max_short_position_pct_equity": 0.0, "max_short_exposure_pct_equity": 0.0})
+    assert evaluate_portfolio({"a": -0.01}, clusters, off)  # any short while shorting is off
     assert evaluate_portfolio({"zzz": 0.01}, clusters, limits)  # no cluster mapping
     assert evaluate_portfolio({"a": float("nan")}, clusters, limits)
     assert evaluate_portfolio({"a": 0.04, "c": 0.04}, clusters, limits) == ()

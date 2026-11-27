@@ -25,8 +25,9 @@ def test_decision_proposes_buys_for_uptrends_only(tmp_path):
     props = env.journal.proposals(SESSION_DATE)
     symbols = {p.symbol for p in props}
     assert res.forecasts >= 5 and props
-    assert all(p.side == "buy" for p in props)
-    assert "DNCO" not in symbols and "DLST" not in symbols
+    sides = {p.symbol: p.side for p in props}
+    assert all(s in ("buy", "sell_short") for s in sides.values())
+    assert sides.get("DNCO") == "sell_short" and "DLST" not in symbols  # downtrend shorted, delisted name ignored
     assert {"UPCO", "SPLT"} <= symbols
 
 

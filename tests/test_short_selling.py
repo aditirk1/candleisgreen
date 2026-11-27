@@ -26,8 +26,12 @@ def verdict(intent, ctx, limits):
     return d.verdict, " ".join(d.reasons)
 
 
-def test_shorting_is_off_by_default(limits):
-    v, why = verdict(_sell(), make_ctx(short_allowed=True), limits)
+OFF = dict(max_short_position_pct_equity=0.0, max_short_exposure_pct_equity=0.0)
+
+
+def test_limits_hold_aditis_values_and_zero_turns_shorting_off(limits):
+    assert (limits.max_short_position_pct_equity, limits.max_short_exposure_pct_equity) == (0.03, 0.30)
+    v, why = verdict(_sell(), make_ctx(short_allowed=True), limits.model_copy(update=OFF))
     assert v is RiskVerdict.BLOCKED and "short selling is off" in why
 
 
@@ -60,7 +64,8 @@ def test_one_order_cannot_flip_long_to_short(limits):
 def test_covering_a_short_is_always_allowed_and_the_loss_stop_blocks_new_shorts(limits):
     down = dict(equity=97_000.0, day_start_equity=100_000.0)
     cover = make_intent(quantity=48.0, side=Side.BUY)
-    v, why = verdict(cover, make_ctx(position_value=-2_500.0, short_value=2_500.0, gross_value=2_500.0, **down), limits)
+    v, why = verdict(cover, make_ctx(position_value=-2_500.0, short_value=2_500.0, gross_value=2_500.0, **down),
+                     limits.model_copy(update=OFF))
     assert v is RiskVerdict.APPROVED, why  # shorting off and loss stop hit, covering still goes through
     v, why = verdict(_sell(), make_ctx(short_allowed=True, **down), _on(limits))
     assert v is RiskVerdict.BLOCKED and "daily loss stop" in why
@@ -69,7 +74,7 @@ def test_covering_a_short_is_always_allowed_and_the_loss_stop_blocks_new_shorts(
 def test_book_check_counts_shorts_gross(limits):
     on = _on(limits)
     assert evaluate_portfolio({"a": 0.04, "b": -0.03}, {"a": "c1", "b": "c2"}, on) == ()
-    assert any("short selling is off" in r for r in evaluate_portfolio({"b": -0.01}, {"b": "c"}, limits))
+    assert any("short selling is off" in r for r in evaluate_portfolio({"b": -0.01}, {"b": "c"}, limits.model_copy(update=OFF)))
     over = evaluate_portfolio({"a": 0.05, "b": -0.05}, {"a": "c1", "b": "c2"}, on)
     assert any("short 5.00% over limit" in r for r in over)
     cluster = evaluate_portfolio({f"l{i}": 0.04 for i in range(3)} | {f"s{i}": -0.03 for i in range(4)},
@@ -78,7 +83,7 @@ def test_book_check_counts_shorts_gross(limits):
 
 
 def test_turning_shorting_on_waits_24_hours_and_needs_aditi(tmp_path, limits):
-    book = LimitBook(tmp_path, limits, 24)
+    book = LimitBook(tmp_path, limits.model_copy(update=OFF), 24)
     now = datetime(2026, 11, 27, 15, tzinfo=UTC)
     with pytest.raises(LimitChangeError):
         book.request("max_short_position_pct_equity", 0.03, "system:anything", now)
@@ -122,13 +127,16 @@ def test_downtrends_are_shorted_end_to_end_once_turned_on(tmp_path):
     j.close()
 
 
-def test_without_the_change_no_short_is_even_proposed(tmp_path):
+def test_with_shorting_turned_off_no_short_is_even_proposed(tmp_path):
     from candleisgreen import operations
     from tests.phase1_env import build_env, risk_service
 
     env = build_env(tmp_path, "auto_simulation")
     env.store.close()
     env.journal.close()
+    (tmp_path / "risk").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "risk" / "limit_changes.json").write_text(json.dumps({"pending": {}, "active": {
+        k: {"value": 0.0, "at": "2026-11-18T00:00:00+00:00", "by": "user:aditi"} for k in OFF}}))
     with risk_service(tmp_path / "risk") as (risk, _):
         cfg = env.cfg.model_copy(update={"execution": env.cfg.execution.model_copy(update={"risk_service_url": risk.base_url})})
         operations.decide(datetime(2026, 11, 19, 21, 31, tzinfo=UTC), tmp_path, cfg, fake=True)

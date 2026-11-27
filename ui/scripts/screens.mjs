@@ -115,8 +115,12 @@ check(await page.getByText("ts_momentum_252_21 1.0.0").isVisible(), "Reasoning s
 check(await page.getByText("Agreeing and opposing signals").isVisible(), "Reasoning shows agreeing and opposing signals");
 await page.getByLabel("Ticker").fill("DNCO");
 await page.getByRole("button", { name: "Explain" }).click();
+await page.getByText(/Sell short/).first().waitFor();
+check(true, "Reasoning shows a downtrend as a short sale");
+await page.getByLabel("Ticker").fill("DLST");
+await page.getByRole("button", { name: "Explain" }).click();
 await page.getByText("Why not?").waitFor();
-check(await page.getByText(/not positive/).first().isVisible(), "Why not explains a down-trending ticker");
+check(await page.getByText(/not in the tradable universe/).first().isVisible(), "Why not explains a delisted ticker");
 await page.screenshot({ path: `${out}/reasoning-terminal.png`, fullPage: true });
 
 await nav("Learn");
@@ -215,7 +219,10 @@ await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("butt
 await page.getByText(/Not confirmed/).waitFor();
 check(true, "loosening waits and cannot be confirmed early");
 check((await page.getByText("PROVISIONAL", { exact: false }).count()) > 0, "parameters listed with their basis");
-check(await page.getByText(/^OFF\.$/).first().isVisible() || await page.getByText("OFF.").first().isVisible(), "short selling shown as off by default");
+check(await page.getByText("ON.", { exact: true }).isVisible() && await page.getByText(/Up to 3\.0% of the account per stock and 30% in total/).isVisible(), "short selling shown as on at 3% per stock and 30% in total");
+await page.getByRole("button", { name: "Turn off now" }).click();
+await page.getByText("OFF.", { exact: true }).waitFor();
+check(true, "turning shorting off applies at once");
 await page.getByRole("button", { name: "Request turning on" }).click();
 await page.getByText(/max_short_position_pct_equity waits until/).waitFor();
 check(await page.getByRole("button", { name: "Confirm turning on" }).waitFor({ timeout: 5000 }).then(() => true, () => false), "turning shorting on waits for the delay and a confirmation");
@@ -236,10 +243,10 @@ await page.getByLabel("Command").fill("UPCO NEWS");
 await page.getByLabel("Command").press("Enter");
 await page.getByText("UPCO only").waitFor();
 check(true, "command UPCO NEWS opens News for one ticker");
-await page.getByLabel("Command").fill("why didn't we buy DNCO");
+await page.getByLabel("Command").fill("why didn't we buy DLST");
 await page.getByLabel("Command").press("Enter");
 await page.getByText("Why not?").waitFor();
-check(await page.getByText(/not positive/).first().isVisible(), "plain phrase opens Why not for DNCO");
+check(await page.getByText(/not in the tradable universe/).first().isVisible(), "plain phrase opens Why not for DLST");
 await page.getByLabel("Command").fill("RULES");
 await page.getByLabel("Command").press("Enter");
 await page.getByText("Hard limits").waitFor();

@@ -41,7 +41,8 @@ def _quotes(store, master, now):
             for sym in master.symbols(inst["instrument_id"]):
                 out[sym] = Quote(asset_id=inst["instrument_id"], bid=round(mid * 0.9995, 4), ask=round(mid * 1.0005, 4),
                                  quote_time=now - timedelta(seconds=2), feed="fixture_realtime", bid_size=100, ask_size=100)
-    return FixedQuotes(out)
+    # The synthetic market lists every active name as shortable and easy to borrow, like the fake Alpaca assets.
+    return FixedQuotes(out, shortable=frozenset(out))
 
 
 def build(workdir: Path) -> None:

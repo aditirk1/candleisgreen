@@ -38,9 +38,9 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 21. **Concept map and daily lesson.** Glossary terms carry prerequisites, the Learn screen lists them in learning order, and one lesson a day uses the largest recorded move on the latest session, with its source and the time it became known.
 22. **Experiment lab.** A plain-words idea becomes a null hypothesis, a data plan with free substitutes for missing data, and a holdout test rule, then is pre-registered through the same factory as a paper. The server redesigns the idea on submit, so the stored plan is exactly what the rules produce.
 23. **Interface redesign.** Light theme, grouped sidebar, a calmer front page (key numbers, next session plan, top stories, holdings), opportunity rows that open their evidence, Learn and Research in tabs, and a stock panel for any ticker. News cards give the source summary, why that kind of news can matter, the companies named, and what their prices did next, with market-relevant stories first.
-24. **Short selling.** Built through the decision, risk service, executor, pre-open check and screens, and shipped off. Aditi turns it on from the Short selling card on Audit and Rules, which waits 24 hours and asks again. Options, crypto and futures stay off, with reasons in the capability map.
+24. **Short selling, on.** Built through the decision, risk service, executor, pre-open check and screens. Aditi set 3% per stock and 30% in total on 2026-11-27 and waived the 24-hour wait once. The Short selling card on Audit and Rules turns it off at once, and turning it back on waits 24 hours. Options, crypto and futures stay off, with reasons in the capability map.
 
-Full suite: 346 passed. Playwright: 82 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+Full suite: 346 passed. Playwright: 84 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 
