@@ -115,6 +115,9 @@ def test_hard_limits_match_the_spec_defaults(limits):
     assert limits.model_dump() == {
         "max_position_pct_equity": 0.05, "max_cluster_pct_equity": 0.20, "max_order_pct_adv20": 0.01,
         "max_spread_pct": 0.005, "daily_loss_stop_pct_equity": 0.02, "max_quote_age_seconds": 15.0,
+        # Short selling ships off. Aditi turns it on through the limit workflow.
+        "max_short_position_pct_equity": 0.0, "max_short_exposure_pct_equity": 0.0,
+        "max_gross_exposure_pct_equity": 1.0,
         "execution_grade_feeds": ("iex_realtime", "fixture_realtime"),
     }
     assert "sip_delayed" not in limits.execution_grade_feeds

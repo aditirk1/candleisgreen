@@ -144,7 +144,8 @@ class FakeMarket:
             rows.append({"id": a.asset_id, "class": "us_equity", "exchange": a.exchange,
                          "symbol": self.symbol_on(a, today), "name": a.name,
                          "status": "inactive" if inactive else "active", "tradable": not inactive,
-                         "marginable": True, "shortable": True, "fractionable": True, "attributes": []})
+                         "marginable": True, "shortable": not inactive, "easy_to_borrow": not inactive,
+                         "fractionable": True, "attributes": []})
         return rows
 
     def _bars(self, params: dict[str, Any]) -> dict:

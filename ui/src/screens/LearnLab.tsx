@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { getJSON, post } from "../api";
-import { timeET, usd } from "../format";
+import { timeET, usd, sideLabel } from "../format";
 
 type Autopsy = { fill_id: string; symbol: string; side: string; quantity: number; fill_price: number; filled_at: string; expected_catalyst: string; window: { end: string; status: string }; spread_paid_bps: number | null; what_happened: string; pnl: { total_usd: number; price_move_usd: number; spread_cost_usd: number; market_usd: number | null; specific_usd: number | null; market_method: string } | null; assumptions: { assumption: string; result: string }[] };
 type CF = { label: string; status: string; reason?: string; baseline?: { signal: number; decision: string }; hypothetical?: { signal: number | null; decision: string }; changed?: boolean; note?: string };
@@ -83,7 +83,7 @@ export function LearnLab({ tick, cursor, part }: { tick: number; cursor: string;
       <section className="panel"><h2>Market autopsy, simulated trades</h2>
         {autopsy.length === 0 ? <p className="muted">No simulated fills yet</p> : autopsy.map((a) => (
           <div key={a.fill_id} style={{ marginBottom: 12 }}>
-            <p><strong>{a.side === "buy" ? "▲ BUY" : "▼ SELL"} {a.quantity} {a.symbol} at {a.fill_price.toFixed(2)}</strong>, {timeET(a.filled_at)}. Window {a.window.status}, ends {a.window.end.slice(0, 10)}.</p>
+            <p><strong>{sideLabel(a.side)} {a.quantity} {a.symbol} at {a.fill_price.toFixed(2)}</strong>, {timeET(a.filled_at)}. Window {a.window.status}, ends {a.window.end.slice(0, 10)}.</p>
             <dl className="facts">
               <dt>Expected catalyst</dt><dd>{a.expected_catalyst}</dd>
               <dt>What happened</dt><dd>{a.what_happened}</dd>

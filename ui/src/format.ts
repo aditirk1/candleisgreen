@@ -30,3 +30,6 @@ export const MODE_LABELS: Record<string, string> = {
   research: "Research", teaching: "Teaching and market watch", manual_simulation: "Manual simulation",
   auto_simulation: "Auto simulation", broker_paper_approval: "Broker paper, approval", broker_paper_auto: "Broker paper, auto",
 };
+
+const SIDES: Record<string, string> = { buy: "▲ Buy", sell: "▼ Sell", sell_short: "▼ Sell short", buy_to_cover: "▲ Buy to cover" };
+export function sideLabel(side: string): string { return SIDES[side] ?? side; }

@@ -135,6 +135,7 @@ def run_offline_event(fixture_path: str | Path, workdir: str | Path, config: Opt
                 position_value=ex["position_value"], cluster_value=ex["cluster_value"],
                 pending_position_value=ex["pending_position_value"],
                 pending_cluster_value=ex["pending_cluster_value"],
+                gross_value=ex.get("gross_value"), pending_gross_value=ex.get("pending_gross_value"),
                 adv20_shares=ex["adv20_shares"], instrument_tag=ex.get("instrument_tag"),
                 in_execution_window=in_local_window(
                     now, cfg.time.execution_window_start_local, cfg.time.execution_window_end_local,

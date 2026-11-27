@@ -164,6 +164,16 @@ class Journal:
         ).fetchone()[0]
         return float(start + flows)
 
+    def pending_shorts(self) -> dict[str, float]:
+        """Quantity of submitted or resting short sales not yet filled, per instrument."""
+        out: dict[str, float] = {}
+        for iid, qty in self.conn.execute(
+                "SELECT instrument_id, quantity FROM proposals WHERE side = 'sell_short' "
+                "AND status IN ('submitted', 'resting', 'partially_filled', 'unknown')"
+        ).fetchall():
+            out[iid] = out.get(iid, 0.0) + qty
+        return out
+
     def pending_buys(self) -> dict[str, float]:
         """Quantity of submitted or resting buys not yet filled, per instrument."""
         out: dict[str, float] = {}

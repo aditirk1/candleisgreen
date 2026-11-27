@@ -206,7 +206,13 @@ class RiskContext(Contract):
     position_value: Optional[float] = None
     cluster_value: Optional[float] = None
     pending_position_value: Optional[float] = None  # open buy orders in this instrument
-    pending_cluster_value: Optional[float] = None  # open buy orders in its cluster
+    pending_cluster_value: Optional[float] = None  # open risk-increasing orders in its cluster
+    pending_short_position_value: Optional[float] = None  # open short sales in this instrument
+    gross_value: Optional[float] = None  # long value plus absolute short value of the whole book
+    short_value: Optional[float] = None  # absolute value of all short positions
+    pending_gross_value: Optional[float] = None  # open risk-increasing orders, long and short
+    pending_short_value: Optional[float] = None  # open short sales across the book
+    short_allowed: Optional[bool] = None  # the broker lists it as shortable and easy to borrow
     adv20_shares: Optional[float] = None
     in_execution_window: Optional[bool] = None
     instrument_tag: Optional[str] = None  # direct, proxy or research_only

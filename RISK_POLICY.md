@@ -32,6 +32,20 @@ Correlated clusters come from `candleisgreen/clusters.py` (decision Q7). Each mo
 - `clusters.book_labels` gives a target book the same cluster keys, so `evaluate_portfolio` blocks a book with an unmapped name or a cluster over its cap. No code path sends an optimizer book to orders yet.
 - The executor sums held and pending value in the order's cluster only. Before this job existed it summed the whole book, which was stricter.
 
+### Short selling
+
+Short selling ships off. Three hard limits govern it, all Aditi's, all changed only through the limit workflow:
+
+| Limit | Default | Meaning |
+| --- | --- | --- |
+| `max_short_position_pct_equity` | 0 (off) | Largest short in one stock, as a share of equity |
+| `max_short_exposure_pct_equity` | 0 (off) | All shorts together |
+| `max_gross_exposure_pct_equity` | 1.0 | Longs plus absolute shorts. 1.0 means nothing is borrowed to trade |
+
+Raising either short limit from 0 is a loosening: it waits `risk.loosening_delay_hours` and needs Aditi's second confirmation. Setting them back to 0 applies at once. The Audit and Rules screen has a Short selling card for this.
+
+Every order is classed by what it does to the position. Orders that add risk (a buy that grows a long, a sale that opens or grows a short) face the position, short, gross, cluster and daily loss checks. Orders that reduce risk (selling a long, buying to cover a short) pass those checks even after the daily loss stop. A short also needs the broker to list the stock as shortable and easy to borrow, and an unknown borrow status blocks it. Hard-to-borrow stocks are never shorted, because they need a locate. One order can never turn a long into a short. The position is closed first and the short can open at the next decision. Clusters and sectors count longs and shorts together, by absolute value.
+
 ## 3. Order of checks
 
 `evaluate(intent, context, limits)` runs every check, in this order, and approves only when all pass. It does not stop at the first failure, so the decision lists every reason.

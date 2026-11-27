@@ -81,6 +81,8 @@
     "cluster_value": 0.0,
     "pending_position_value": 0.0,
     "pending_cluster_value": 0.0,
+    "gross_value": 0.0,
+    "pending_gross_value": 0.0,
     "adv20_shares": 2000000.0,
     "fraction_of_limit": 0.5,
     "kill_switch_engaged": false,

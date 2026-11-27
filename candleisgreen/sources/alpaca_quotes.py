@@ -59,6 +59,16 @@ class AlpacaQuotes:
         a = self._assets.get(symbol)
         return True if a is None else not bool(a.get("tradable", False))
 
+    def _shortable(self, symbol: str) -> Optional[bool]:
+        """Shortable and easy to borrow. Hard-to-borrow names need a locate, which this system never requests."""
+        if self._assets is None and self._halted(symbol) is None:
+            return None
+        a = (self._assets or {}).get(symbol)
+        if a is None:
+            return False
+        easy = a.get("easy_to_borrow") is True or a.get("borrow_status") == "easy_to_borrow"
+        return bool(a.get("shortable")) and easy
+
     def snapshot(self, symbol: str, instrument_id: str, now: datetime):
         from ..trading import MarketSnapshot
 
@@ -71,4 +81,4 @@ class AlpacaQuotes:
                               quote_time=parse_time(q["t"]), feed=FEED_LABEL)
         except Exception:
             quote = None
-        return MarketSnapshot(quote, self._is_open(), self._halted(symbol))
+        return MarketSnapshot(quote, self._is_open(), self._halted(symbol), self._shortable(symbol))

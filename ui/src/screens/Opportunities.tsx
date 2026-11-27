@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import { sideLabel } from "../format";
 import { getJSON } from "../api";
 import { Term } from "../guide";
 import { Ticker } from "../stock";
@@ -28,7 +29,7 @@ export function OpportunitiesScreen({ tick, onReason }: { tick: number; onReason
           <tbody>{rows.map((r) => (
             <Fragment key={r.proposal_id}>
               <tr onClick={() => setOpen(open === r.proposal_id ? null : r.proposal_id)} className={open === r.proposal_id ? "selected clickable" : "clickable"} aria-expanded={open === r.proposal_id}>
-                <td><Ticker symbol={r.symbol} /></td><td>{r.side === "buy" ? "▲ Buy" : "▼ Sell"} {r.quantity}</td>
+                <td><Ticker symbol={r.symbol} /></td><td>{sideLabel(r.side)} {r.quantity}</td>
                 <td className="num">{r.signal_strength === null ? "NOT AVAILABLE" : r.signal_strength.toFixed(2)}</td>
                 <td>{r.tier ?? "NOT AVAILABLE"}</td><td>{r.status}</td></tr>
               {open === r.proposal_id && (

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createChart, LineSeries, UTCTimestamp } from "lightweight-charts";
 import { getJSON, Overview } from "../api";
-import { pct, signed, timeET, usd } from "../format";
+import { pct, signed, timeET, usd, sideLabel } from "../format";
 import { Term } from "../guide";
 import { Ticker } from "../stock";
 
@@ -56,7 +56,7 @@ export function OverviewScreen({ tick, onGo }: { tick: number; onGo: (screen: st
           {!plan || plan.rows.length === 0 ? <p className="muted">Nothing planned. The next decision runs after the close.</p> : (
             <>
               <ul className="plain list">{plan.rows.slice(0, 6).map((r) => (
-                <li key={r.proposal_id}><Ticker symbol={r.symbol} /> <span>{r.side === "buy" ? "▲ Buy" : "▼ Sell"} {r.quantity} {r.quantity === 1 ? "share" : "shares"}</span>
+                <li key={r.proposal_id}><Ticker symbol={r.symbol} /> <span>{sideLabel(r.side)} {r.quantity} {r.quantity === 1 ? "share" : "shares"}</span>
                   <span className="muted small"> <Term k="signal_strength">trend strength</Term> {r.signal_strength?.toFixed(2) ?? "NOT AVAILABLE"}</span>
                   <span className="status">{r.status}</span></li>))}
               </ul>

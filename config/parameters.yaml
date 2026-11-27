@@ -125,6 +125,9 @@ parameters:
   risk.hard_limits.max_spread_pct: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
   risk.hard_limits.daily_loss_stop_pct_equity: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
   risk.hard_limits.max_quote_age_seconds: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  risk.hard_limits.max_short_position_pct_equity: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  risk.hard_limits.max_short_exposure_pct_equity: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
+  risk.hard_limits.max_gross_exposure_pct_equity: {basis: safeguard, change_policy: "Aditi only. Tightening applies now. Loosening waits risk.loosening_delay_hours and asks again"}
   risk.hard_limits.execution_grade_feeds: {basis: safeguard, change_policy: "Aditi only. Delayed consolidated data may never be added (Q4)"}
   risk.loosening_delay_hours: {basis: safeguard, change_policy: Aditi only}
 
@@ -153,6 +156,7 @@ parameters:
 
   sizing.target_weight_per_name: {basis: provisional, review: Phase 1 sizing for a single model. Replaced by the Composite optimizer}
   sizing.max_names: {basis: provisional, review: Phase 1 sizing for a single model}
+  sizing.max_short_names: {basis: provisional, review: "Starting cap on short candidates. Revisit with measured borrow availability and short-side results"}
   sizing.min_trade_value_usd: {basis: provisional, review: Skips trades too small to matter}
 
   sources.sec.data_base_url: {basis: external_fact, source: "SEC EDGAR APIs, https://www.sec.gov/search-filings/edgar-application-programming-interfaces", as_of: "2026-11-24"}

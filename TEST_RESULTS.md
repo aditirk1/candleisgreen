@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24, **331 passed, 0 failed** in about 171 seconds on Python 3.13.
+Latest full run: 2026-11-24, **346 passed, 0 failed** in about 182 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -290,3 +290,11 @@ Interface check: 68 Playwright checks passed.
 | `tests/test_news_insight.py` | 5 | Categories by words then feed, company links need the full capitalized name, price moves only from closes known by then, the bulk read matches the as-of rule, news and stock endpoints |
 
 Interface check: 79 Playwright checks passed, now including the light theme, story cards with their three parts, the AXP link, category filters, market-relevant news first, expandable opportunity rows, and the stock panel from a ticker click and from the search box. The first run found the news endpoint took 4.3 seconds with ten instruments because it reread every price series per story. It now reads all closes once and takes about 0.03 seconds.
+
+## Short selling, 2026-11-27
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_short_selling.py` | 15 | Off by default, a short within every limit approved, each short rule blocks (borrow refused, borrow unknown, per-stock, pending shorts, total short, gross exposure, missing data), no long-to-short flip, covering always allowed even after the loss stop, gross counting in the book check, turning on waits 24 hours and needs Aditi, a downtrend shorted end to end through the risk service process within the 3% limit, and no short proposed while the limits are 0 |
+
+Interface check: 82 Playwright checks passed, including the Short selling card starting OFF and its request waiting for the delay and a confirmation.

@@ -6,6 +6,56 @@ import { Term } from "../guide";
 type Limits = { effective: Record<string, unknown>; base: Record<string, unknown>; pending: Record<string, { value: number; confirmable_from: string; requested_at: string }>; editable: string[]; delay_hours: number } | null;
 type Data = { chain_ok: boolean; records: { seq: number; time: string; actor: string; event: string; entity: string }[]; limits: Limits; parameters: { path: string; basis: string; label: string; note: string | null }[] };
 
+const SHORT_KEYS = ["max_short_position_pct_equity", "max_short_exposure_pct_equity"] as const;
+
+function ShortSelling({ L, onDone }: { L: NonNullable<Limits>; onDone: (msg: string) => void }) {
+  const on = Number(L.effective.max_short_position_pct_equity) > 0 && Number(L.effective.max_short_exposure_pct_equity) > 0;
+  const pending = SHORT_KEYS.filter((k) => L.pending[k]);
+  const [perName, setPerName] = useState("3");
+  const [total, setTotal] = useState("30");
+  async function ask(values: [string, number][]) {
+    const out: string[] = [];
+    for (const [key, value] of values) {
+      const r = await post("/api/limits/request", { key, value });
+      const b = await r.json().catch(() => ({}));
+      out.push(r.ok ? (b.status === "APPLIED" ? `${key} applied` : `${key} waits until ${timeET(b.confirmable_from)}`) : `${key} refused. ${b.detail ?? r.status}`);
+    }
+    onDone(out.join(". "));
+  }
+  async function confirmAll() {
+    const out: string[] = [];
+    for (const k of pending) {
+      const r = await post("/api/limits/confirm", { key: k });
+      const b = await r.json().catch(() => ({}));
+      out.push(r.ok ? `${k} confirmed` : `${k} not confirmed. ${b.detail ?? r.status}`);
+    }
+    onDone(out.join(". "));
+  }
+  return (
+    <section className="panel"><h2>Short selling</h2>
+      <p><strong>{on ? "ON" : "OFF"}.</strong> {on
+        ? `Up to ${(Number(L.effective.max_short_position_pct_equity) * 100).toFixed(1)}% of the account per stock and ${(Number(L.effective.max_short_exposure_pct_equity) * 100).toFixed(0)}% in total.`
+        : "The system only buys, and sells what it holds."}</p>
+      <p className="muted small">A short profits when a price falls and loses when it rises, with no limit on the loss. Only stocks the broker lists as easy to borrow can be shorted. Total long plus short exposure stays within {(Number(L.effective.max_gross_exposure_pct_equity) * 100).toFixed(0)}% of the account, so nothing is borrowed to trade.</p>
+      {pending.length > 0 ? (
+        <>
+          <p>Waiting: {pending.map((k) => `${k} to ${L.pending[k].value} from ${timeET(L.pending[k].confirmable_from)}`).join(", ")}.</p>
+          <button onClick={confirmAll}>Confirm turning on</button>
+        </>
+      ) : !on ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <label>Per stock (% of account) <input aria-label="Short limit per stock" className="field" style={{ width: 70 }} value={perName} onChange={(e) => setPerName(e.target.value)} /></label>
+          <label>In total (% of account) <input aria-label="Short limit in total" className="field" style={{ width: 70 }} value={total} onChange={(e) => setTotal(e.target.value)} /></label>
+          <button onClick={() => ask([["max_short_position_pct_equity", Number(perName) / 100], ["max_short_exposure_pct_equity", Number(total) / 100]])}>Request turning on</button>
+          <span className="muted small">Turning on is a loosening, so it waits {L.delay_hours} hours and then needs your confirmation.</span>
+        </div>
+      ) : (
+        <button onClick={() => ask([["max_short_position_pct_equity", 0], ["max_short_exposure_pct_equity", 0]])}>Turn off now</button>
+      )}
+    </section>
+  );
+}
+
 export function RulesScreen({ tick, onChange }: { tick: number; onChange: () => void }) {
   const [data, setData] = useState<Data | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -31,6 +81,7 @@ export function RulesScreen({ tick, onChange }: { tick: number; onChange: () => 
   const params = data.parameters.filter((p) => basis === "all" || p.basis === basis);
   return (
     <>
+      {L && <ShortSelling L={L} onDone={(m) => { setMsg(m); onChange(); }} />}
       <section className="panel"><h2>Hard limits</h2>
         {!L ? <p className="loss">Risk service unreachable. Limits cannot be read or changed.</p> : (
           <>

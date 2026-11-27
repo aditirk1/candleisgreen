@@ -126,12 +126,32 @@ def check_spread(intent, ctx, limits):
     return None
 
 
+def _effect(intent, ctx) -> Optional[str]:
+    """What the order does to the position: increase_long, reduce_long, increase_short, reduce_short or flip.
+    None when the current position is unknown."""
+    if ctx.position_value is None:
+        return None
+    pos = ctx.position_value
+    if intent.side is Side.BUY:
+        return "reduce_short" if pos < -FLOAT_TOLERANCE else "increase_long"
+    value = _order_value(intent, ctx)
+    if pos > FLOAT_TOLERANCE:
+        if value is not None and value > pos + FLOAT_TOLERANCE:
+            return "flip"
+        return "reduce_long"
+    return "increase_short"
+
+
+def _increases_risk(intent, ctx) -> bool:
+    return _effect(intent, ctx) not in ("reduce_long", "reduce_short")
+
+
 def check_daily_loss(intent, ctx, limits):
     if ctx.equity is None or ctx.day_start_equity is None or ctx.day_start_equity <= 0:
         return "daily loss cannot be evaluated"
     loss = (ctx.day_start_equity - ctx.equity) / ctx.day_start_equity
-    if loss >= limits.daily_loss_stop_pct_equity and intent.side is Side.BUY:
-        return f"daily loss stop hit, loss {loss:.2%}"
+    if loss >= limits.daily_loss_stop_pct_equity and _increases_risk(intent, ctx):
+        return f"daily loss stop hit, loss {loss:.2%}. Only orders that reduce risk are allowed"
     return None
 
 
@@ -146,20 +166,52 @@ def check_position_size(intent, ctx, limits):
     value = _order_value(intent, ctx)
     if value is None or ctx.position_value is None or ctx.pending_position_value is None or not ctx.equity:
         return "position size cannot be evaluated"
-    sign = 1 if intent.side is Side.BUY else -1
-    after = ctx.position_value + (ctx.pending_position_value if sign > 0 else 0.0) + sign * value
-    if after < -1e-9:
-        return "order would create a short position"
-    if sign > 0 and after / ctx.equity > limits.max_position_pct_equity:
-        return f"position {after / ctx.equity:.2%} over limit {limits.max_position_pct_equity:.2%}"
+    effect = _effect(intent, ctx)
+    if effect == "flip":
+        return "one order cannot turn a long position into a short one. Sell first, then short"
+    if effect == "increase_long":
+        after = ctx.position_value + ctx.pending_position_value + value
+        if after / ctx.equity > limits.max_position_pct_equity:
+            return f"position {after / ctx.equity:.2%} over limit {limits.max_position_pct_equity:.2%}"
+    if effect == "increase_short":
+        if limits.max_short_position_pct_equity <= 0:
+            return "short selling is off [risk.hard_limits.max_short_position_pct_equity is 0]"
+        if ctx.short_allowed is not True:
+            return ("broker does not list it as shortable and easy to borrow" if ctx.short_allowed is False
+                    else "borrow status unknown")
+        if ctx.pending_short_position_value is None:
+            return "pending short sales unknown"
+        after = -ctx.position_value + ctx.pending_short_position_value + value
+        if after / ctx.equity > limits.max_short_position_pct_equity:
+            return f"short position {after / ctx.equity:.2%} over limit {limits.max_short_position_pct_equity:.2%}"
+    return None
+
+
+def check_exposure(intent, ctx, limits):
+    """Whole-book limits for orders that add risk: gross exposure and total short exposure."""
+    if not _increases_risk(intent, ctx):
+        return None
+    value = _order_value(intent, ctx)
+    if value is None or not ctx.equity or ctx.gross_value is None or ctx.pending_gross_value is None:
+        return "book exposure cannot be evaluated"
+    gross = (ctx.gross_value + ctx.pending_gross_value + value) / ctx.equity
+    if gross > limits.max_gross_exposure_pct_equity + FLOAT_TOLERANCE:
+        return f"gross exposure {gross:.2%} over limit {limits.max_gross_exposure_pct_equity:.2%}"
+    if _effect(intent, ctx) == "increase_short":
+        if ctx.short_value is None or ctx.pending_short_value is None:
+            return "short exposure cannot be evaluated"
+        short = (ctx.short_value + ctx.pending_short_value + value) / ctx.equity
+        if short > limits.max_short_exposure_pct_equity + FLOAT_TOLERANCE:
+            return f"short exposure {short:.2%} over limit {limits.max_short_exposure_pct_equity:.2%}"
     return None
 
 
 def check_cluster(intent, ctx, limits):
+    """Gross value in the order's cluster, longs and shorts together, for orders that add risk."""
     value = _order_value(intent, ctx)
     if value is None or ctx.cluster_value is None or ctx.pending_cluster_value is None or not ctx.equity:
         return "cluster exposure cannot be evaluated"
-    if intent.side is Side.BUY:
+    if _increases_risk(intent, ctx):
         after = (ctx.cluster_value + ctx.pending_cluster_value + value) / ctx.equity
         if after > limits.max_cluster_pct_equity:
             return f"cluster {after:.2%} over limit {limits.max_cluster_pct_equity:.2%}"
@@ -190,6 +242,7 @@ CHECKS: tuple[tuple[str, Check], ...] = (
     ("spread", check_spread),
     ("daily_loss", check_daily_loss),
     ("position_size", check_position_size),
+    ("exposure", check_exposure),
     ("cluster", check_cluster),
     ("order_vs_adv", check_order_vs_adv),
 )
@@ -214,19 +267,25 @@ def evaluate_portfolio(weights: dict[str, float], clusters: dict[str, str], limi
     reasons: list[str] = []
     if any(w != w for w in weights.values()):
         return ("target weights contain a non-number",)
-    if any(w < -FLOAT_TOLERANCE for w in weights.values()):
-        reasons.append("short position in target book")
-    if sum(weights.values()) > 1.0 + FLOAT_TOLERANCE:
-        reasons.append("target book uses leverage")
+    shorts = {a: -w for a, w in weights.items() if w < -FLOAT_TOLERANCE}
+    if shorts and limits.max_short_position_pct_equity <= 0:
+        reasons.append("short position in target book while short selling is off")
+    gross = sum(abs(w) for w in weights.values())
+    if gross > limits.max_gross_exposure_pct_equity + FLOAT_TOLERANCE:
+        reasons.append(f"target book gross exposure {gross:.2%} over limit {limits.max_gross_exposure_pct_equity:.2%}")
+    if sum(shorts.values()) > limits.max_short_exposure_pct_equity + FLOAT_TOLERANCE and limits.max_short_position_pct_equity > 0:
+        reasons.append(f"target book short exposure {sum(shorts.values()):.2%} over limit {limits.max_short_exposure_pct_equity:.2%}")
     for asset, weight in weights.items():
         if weight > limits.max_position_pct_equity + FLOAT_TOLERANCE:
             reasons.append(f"{asset} at {weight:.2%} over position limit {limits.max_position_pct_equity:.2%}")
+        if limits.max_short_position_pct_equity > 0 and -weight > limits.max_short_position_pct_equity + FLOAT_TOLERANCE:
+            reasons.append(f"{asset} short {-weight:.2%} over limit {limits.max_short_position_pct_equity:.2%}")
     totals: dict[str, float] = {}
     for asset, weight in weights.items():
         if asset not in clusters:
             reasons.append(f"{asset} has no cluster mapping")
             continue
-        totals[clusters[asset]] = totals.get(clusters[asset], 0.0) + weight
+        totals[clusters[asset]] = totals.get(clusters[asset], 0.0) + abs(weight)
     for cluster, total in totals.items():
         if total > limits.max_cluster_pct_equity + FLOAT_TOLERANCE:
             reasons.append(f"cluster {cluster} at {total:.2%} over limit {limits.max_cluster_pct_equity:.2%}")
@@ -237,7 +296,7 @@ def evaluate_portfolio(weights: dict[str, float], clusters: dict[str, str], limi
             by_sector: dict[str, float] = {}
             for asset, weight in weights.items():
                 label = (sectors.get(asset) or "").strip() or UNKNOWN_GROUP
-                by_sector[label] = by_sector.get(label, 0.0) + weight
+                by_sector[label] = by_sector.get(label, 0.0) + abs(weight)
             for sector, total in by_sector.items():
                 if total > sector_cap + FLOAT_TOLERANCE:
                     reasons.append(f"sector {sector} at {total:.2%} over cap {sector_cap:.2%}")

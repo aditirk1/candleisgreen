@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getJSON } from "../api";
-import { timeET } from "../format";
+import { timeET, sideLabel } from "../format";
 
 type R = {
   symbol: string; status: string; reason?: string;
@@ -44,7 +44,7 @@ export function ReasoningScreen({ tick, initial }: { tick: number; initial?: str
             <section className="panel"><h2>Data freshness</h2>
               {data.freshness.last_close_date ? <p>Last close {data.freshness.last_close_date}, usable from {timeET(data.freshness.usable_from)}, source {data.freshness.vendor}</p> : <p className="na">NOT AVAILABLE</p>}
               <h2>Order and risk check</h2>
-              {data.proposal ? <p>{data.proposal.side.toUpperCase()} {data.proposal.quantity} for {data.proposal.session_date}, status {data.proposal.status.toUpperCase()}</p> : <p className="muted">No proposal</p>}
+              {data.proposal ? <p>{sideLabel(data.proposal.side)} {data.proposal.quantity} for {data.proposal.session_date}, status {data.proposal.status.toUpperCase()}</p> : <p className="muted">No proposal</p>}
               {data.risk ? (<><p>Risk verdict {data.risk.verdict.toUpperCase()} at {timeET(data.risk.decided_at)}, {data.risk.checks_run.length} checks run</p>
                 {data.risk.reasons.length > 0 && <ul>{data.risk.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}</>) : <p className="muted">No risk check recorded</p>}
             </section>

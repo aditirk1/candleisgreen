@@ -178,6 +178,10 @@ class HardLimits(_Section):
     max_spread_pct: float = Field(gt=0, le=1)
     daily_loss_stop_pct_equity: float = Field(gt=0, le=1)
     max_quote_age_seconds: float = Field(gt=0)
+    # Short selling. Zero turns it off. Gross exposure above 1 would mean borrowing to trade.
+    max_short_position_pct_equity: float = Field(ge=0, le=1)
+    max_short_exposure_pct_equity: float = Field(ge=0, le=1)
+    max_gross_exposure_pct_equity: float = Field(gt=0, le=1)
     execution_grade_feeds: tuple[str, ...] = Field(min_length=1)
 
 
@@ -287,6 +291,7 @@ class ModelsConfig(_Section):
 class SizingConfig(_Section):
     target_weight_per_name: float = Field(gt=0, le=1)
     max_names: int = Field(gt=0)
+    max_short_names: int = Field(ge=0)
     min_trade_value_usd: float = Field(ge=0)
 
 

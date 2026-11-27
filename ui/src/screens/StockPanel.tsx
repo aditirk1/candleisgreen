@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createChart, LineSeries, UTCTimestamp } from "lightweight-charts";
 import { getJSON } from "../api";
-import { pct, signed, timeET } from "../format";
+import { pct, signed, timeET, sideLabel } from "../format";
 
 type NewsRow = { cluster_id: string; headline: string; first_usable_at: string; category: { label: string } | null };
 type Stock = {
@@ -56,7 +56,7 @@ export function StockPanel({ symbol, tick, onClose, onGo }: { symbol: string; ti
             </section>
             <section className="block"><h3>What the system thinks</h3>
               <p>{s.system_view}</p>
-              {s.proposal && <p>Planned for {s.proposal.session_date}: {s.proposal.side === "buy" ? "buy" : "sell"} {s.proposal.quantity} shares, status {s.proposal.status}.</p>}
+              {s.proposal && <p>Planned for {s.proposal.session_date}: {sideLabel(s.proposal.side).replace(/^[▲▼] /, "").toLowerCase()} {s.proposal.quantity} shares, status {s.proposal.status}.</p>}
               <p className="muted small">How much it swings: {s.price.volatility_annual === null ? "NOT AVAILABLE" : `${pct(s.price.volatility_annual, 0)}% a year`}. Composite score: {s.composite_score === null ? "NOT AVAILABLE" : s.composite_score.toFixed(2)}.</p>
               <button className="link" onClick={() => onGo("reasoning", s.symbol)}>Full reasoning</button>
             </section>

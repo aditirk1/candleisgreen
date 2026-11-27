@@ -1,13 +1,13 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { Execution, getJSON, OrderRow, post } from "../api";
-import { timeET, usd } from "../format";
+import { sideLabel, timeET, usd } from "../format";
 
 function Orders({ rows, actions }: { rows: OrderRow[]; actions?: (r: OrderRow) => ReactElement }) {
   if (rows.length === 0) return <p className="muted">None</p>;
   return (
     <table><thead><tr><th>Ticker</th><th>Side</th><th className="num">Shares</th><th className="num">Signal</th><th>Model</th><th>Status</th><th>Reason</th>{actions && <th>Action</th>}</tr></thead>
       <tbody>{rows.map((r) => (
-        <tr key={r.proposal_id}><td>{r.symbol}</td><td>{r.side.toUpperCase()}</td><td className="num">{r.quantity}</td>
+        <tr key={r.proposal_id}><td>{r.symbol}</td><td>{sideLabel(r.side)}</td><td className="num">{r.quantity}</td>
           <td className="num">{r.signal_strength === null ? "NOT AVAILABLE" : r.signal_strength.toFixed(2)}</td>
           <td className="muted">{r.model}</td><td>{r.status.toUpperCase()}</td><td className="muted" title={r.reason}>{r.reason.split("\n")[0]}</td>
           {actions && <td>{actions(r)}</td>}</tr>))}
@@ -42,7 +42,7 @@ export function ExecutionScreen({ tick, onChange }: { tick: number; onChange: ()
           {data.fills.length === 0 ? <p className="muted">None</p> : (
             <table><thead><tr><th>Time</th><th>Ticker</th><th>Side</th><th className="num">Shares</th><th className="num">Price (USD)</th><th className="num">Slippage (bps)</th><th>Venue</th></tr></thead>
               <tbody>{data.fills.map((f) => (
-                <tr key={f.fill_id}><td>{timeET(f.filled_at)}</td><td>{f.symbol}</td><td>{f.side.toUpperCase()}</td><td className="num">{f.quantity}</td>
+                <tr key={f.fill_id}><td>{timeET(f.filled_at)}</td><td>{f.symbol}</td><td>{sideLabel(f.side)}</td><td className="num">{f.quantity}</td>
                   <td className="num">{usd(f.price)}</td><td className="num">{f.slippage_bps === null ? "NOT AVAILABLE" : f.slippage_bps.toFixed(2)}</td><td>{f.venue}</td></tr>))}
               </tbody></table>)}
         </section>

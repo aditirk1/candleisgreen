@@ -15,7 +15,7 @@ from typing import Optional, Protocol
 from . import universe
 from .broker.base import BrokerAdapter
 from .broker.reconcile import reconcile
-from .core.config import AppConfig
+from .core.config import AppConfig, HardLimits
 from .core.licenses import load_licenses
 from .core.schemas import OrderIntent, Quote, RiskContext, RiskVerdict, Side, Venue
 from .core.timeutil import ensure_utc, in_local_window, local_to_utc
@@ -37,6 +37,7 @@ class MarketSnapshot:
     quote: Optional[Quote]
     market_open: Optional[bool]
     halted: Optional[bool]
+    shortable: Optional[bool] = None  # shortable and easy to borrow. None means unknown
 
 
 class QuoteSource(Protocol):
@@ -50,9 +51,11 @@ class FixedQuotes:
     quotes: dict[str, Quote] = field(default_factory=dict)
     market_open: bool = True
     halted: frozenset = frozenset()
+    shortable: Optional[frozenset] = None  # symbols easy to borrow. None means unknown for every symbol
 
     def snapshot(self, symbol: str, instrument_id: str, now: datetime) -> MarketSnapshot:
-        return MarketSnapshot(self.quotes.get(symbol), self.market_open, symbol in self.halted)
+        return MarketSnapshot(self.quotes.get(symbol), self.market_open, symbol in self.halted,
+                              None if self.shortable is None else symbol in self.shortable)
 
 
 @dataclass(frozen=True)
@@ -77,17 +80,27 @@ def _cluster_exposure(store, master, instrument_id, now, positions, pending, mar
     """Held and pending value in the order's cluster. None, which blocks the order, when the order's
     cluster or that of any held or pending name is unknown (decision Q7)."""
     keys = {i: cluster_key(store.connection, master, i, now)[0]
-            for i in {instrument_id} | {i for i, q in positions.items() if q > 0} | set(pending)}
+            for i in {instrument_id} | set(positions) | set(pending)}
     if any(k is None for k in keys.values()):
         return None, None
     key = keys[instrument_id]
-    held = sum(q * mark.get(i, 0.0) for i, q in positions.items() if q > 0 and keys[i] == key)
+    held = sum(abs(q) * mark.get(i, 0.0) for i, q in positions.items() if keys[i] == key)
     waiting = sum(q * mark.get(i, mid) for i, q in pending.items() if keys[i] == key)
     return held, waiting
 
 
+def _side(have: float, diff: float) -> str:
+    """Proposal side in plain trading terms. The broker sees only buy or sell."""
+    if diff > 0:
+        return "buy_to_cover" if have < 0 else "buy"
+    return "sell" if have > 0 else "sell_short"
+
+
+BROKER_SIDE = {"buy": "buy", "buy_to_cover": "buy", "sell": "sell", "sell_short": "sell"}
+
+
 def run_decision(decision_date: date, session_date: date, store: PointInTimeStore, master: InstrumentMaster,
-                 journal: Journal, cfg: AppConfig, now: datetime) -> DecisionResult:
+                 journal: Journal, cfg: AppConfig, now: datetime, limits: Optional[HardLimits] = None) -> DecisionResult:
     tz = cfg.time.market_timezone
     decision_time = local_to_utc(decision_date, cfg.time.decision_time_local, tz)
     target_start = local_to_utc(session_date, "09:30", tz)
@@ -120,12 +133,21 @@ def run_decision(decision_date: date, session_date: date, store: PointInTimeStor
     chosen = chosen[: cfg.sizing.max_names]
     targets = {m.instrument_id: math.floor(cfg.sizing.target_weight_per_name * equity / m.last_close)
                for _, m in chosen}
+    limits = limits or cfg.risk.hard_limits
+    if limits.max_short_position_pct_equity > 0 and cfg.sizing.max_short_names > 0:
+        # Downtrends become short candidates, sized no larger than the short limit allows.
+        weight = min(cfg.sizing.target_weight_per_name, limits.max_short_position_pct_equity)
+        shorts = sorted((x for x in scored if x[0].signal_strength < 0), key=lambda x: x[0].signal_strength)
+        for _, m in shorts[: cfg.sizing.max_short_names]:
+            targets[m.instrument_id] = -math.floor(weight * equity / m.last_close)
     forecast_for = {m.instrument_id: (fc, m) for fc, m in scored}
     symbols = {m.instrument_id: m.symbol for m in members}
     pids = []
     for iid in sorted(set(targets) | set(positions)):
         want = targets.get(iid, 0)
         have = positions.get(iid, 0.0)
+        if have > 0 and want < 0 or have < 0 and want > 0:
+            want = 0  # close first. The opposite position can open at the next decision
         diff = want - have
         price = prices.get(iid)
         if price is None or abs(diff) * price < cfg.sizing.min_trade_value_usd:
@@ -133,7 +155,7 @@ def run_decision(decision_date: date, session_date: date, store: PointInTimeStor
         fc, _ = forecast_for.get(iid, (None, None))
         pids.append(journal.add_proposal(
             decision_date=decision_date, session_date=session_date, instrument_id=iid,
-            symbol=symbols.get(iid) or (master.symbols(iid) or ["?"])[-1], side="buy" if diff > 0 else "sell",
+            symbol=symbols.get(iid) or (master.symbols(iid) or ["?"])[-1], side=_side(have, diff),
             quantity=float(abs(diff)), forecast_id=fc.forecast_id if fc else "exit_no_forecast",
             model_id=ts_momentum.MODEL_ID, model_version=ts_momentum.MODEL_VERSION,
             signal_strength=fc.signal_strength if fc else None, now=ensure_utc(now)))
@@ -195,7 +217,7 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
             journal.set_status(p.proposal_id, "blocked", "system:executor", now, "no execution-grade quote")
             blocked[p.proposal_id] = ["no execution-grade quote"]
             continue
-        side = Side(p.side)
+        side = Side(BROKER_SIDE[p.side])
         intent = OrderIntent(
             forecast_id=p.forecast_id, asset_id=p.instrument_id, side=side, quantity=p.quantity,
             limit_price=round(limit_price(side, snap.quote, cfg.execution.limit_offset_fraction), 4),
@@ -209,8 +231,14 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
         hist = journal.equity_history()
         day_start = hist[-1][1] if hist else journal.cash()
         pending = journal.pending_buys()
-        cluster_value, pending_cluster = _cluster_exposure(store, master, p.instrument_id, now, positions, pending,
+        pending_sh = journal.pending_shorts()
+        pending_all = {i: pending.get(i, 0.0) + pending_sh.get(i, 0.0) for i in set(pending) | set(pending_sh)}
+        cluster_value, pending_cluster = _cluster_exposure(store, master, p.instrument_id, now, positions, pending_all,
                                                            mark, snap.quote.mid)
+        gross_value = sum(abs(q) * mark.get(i, 0.0) for i, q in positions.items())
+        short_value = sum(-q * mark.get(i, 0.0) for i, q in positions.items() if q < 0)
+        pending_gross = sum(q * mark.get(i, snap.quote.mid) for i, q in pending_all.items())
+        pending_short = sum(q * mark.get(i, snap.quote.mid) for i, q in pending_sh.items())
         vols = store.as_of(decision_time).series(p.instrument_id, "volume")[-cfg.universe.dollar_volume_window_days:]
         adv = sum(o.value for o in vols) / len(vols) if vols else None
         mapped = master.instrument_for_symbol(p.symbol) == p.instrument_id and \
@@ -221,6 +249,9 @@ def execute_session(session_date: date, now: datetime, journal: Journal, quotes:
             equity=equity, day_start_equity=day_start, position_value=positions.get(p.instrument_id, 0.0) * snap.quote.mid,
             cluster_value=cluster_value, pending_position_value=pending.get(p.instrument_id, 0.0) * snap.quote.mid,
             pending_cluster_value=pending_cluster, adv20_shares=adv, in_execution_window=in_window,
+            pending_short_position_value=pending_sh.get(p.instrument_id, 0.0) * snap.quote.mid,
+            gross_value=gross_value, short_value=short_value, pending_gross_value=pending_gross,
+            pending_short_value=pending_short, short_allowed=snap.shortable,
             instrument_tag=master.tag(p.instrument_id, cfg.markets.us_exchanges))
         decision = risk.evaluate(intent, ctx)
         journal.record_risk(intent, decision, now)

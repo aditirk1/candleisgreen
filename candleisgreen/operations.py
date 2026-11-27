@@ -44,6 +44,18 @@ def _journal(workdir: Path, cfg: AppConfig) -> Journal:
                    f"config:{cfg.config_version}:{cfg.config_hash}")
 
 
+def _effective_limits(cfg: AppConfig):
+    """Limits as the risk service holds them, including Aditi's changes. Config values if it is unreachable,
+    which only matters for what gets proposed: the risk service still checks every order."""
+    from .core.config import HardLimits
+    from .risk.client import RiskClient
+    try:
+        view = RiskClient(cfg.execution.risk_service_url, timeout=2.0)._call("GET", "/limits")
+        return HardLimits.model_validate(view["effective"])
+    except Exception:
+        return cfg.risk.hard_limits
+
+
 def decide(now: datetime, workdir: Path, cfg: AppConfig, fake: bool) -> dict:
     from .trading import run_decision
 
@@ -57,7 +69,7 @@ def decide(now: datetime, workdir: Path, cfg: AppConfig, fake: bool) -> dict:
     journal = _journal(workdir, cfg)
     try:
         master = InstrumentMaster(store.connection)
-        res = run_decision(day, session, store, master, journal, cfg, now)
+        res = run_decision(day, session, store, master, journal, cfg, now, limits=_effective_limits(cfg))
         composite = _composite(store, master, workdir, cfg, day, session, now)
     finally:
         journal.close()

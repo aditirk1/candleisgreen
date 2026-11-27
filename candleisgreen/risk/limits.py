@@ -18,7 +18,9 @@ from ..core.timeutil import ensure_utc
 
 APPROVER = "user:aditi"
 NUMERIC = ("max_position_pct_equity", "max_cluster_pct_equity", "max_order_pct_adv20", "max_spread_pct",
-           "daily_loss_stop_pct_equity", "max_quote_age_seconds")
+           "daily_loss_stop_pct_equity", "max_quote_age_seconds", "max_short_position_pct_equity",
+           "max_short_exposure_pct_equity", "max_gross_exposure_pct_equity")
+ZERO_ALLOWED = ("max_short_position_pct_equity", "max_short_exposure_pct_equity")  # zero turns shorting off
 
 
 class LimitChangeError(PermissionError):
@@ -48,7 +50,7 @@ class LimitBook:
     def request(self, key: str, value: float, actor: str, now: datetime) -> dict:
         if actor != APPROVER:
             raise LimitChangeError("only Aditi can change a hard limit")
-        if key not in NUMERIC or not (value > 0):
+        if key not in NUMERIC or not (value > 0 or (value == 0 and key in ZERO_ALLOWED)):
             raise ValueError(f"unknown limit or invalid value: {key}")
         if key != "max_quote_age_seconds" and value > 1:
             raise ValueError("fractional limits must be at most 1")

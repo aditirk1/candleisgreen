@@ -215,6 +215,13 @@ await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("butt
 await page.getByText(/Not confirmed/).waitFor();
 check(true, "loosening waits and cannot be confirmed early");
 check((await page.getByText("PROVISIONAL", { exact: false }).count()) > 0, "parameters listed with their basis");
+check(await page.getByText(/^OFF\.$/).first().isVisible() || await page.getByText("OFF.").first().isVisible(), "short selling shown as off by default");
+await page.getByRole("button", { name: "Request turning on" }).click();
+await page.getByText(/max_short_position_pct_equity waits until/).waitFor();
+check(await page.getByRole("button", { name: "Confirm turning on" }).waitFor({ timeout: 5000 }).then(() => true, () => false), "turning shorting on waits for the delay and a confirmation");
+await page.getByRole("button", { name: "Confirm turning on" }).click();
+await page.getByText(/not confirmed/).first().waitFor();
+check(true, "an early confirmation is refused");
 await page.screenshot({ path: `${out}/rules-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 

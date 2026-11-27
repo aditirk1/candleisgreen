@@ -45,6 +45,22 @@ capabilities:
   intraday_trading:
     status: not_available
     reason: No free real-time consolidated data. The platform trades at daily frequency
+  short_selling_us:
+    status: limited
+    sources: [alpaca_paper_trading]
+    reason: Easy-to-borrow US stocks only, within Aditi's short limits, which ship at 0. Hard-to-borrow names need a locate and are never shorted. Alpaca requires at least 2,000 USD of equity
+  options_trading:
+    status: not_available
+    sources: []
+    reason: The Alpaca paper account allows options, but the free plan gives only an indicative options feed, not real-time OPRA quotes, so no options order can pass the execution-grade quote rule. No options model exists
+  crypto_trading:
+    status: not_available
+    sources: []
+    reason: Alpaca's free plan includes crypto data and paper crypto trading, buy and sell only, never short. Not built. It trades all week, so it needs its own calendar, recorder and risk checks
+  futures_trading:
+    status: not_available
+    sources: []
+    reason: Alpaca lists futures as coming soon (checked 2026-11-27). Other brokers need paid futures market data
   options_data_and_flow:
     status: not_available
     reason: No free source of historical or real-time options data

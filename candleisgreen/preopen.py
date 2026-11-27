@@ -1,4 +1,4 @@
-"""Pre-open check at 09:00 ET (spec C.1). It may cancel buy orders and can never add any.
+"""Pre-open check at 09:00 ET (spec C.1). It may cancel orders that add risk (buys and short sales) and can never add any.
 
 A buy is cancelled when, since the decision time, its name was halted, had a corporate action
 take effect, or filed an 8-K (earnings releases are 8-Ks). Sells are left alone, because they
@@ -14,6 +14,7 @@ from .data.instruments import InstrumentMaster
 from .journal import Journal
 
 ACTOR = "system:preopen"
+RISK_INCREASING = ("buy", "sell_short")  # sells and covers reduce risk and are never cancelled here
 
 
 def run(session_date: date, now: datetime, decision_time: datetime, journal: Journal, master: InstrumentMaster,
@@ -24,7 +25,7 @@ def run(session_date: date, now: datetime, decision_time: datetime, journal: Jou
     unchecked = dict(unchecked or {})
     cancelled = []
     for p in journal.proposals(session_date):
-        if p.side != "buy" or p.status not in ("proposed", "approved"):
+        if p.side not in RISK_INCREASING or p.status not in ("proposed", "approved"):
             continue
         reasons = []
         if p.symbol in halted:
@@ -103,7 +104,7 @@ def scheduled(now: datetime, workdir, cfg, fake: bool, assets_source=None, sec_c
     store = PointInTimeStore(workdir / "pit.duckdb", read_only=True)
     try:
         master = InstrumentMaster.reader(store.connection)
-        buys = {p.symbol for p in journal.proposals(session) if p.side == "buy" and p.status in ("proposed", "approved")}
+        buys = {p.symbol for p in journal.proposals(session) if p.side in RISK_INCREASING and p.status in ("proposed", "approved")}
         halted, unchecked = set(), {}
         try:
             if assets_source is None:
