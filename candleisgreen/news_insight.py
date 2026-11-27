@@ -38,7 +38,7 @@ def classify(text: str, rules: list[dict]) -> Optional[dict]:
     low = text.lower()
     for r in rules:
         if any(m.lower() in low for m in r["match"]):
-            return {k: r[k] for k in ("id", "label", "what_it_is", "can_affect")}
+            return {k: r.get(k) for k in ("id", "label", "what_it_is", "can_affect", "weight", "hypothesis")}
     return None
 
 
@@ -49,8 +49,33 @@ def classify_story(text: str, feeds: list[str], rules: list[dict]) -> Optional[d
         return hit
     for r in rules:
         if set(r.get("feeds", [])) & set(feeds):
-            return {k: r[k] for k in ("id", "label", "what_it_is", "can_affect")}
+            return {k: r.get(k) for k in ("id", "label", "what_it_is", "can_affect", "weight", "hypothesis")}
     return None
+
+
+def load_ranking(path: Path = RULES_PATH) -> dict:
+    return yaml.safe_load(path.read_text())["ranking"]
+
+
+def rank(headline: str, tickers: list[str], category: Optional[dict], items: int, ranking: dict,
+         held_or_proposed: set[str]) -> dict:
+    """Relevance score with every component listed, so the ordering can be checked by hand.
+    MATERIAL at or above `material_threshold`, otherwise ROUTINE."""
+    parts: list[tuple[str, float]] = []
+    if tickers:
+        parts.append(("names a listed company", ranking["names_listed_company"]))
+    if set(tickers) & held_or_proposed:
+        parts.append(("names a company held or proposed", ranking["names_held_or_proposed"]))
+    if category and category.get("weight"):
+        parts.append((f"category {category['label']}", float(category["weight"])))
+    if items > 1:
+        parts.append(("reported more than once", min(ranking["repeat_bonus_cap"], ranking["repeat_bonus_per_item"] * (items - 1))))
+    low = headline.lower()
+    if any(p in low for p in ranking["routine_phrases"]):
+        parts.append(("routine announcement", -ranking["routine_penalty"]))
+    score = round(sum(v for _, v in parts), 3)
+    return {"score": score, "materiality": "MATERIAL" if score >= ranking["material_threshold"] else "ROUTINE",
+            "components": [{"reason": r, "points": v} for r, v in parts]}
 
 
 @dataclass

@@ -1,13 +1,27 @@
 # News categories. Each rule matches words in the headline or summary, first match wins.
 # `what_it_is` and `can_affect` are general descriptions for a reader, not measured effects.
 # Measured effects come only from recorded prices and are shown separately as "what prices did".
-rules_version: "1.0.0"
+rules_version: "1.1.0"
+# Relevance ranking (provisional weights, see DECISIONS D-110). A story is MATERIAL when its score
+# reaches `material_threshold`, otherwise ROUTINE. Components add up:
+#   names a listed company, names a company held or proposed, the category weight,
+#   repeats of the same story, and a routine-announcement penalty from `routine_phrases`.
+ranking:
+  material_threshold: 3.0
+  names_listed_company: 3.0
+  names_held_or_proposed: 3.0
+  repeat_bonus_per_item: 0.5
+  repeat_bonus_cap: 1.5
+  routine_penalty: 3.0
+  routine_phrases: [challenge winners, seminar, roundtable, outreach, advisory committee to discuss, small business advisory committee, conference, webinar, fiscal year, annual results, examination priorities, exam handbook, announces new, schedule of, tentative schedule, survey of consumer finances]
 categories:
   - id: monetary_policy
     label: Interest rates
     match: [FOMC, Federal Open Market Committee, discount rate, federal funds, monetary policy, interest on reserve]
     what_it_is: A decision, minutes or statement about US interest rate policy
     can_affect: Bond yields, bank stocks and the broad market, mostly when the news differs from what was expected
+    weight: 3.0
+    hypothesis: A policy surprise moves rate-sensitive stocks such as banks and growth companies over the next session
   - id: enforcement
     label: Enforcement
     match: [enforcement action, charges, charged, civil penalty, fraud, settles, settlement, cease and desist, litigation, complaint]
@@ -15,23 +29,33 @@ categories:
     feeds: [sec_litigation]
     what_it_is: A regulator acting against a named firm or person
     can_affect: The named firm, if it is listed. Large firms often absorb these with little price change
+    weight: 1.0
+    hypothesis: A named listed firm underperforms its sector after the action is announced
   - id: deal_approval
     label: Deal approval
     match: [approval of application, approval of two applications, approves application, approval of the applications, merger, acquisition]
     what_it_is: A regulator approving a merger, acquisition or other application
     can_affect: The firms named, mostly when the approval was in doubt
+    weight: 1.0
+    hypothesis: Named firms move toward the deal terms once approval removes doubt
   - id: rulemaking
     label: Rule change
     match: [proposal, proposed rule, comment period, final rule, guidance, rule amendments, interim final]
     what_it_is: A rule being proposed, changed or finalized
     can_affect: The industry it covers, usually later and gradually
+    weight: 1.0
+    hypothesis: Firms in the covered industry move when the rule is finalized, not when it is proposed
   - id: data_release
     label: Data release
     match: [survey, results of, report, statistics, data release, beige book]
     what_it_is: A survey, report or data release
     can_affect: Usually little directly. Some releases shift rate expectations
+    weight: 0.5
+    hypothesis: A release that differs from expectations shifts interest rate expectations
   - id: leadership
     label: Leadership
     match: [appoint, appointed, names, named, departure, resign, sworn in, nominat]
     what_it_is: A leadership change at a regulator or firm
     can_affect: Policy direction over time, rarely prices on the day
+    weight: 0.5
+    hypothesis: Leadership changes rarely move prices on the day
