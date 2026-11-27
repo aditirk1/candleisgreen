@@ -111,7 +111,7 @@ export function StockPanel({ symbol, tick, onClose, onGo }: { symbol: string; ti
             <div className="drawer-links">
               <button onClick={() => onGo("reasoning", s.symbol)}>Full reasoning</button>
               <button onClick={() => onGo("research", s.symbol)}>Research</button>
-              <button onClick={() => onGo("markets", s.symbol)}>Company page</button>
+              <button onClick={() => onGo("company", s.symbol)}>Company page</button>
             </div>
           </>)}
       </aside>

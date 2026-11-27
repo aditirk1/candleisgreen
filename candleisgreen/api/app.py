@@ -550,6 +550,75 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
                     "note": "Prices adjusted for splits and dividends. Volume as reported. Daily bars only"}
         return with_store(run) or {"symbol": sym, "status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
 
+    @app.get("/api/company/{symbol}")
+    def company_view(symbol: str):
+        """Company intelligence page. Every metric has a source, a period and its age in days."""
+        import yaml as _yaml
+        from .. import company as co
+        from ..data.adjust import adjust_closes
+        from ..sources.trials import as_of as trials_as_of
+        sym, now = symbol.upper(), clock()
+        ff12 = {i["code"]: i["name"] for i in _yaml.safe_load(
+            (Path(__file__).resolve().parents[2] / "config" / "ff12_sic.yaml").read_text())["industries"]}
+
+        def run(store, master):
+            iid = master.instrument_for_symbol(sym)
+            if iid is None:
+                rows = store.connection.execute("SELECT instrument_id FROM issuers WHERE upper(ticker) = ?", [sym]).fetchall()
+                iid = rows[0][0] if rows else None
+            if iid is None:
+                return {"symbol": sym, "status": "NOT AVAILABLE", "reason": f"{sym} is not in the recorded data or the SEC issuer list"}
+            prof = master.profile(iid, now) or {}
+            inst = next((i for i in master.instruments() if i["instrument_id"] == iid), {})
+            view = store.as_of(now)
+            obs = view.series(iid, "close")
+            vols = {o.event_time.date(): o.value for o in view.series(iid, "volume")}
+            adj = [c for _, c in adjust_closes([(o.event_time.date(), o.value) for o in obs], master.actions(iid), now.date())]
+            price = None
+            if obs:
+                price = {"value": obs[-1].value, "date": obs[-1].event_time.date().isoformat(), "source": obs[-1].vendor,
+                         "as_of_dt": obs[-1].first_usable_at}
+            fund = co.fundamentals(store, iid, now)
+            sector = master.sector_at(iid, now)
+            tag = master.tag(iid, cfg.markets.us_exchanges) if inst else "research_only"
+            synthetic = bool(obs) and obs[-1].vendor.endswith("synthetic")
+            catalysts = [{"event": f"Trial {t['nct_id']} primary completion", "date": t["primary_completion"],
+                          "detail": f"{t['phases'] or 'phase not given'}, {t['overall_status']}, date {(t['primary_completion_type'] or '').lower() or 'type not given'}",
+                          "source": "ClinicalTrials.gov, recorded " + t["observed_at"][:10]}
+                         for t in trials_as_of(store.connection, now, iid) if t.get("primary_completion")]
+            filed = [m for m in fund.values() if m.get("status") == "OK"]
+            return {
+                "symbol": sym, "status": "OK", "instrument_id": iid,
+                "profile": {
+                    "name": prof.get("name") or inst.get("name") or sym,
+                    "description": (f"{prof['sicDescription']} (SEC industry code {prof.get('sic')})" if prof.get("sicDescription")
+                                    else "NOT AVAILABLE. No SEC industry description recorded"),
+                    "industry": ff12.get(sector, "Not classified"), "industry_code": sector,
+                    "revenue_model": "NOT AVAILABLE. No verified source. The 10-K business section (Item 1) is not parsed",
+                    "state_of_incorporation": prof.get("stateOfIncorporation"), "fiscal_year_end": prof.get("fiscalYearEnd"),
+                    "exchanges": prof.get("exchanges"), "source": prof.get("_source", "NOT AVAILABLE"), "observed_at": prof.get("_observed_at"),
+                },
+                "price": {k: v for k, v in (price or {}).items() if k != "as_of_dt"} or None,
+                "fundamentals": fund, "valuation": co.valuation(fund, price, now),
+                "latest_filing": max((m["as_of"] for m in filed), default=None),
+                "risks": co.risks(adj, [vols.get(o.event_time.date(), 0.0) for o in obs], [o.value for o in obs], tag, synthetic, cfg),
+                "catalysts": catalysts,
+                "catalyst_note": "No free earnings or event calendar. Upcoming dates come only from recorded clinical trials",
+                "tag": tag, "synthetic": synthetic, "has_prices": bool(obs),
+            }
+        out = with_store(run) or {"symbol": sym, "status": "NOT AVAILABLE", "reason": "Data is busy or missing"}
+        if out.get("status") == "OK":
+            out["news"] = news_view(view="recent", ticker=sym)["clusters"][:6]
+            stock = stock_view(sym) if out.pop("has_prices") else {}
+            try:
+                why = reasoning(sym).get("why_not")
+            except Exception:
+                why = None
+            out["signals"] = {"system_view": stock.get("system_view", "NOT AVAILABLE. No recorded prices, so the trend model has no reading"),
+                              "signal": stock.get("signal"), "composite_score": stock.get("composite_score"),
+                              "proposal": stock.get("proposal"), "why_not": why}
+        return out
+
     @app.get("/api/stock/{symbol}")
     def stock_view(symbol: str):
         """Everything about one ticker in plain words, built only from recorded data."""

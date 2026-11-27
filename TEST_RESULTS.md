@@ -306,3 +306,7 @@ Interface check: 84 Playwright checks passed. The Short selling card shows ON at
 | `tests/test_news_insight.py` | 8 | Adds the ranking components and MATERIAL or ROUTINE split, relevance and recency sorting through the API, excerpt quality, item-level sources and timestamps, labeled hypotheses, and templated headlines about different events kept apart |
 
 Interface check: 99 Playwright checks passed, including the six destinations and Research workspace, the demo data banner, the Home empty state for performance, Needs Attention, news search, category filter, recency sort and save, the material and routine split, the opportunity drawer opened by keyboard with every evidence section, focus moving into it and Escape closing it, the light theme background, and price charts drawn after switching to each theme. Fourteen screenshots of the principal screens in both themes are in `docs/screens/principal-*.png`. Frontend production build passes.
+
+## Company pages, priority 6, 2026-11-27
+
+`tests/test_company.py` (3 tests): an SEC-only company has sourced financials with period and age, an honest NOT AVAILABLE for valuation without a price, unparsed revenue model and risk factors labeled, a priced demo company without filings shows price risks and the trend view, and price to earnings needs every input with a source. Interface check: 104 Playwright checks passed, including the company chart, SEC filing links, the age column and the labeled gaps.

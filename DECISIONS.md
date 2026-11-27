@@ -121,3 +121,7 @@ Choices made where the spec was silent, or where the review changed it. Newest l
 | D-115 | 2026-11-27 | Read and saved news marks and the watchlist stay in browser storage | Per-viewer conveniences. Nothing the system decides depends on them |
 | D-116 | 2026-11-27 | The demo's synthetic bars open at the prior close | Opening below every close drew only green candles, even in a downtrend |
 | D-117 | 2026-11-27 | `/api/home` and the new news and opportunity fields are additions. Existing endpoints keep their fields | Aditi's compatibility requirement |
+| D-118 | 2026-11-27 | Company pages show only sourced figures: SEC submissions for the profile, XBRL facts for financials, recorded prices for price and volume. Each figure carries its source, period and age in days | Aditi's rule for Priority 6 |
+| D-119 | 2026-11-27 | Price to earnings needs a recorded price and four consecutive reported quarters. Price to book and price to sales stay NOT AVAILABLE until shares outstanding are collected. A fourth quarter is not derived from the annual figure | No ratio with an unsourced input |
+| D-120 | 2026-11-27 | The business description is the SEC industry code description. The revenue model, the 10-K business section and the risk factors are labeled as not parsed | A verified description needs a source. Parsing 10-K text is a later step |
+| D-121 | 2026-11-27 | Upcoming catalysts come only from recorded clinical trial completion dates. No earnings calendar is shown | No free earnings calendar exists. Dates are never guessed from filing cadence |

@@ -227,6 +227,19 @@ check(await page.getByRole("button", { name: "Remove UPCO from watchlist" }).isV
 await page.screenshot({ path: `${out}/markets-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 
+await nav("Markets");
+await page.getByRole("tablist").getByRole("tab", { name: "Company", exact: true }).click();
+await page.getByText("Why the system would trade or abstain").waitFor();
+check(await page.locator("[aria-label='Company price chart'] canvas").first().waitFor({ timeout: 5000 }).then(() => true, () => false), "company page draws price and volume");
+await page.getByLabel("Company ticker").fill("AAPL");
+await page.getByRole("button", { name: "Open", exact: true }).click();
+await page.getByText(/Electronic Computers/).waitFor();
+check((await page.locator("a[href*='sec.gov/Archives']").count()) > 0, "company financials link to their SEC filings");
+check(await page.getByText(/NOT AVAILABLE\. No recorded price/).first().isVisible(), "valuation without a price says NOT AVAILABLE with the reason");
+check(await page.getByText(/Revenue model/).isVisible() && await page.getByText(/The 10-K business section \(Item 1\) is not parsed/).isVisible(), "unverified revenue model is labeled, not invented");
+check((await page.getByRole("columnheader", { name: "Age (days)" }).count()) >= 2, "every company metric shows its age");
+await page.screenshot({ path: `${out}/company-light.png`, fullPage: true });
+texts.push(await ownText(page.locator("body")));
 await nav("Backtests");
 await page.getByText(/Trials recorded/).waitFor();
 check((await page.getByText("xs_momentum_12_1").count()) > 0 && (await page.getByText("Sharpe", { exact: true }).count()) > 0, "Backtests shows each signal with a Sharpe ratio");

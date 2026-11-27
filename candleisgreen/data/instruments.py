@@ -49,6 +49,10 @@ CREATE TABLE IF NOT EXISTS entity_names (
     instrument_id VARCHAR NOT NULL, name VARCHAR NOT NULL, source VARCHAR NOT NULL, observed_at BIGINT NOT NULL,
     PRIMARY KEY (instrument_id, name, source)
 );
+CREATE TABLE IF NOT EXISTS entity_profiles (
+    instrument_id VARCHAR NOT NULL, profile_json VARCHAR NOT NULL, source VARCHAR NOT NULL, observed_at BIGINT NOT NULL,
+    PRIMARY KEY (instrument_id, observed_at)
+);
 CREATE TABLE IF NOT EXISTS classifications (
     record_id VARCHAR PRIMARY KEY, instrument_id VARCHAR NOT NULL, cik VARCHAR, sic_code INTEGER,
     industry_ff12 VARCHAR NOT NULL, status VARCHAR NOT NULL, classified_at BIGINT NOT NULL,
@@ -242,6 +246,23 @@ class InstrumentMaster:
         if name and name.strip():
             self._exec("INSERT INTO entity_names VALUES (?,?,?,?) ON CONFLICT DO NOTHING",
                        [instrument_id, name.strip(), source, to_micros(ensure_utc(observed_at))])
+
+    def add_profile(self, instrument_id: str, profile: dict, source: str, observed_at: datetime) -> None:
+        """Registered facts about an issuer from a named source, for example the SEC submissions file."""
+        self._exec("INSERT INTO entity_profiles VALUES (?,?,?,?) ON CONFLICT DO NOTHING",
+                   [instrument_id, json.dumps(profile, sort_keys=True), source, to_micros(ensure_utc(observed_at))])
+
+    def profile(self, instrument_id: str, when: datetime) -> Optional[dict]:
+        """Latest profile observed by `when`. None when none exists or the table predates this store."""
+        try:
+            rows = self.conn.execute("SELECT profile_json, source, observed_at FROM entity_profiles WHERE instrument_id = ? "
+                                     "AND observed_at <= ? ORDER BY observed_at DESC LIMIT 1",
+                                     [instrument_id, to_micros(ensure_utc(when))]).fetchall()
+        except Exception:
+            return None
+        if not rows:
+            return None
+        return {**json.loads(rows[0][0]), "_source": rows[0][1], "_observed_at": from_micros(rows[0][2]).isoformat()}
 
     def entity_names(self, instrument_id: Optional[str] = None) -> list[tuple[str, str]]:
         """(instrument_id, name) pairs. Empty on a store created before the table existed."""
