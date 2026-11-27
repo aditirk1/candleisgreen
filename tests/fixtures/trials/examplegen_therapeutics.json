@@ -1,0 +1,133 @@
+{
+ "studies": [
+  {
+   "protocolSection": {
+    "identificationModule": {
+     "nctId": "NCT90000001",
+     "briefTitle": "Study of EXG-101 in Condition A"
+    },
+    "statusModule": {
+     "overallStatus": "ACTIVE_NOT_RECRUITING",
+     "primaryCompletionDateStruct": {
+      "date": "2027-03",
+      "type": "ESTIMATED"
+     },
+     "lastUpdatePostDateStruct": {
+      "date": "2026-10-02"
+     }
+    },
+    "sponsorCollaboratorsModule": {
+     "leadSponsor": {
+      "name": "Examplegen Therapeutics, Inc."
+     }
+    },
+    "conditionsModule": {
+     "conditions": [
+      "Condition A"
+     ]
+    },
+    "designModule": {
+     "phases": [
+      "PHASE3"
+     ],
+     "enrollmentInfo": {
+      "count": 420
+     }
+    },
+    "outcomesModule": {
+     "primaryOutcomes": [
+      {
+       "measure": "Change in score at week 24"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "protocolSection": {
+    "identificationModule": {
+     "nctId": "NCT90000002",
+     "briefTitle": "Study of EXG-202 in Condition B"
+    },
+    "statusModule": {
+     "overallStatus": "RECRUITING",
+     "primaryCompletionDateStruct": {
+      "date": "2027-09",
+      "type": "ESTIMATED"
+     },
+     "lastUpdatePostDateStruct": {
+      "date": "2026-09-15"
+     }
+    },
+    "sponsorCollaboratorsModule": {
+     "leadSponsor": {
+      "name": "Examplegen Therapeutics Inc"
+     }
+    },
+    "conditionsModule": {
+     "conditions": [
+      "Condition B"
+     ]
+    },
+    "designModule": {
+     "phases": [
+      "PHASE2"
+     ],
+     "enrollmentInfo": {
+      "count": 120
+     }
+    },
+    "outcomesModule": {
+     "primaryOutcomes": [
+      {
+       "measure": "Response rate at week 12"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "protocolSection": {
+    "identificationModule": {
+     "nctId": "NCT90000003",
+     "briefTitle": "Investigator study using EXG-101"
+    },
+    "statusModule": {
+     "overallStatus": "RECRUITING",
+     "primaryCompletionDateStruct": {
+      "date": "2028-01",
+      "type": "ESTIMATED"
+     },
+     "lastUpdatePostDateStruct": {
+      "date": "2026-08-01"
+     }
+    },
+    "sponsorCollaboratorsModule": {
+     "leadSponsor": {
+      "name": "Examplegen Therapeutics Foundation"
+     }
+    },
+    "conditionsModule": {
+     "conditions": [
+      "Condition A"
+     ]
+    },
+    "designModule": {
+     "phases": [
+      "PHASE1"
+     ],
+     "enrollmentInfo": {
+      "count": 30
+     }
+    },
+    "outcomesModule": {
+     "primaryOutcomes": [
+      {
+       "measure": "Safety"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

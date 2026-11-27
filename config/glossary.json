@@ -1,0 +1,119 @@
+{
+ "glossary_version": "1.1.0",
+ "terms": {
+  "alpha": {
+   "plain": "Expected gain",
+   "meaning": "Return the model expects beyond what the market and known factors explain",
+   "formula": "alpha = E[r] minus beta times market return",
+   "typical": "A few tenths of a percent a month is already large"
+  },
+  "volatility": {
+   "plain": "How much it swings",
+   "meaning": "Standard deviation of returns, scaled to a year",
+   "formula": "sigma_annual = sigma_daily times sqrt(252)",
+   "typical": "Large US stocks 15 to 40 percent a year"
+  },
+  "prob_positive": {
+   "plain": "Chance the edge is real",
+   "meaning": "Posterior probability that the signal's true mean return is above zero after shrinkage",
+   "formula": "P = Phi(mu_hat / se)",
+   "typical": "Above 0.9 is strong. Near 0.5 means no information"
+  },
+  "sharpe": {
+   "plain": "Return per unit of swing",
+   "meaning": "Mean excess return divided by its standard deviation, annualized",
+   "formula": "SR = mean / sd times sqrt(12) for monthly data",
+   "typical": "0.5 is decent for one signal. Above 2 usually means an error or overfitting"
+  },
+  "trial_count": {
+   "plain": "How many versions were tried",
+   "meaning": "Every variant tested, kept or not. More trials make a lucky result more likely",
+   "typical": "Compare a Sharpe ratio with this number before trusting it"
+  },
+  "slippage_bps": {
+   "plain": "Price paid versus the midpoint",
+   "meaning": "Fill price compared with the quote midpoint at arrival, in basis points",
+   "formula": "side times (fill minus mid) / mid times 10000",
+   "typical": "Liquid US stocks 1 to 10"
+  },
+  "signal_strength": {
+   "plain": "How strongly the model leans",
+   "meaning": "Model output before calibration. It is not a probability or a forecast return",
+   "typical": "Only the sign and rank are used until calibration exists"
+  },
+  "tier": {
+   "plain": "How much evidence",
+   "meaning": "Evidence tier from 1 (idea) to 6. Academic evidence stops at 3. Tier 4 needs a test on real data. Tier 5 needs prospective results and Aditi",
+   "typical": "Only tiers 4 and up can carry capital"
+  },
+  "economic": {
+   "plain": "Worth trading after costs",
+   "meaning": "Result of the walk-forward research portfolio at double the modeled costs"
+  },
+  "basis": {
+   "plain": "Why this number",
+   "meaning": "Empirical comes from a cited result. Safeguard limits damage and only Aditi changes it. Provisional is a starting setting under review. External fact has a source and a date"
+  },
+  "adv20": {
+   "plain": "Normal daily trading",
+   "meaning": "Average dollar volume over the last 20 sessions",
+   "typical": "Orders here stay under a small share of it"
+  },
+  "daily_return": {
+   "plain": "How much it moved in a day",
+   "meaning": "Change in closing price from one session to the next, as a fraction of the earlier close",
+   "formula": "r = close_t / close_(t-1) minus 1",
+   "typical": "Large US stocks usually move under 2 percent a day"
+  },
+  "standard_error": {
+   "plain": "How unsure the estimate is",
+   "meaning": "Standard deviation of an estimate across samples. A mean with a large standard error could easily be zero",
+   "formula": "se = sd / sqrt(n) for independent observations",
+   "typical": "Compare it with the estimate itself. A ratio above 1 means little information"
+  }
+ },
+ "prerequisites": {
+  "daily_return": [],
+  "volatility": [
+   "daily_return"
+  ],
+  "sharpe": [
+   "daily_return",
+   "volatility"
+  ],
+  "standard_error": [
+   "volatility"
+  ],
+  "alpha": [
+   "daily_return"
+  ],
+  "prob_positive": [
+   "alpha",
+   "standard_error"
+  ],
+  "trial_count": [
+   "sharpe"
+  ],
+  "signal_strength": [
+   "daily_return",
+   "volatility"
+  ],
+  "adv20": [
+   "daily_return"
+  ],
+  "slippage_bps": [
+   "adv20"
+  ],
+  "economic": [
+   "sharpe",
+   "slippage_bps"
+  ],
+  "tier": [
+   "economic",
+   "prob_positive"
+  ],
+  "basis": [
+   "tier"
+  ]
+ }
+}

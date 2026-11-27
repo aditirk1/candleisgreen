@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.hypothesis/
+var/
+*.duckdb
+*.sqlite
+.env
+ui/node_modules/
+ui/dist/
+*.egg-info/

@@ -1,0 +1,79 @@
+# Capability map. Spec principle 3: a feature without adequate data shows NOT AVAILABLE
+# and the reason. Spec principle 11: only free sources, no restricted free tiers as core
+# dependencies, no scraping as a primary dependency.
+# status: available, limited, not_available. Every status except available needs a reason.
+capabilities_version: "1.0.0"
+capabilities:
+  us_factor_research:
+    status: available
+    sources: [open_source_asset_pricing_portfolios, kenneth_french_library]
+    note: Portfolio returns built from CRSP, including delisted stocks
+  global_factor_research:
+    status: limited
+    sources: [jkp_global_factor_data]
+    reason: Factor and portfolio returns only, licensed for non-commercial use
+  us_daily_bars:
+    status: limited
+    sources: [alpaca_historical_sip_delayed]
+    reason: History starts in 2016 and delisted coverage is unconfirmed, so tests on it are labeled SURVIVORSHIP-BIASED
+  us_stock_history_with_delistings:
+    status: limited
+    sources: [forward_recorder]
+    reason: Survivorship-aware only from the day the forward recorder starts, and complete only where its flags say so
+  us_fundamentals_point_in_time:
+    status: limited
+    sources: [sec_edgar_xbrl]
+    reason: XBRL data starts in 2009. Uses the filed date for point-in-time
+  macro:
+    status: limited
+    sources: [fred, alfred]
+    reason: FRED and ALFRED vintages need a free FRED API key in FRED_API_KEY. BLS and BEA direct feeds are not built
+  clinical_trials:
+    status: limited
+    sources: [clinicaltrials_gov]
+    reason: Recorded forward from the first run, because the API serves only the latest version of each study. Research only
+  fda_advisory_calendar:
+    status: not_available
+    sources: []
+    reason: The FDA calendar page fills its table with JavaScript and no documented feed was found on 2026-11-24. Paste a meeting notice into the Research Capture Inbox instead
+  paper_execution_us:
+    status: available
+    sources: [alpaca_paper]
+  realtime_consolidated_quotes:
+    status: not_available
+    reason: The free real-time feed covers the IEX exchange only. Risk checks use IEX quotes
+  intraday_trading:
+    status: not_available
+    reason: No free real-time consolidated data. The platform trades at daily frequency
+  short_selling_us:
+    status: limited
+    sources: [alpaca_paper_trading]
+    reason: Easy-to-borrow US stocks only, within Aditi's short limits of 3% per stock and 30% in total. Hard-to-borrow names need a locate and are never shorted. Alpaca requires at least 2,000 USD of equity
+  options_trading:
+    status: not_available
+    sources: []
+    reason: The Alpaca paper account allows options, but the free plan gives only an indicative options feed, not real-time OPRA quotes, so no options order can pass the execution-grade quote rule. No options model exists
+  crypto_trading:
+    status: not_available
+    sources: []
+    reason: Alpaca's free plan includes crypto data and paper crypto trading, buy and sell only, never short. Not built. It trades all week, so it needs its own calendar, recorder and risk checks
+  futures_trading:
+    status: not_available
+    sources: []
+    reason: Alpaca lists futures as coming soon (checked 2026-11-27). Other brokers need paid futures market data
+  options_data_and_flow:
+    status: not_available
+    reason: No free source of historical or real-time options data
+  analyst_consensus_estimates:
+    status: not_available
+    reason: No free source of timestamped estimates, so reported results are never compared with a consensus
+  licensed_news:
+    status: not_available
+    reason: Lawful RSS feeds only
+  non_us_execution:
+    status: not_available
+    reason: Market data for non-US exchanges needs monthly fees
+  llm_features:
+    status: limited
+    sources: [local_open_weight_model]
+    reason: Optional and off by default. Local models only, no paid API

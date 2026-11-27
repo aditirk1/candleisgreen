@@ -1,0 +1,301 @@
+# CandleIsGreen configuration. Spec v3.2 defaults.
+# Every value lives here, never in code. Every value is classified in
+# config/parameters.yaml as empirical, safeguard, provisional or external_fact,
+# and that basis decides who may change it and how it is shown.
+# Bump config_version on every edit. The loader rejects unknown keys.
+config_version: "3.2.6"
+spec_version: "3.2"
+
+time:
+  market_timezone: America/New_York
+  decision_time_local: "16:30"
+  # Orders are sliced inside this regular-session window on the next trading day.
+  execution_window_start_local: "09:35"
+  execution_window_end_local: "10:30"
+  # Pre-open check before the window. It can only cancel buys.
+  preopen_check_local: "09:00"
+
+universe:
+  min_price: 5.0
+  min_median_dollar_volume_20d: 10000000
+  # Hysteresis. A member leaves only below these exit levels.
+  exit_min_price: 4.0
+  exit_min_median_dollar_volume_20d: 7500000
+  dollar_volume_window_days: 20
+  exclude_leveraged_inverse_etfs: true
+  # Research only. No price or volume filter, never receives orders (QUESTIONS Q5).
+  research_universes:
+    biotech:
+      description: Pharmaceutical, biological and medical research companies, research only
+      min_price: 0.0
+      min_median_dollar_volume_20d: 0.0
+      sic_codes: [2834, 2835, 2836, 8731]
+
+composite:
+  # Fewest recorded closes a name needs before the daily Composite run includes it.
+  min_history_days: 30
+  standardize:
+    winsor_lower_pct: 1.0
+    winsor_upper_pct: 99.0
+    ts_std_window_days: 252
+    ts_clip: 3.0
+    ema_halflife_fraction_of_horizon: 0.5
+  research_portfolio:
+    # Volatility scaling never levers a research portfolio beyond this gross exposure.
+    max_gross_leverage: 4.0
+    vol_target_annual: 0.10
+    research_nav_usd: 1000000
+    newey_west_max_lag_days: 63
+    trading_days_per_year: 252
+  costs:
+    # SEC Section 31 fee since 2026-04-04 (REVIEW O12).
+    sec_fee_per_million_usd_sold: 20.60
+    # FINRA TAF is 0 for 2026-10-01 to 2026-12-31. Scheduled 2027 rate is 0.000232 per share.
+    finra_taf_per_share_sold: 0.0
+    finra_taf_max_per_trade_usd: 9.79
+    # Borrow cost for the short leg of research portfolios. Judgment call, see DECISIONS D-015.
+    borrow_rate_annual: 0.005
+    # Ex-ante volatility of research portfolios from trailing returns of today's weights.
+    vol_lookback_days: 63
+    min_vol_history_days: 21
+    # Long-only economic test: top third by z-score against the universe.
+    long_only_quantile: 0.6667
+  edge:
+    # McLean and Pontiff (2016): 58% lower after publication, 26% lower out of sample.
+    # Less severe estimates: Jensen, Kelly and Pedersen about 0.53, Chen and Zimmermann about 0.88.
+    delta_us_published: 0.42
+    delta_non_us_published: 0.74
+    delta_other_published: 0.74
+    omega_factor: 0.5
+    cold_start_tau_annual: 0.05
+    tau_floor_annual: 0.01
+    family_min_signals_for_prior: 5
+    delta_replace_min_signals: 20
+    # Extra uncertainty on academic portfolio evidence, which is not the tradable version.
+    implementation_gap_factor: 0.5
+  eligibility:
+    min_tier: 4
+    capital_min_tier: 5
+    min_prob_positive: 0.80
+    min_oos_days: 252
+    min_events: 30
+    # Tier 4 economic test: block-bootstrap interval of net return at multiplied costs.
+    interval_level: 0.90
+    cost_multiplier: 2.0
+    bootstrap_block_days: 21
+    bootstrap_resamples: 2000
+    # Tier 3 independent replication: same sign and significant at this two-sided level.
+    replication_significance: 0.05
+  promotion:
+    shadow_min_trading_days: 63
+    default_min_shadow_trades: 20
+    default_max_se_to_expected_ratio: 1.0
+    shadow_band_level: 0.90
+    max_tracking_error_annual: 0.05
+    # A shadow day counts as a trade when the book turns over at least this fraction of gross.
+    shadow_min_turnover: 0.01
+  monitoring:
+    min_observation_days: 63
+    review_window_days: 252
+    alert_probability: 0.05
+  weights:
+    cov_window_days: 756
+    cov_min_days: 252
+    hrp_min_families: 3
+    signal_cap: 0.20
+    family_cap: 0.35
+    max_monthly_relative_change: 0.25
+    max_monthly_absolute_change_floor: 0.02
+    new_signal_initial_weight_max: 0.05
+    duplicate_correlation_threshold: 0.95
+  alpha:
+    ic_horizon_days: 21
+    ic_shrink_days: 252
+    alpha_clip_sigmas: 3.0
+    calibration_slope_min: 0.5
+    calibration_slope_max: 1.5
+    calibration_min_t: 2.0
+  optimizer:
+    n_factors: 15
+    cov_window_days: 252
+    impact_kappa: 0.5
+    impact_kappa_floor: 0.5
+    vol_target_annual: 0.12
+    sector_cap: 0.25
+    no_trade_band: 0.0025
+    lambda_bisection_iterations: 30
+    lambda_min: 0.001
+    lambda_max: 100000.0
+    specific_var_shrink: 0.5
+    min_history_days: 126
+    alpha_horizon_days: 21
+
+risk:
+  # Hard limits. Aditi sets these. Tightening applies now. Loosening waits.
+  hard_limits:
+    max_position_pct_equity: 0.05
+    max_cluster_pct_equity: 0.20
+    max_order_pct_adv20: 0.01
+    max_spread_pct: 0.005
+    daily_loss_stop_pct_equity: 0.02
+    max_quote_age_seconds: 15
+    # Short selling. Set by Aditi on 2026-11-27, waiving the 24-hour wait once (DECISIONS D-108).
+    max_short_position_pct_equity: 0.03
+    max_short_exposure_pct_equity: 0.30
+    # Longs plus absolute shorts, as a share of equity. 1.0 means no borrowing to trade.
+    max_gross_exposure_pct_equity: 1.0
+    # Quote feeds fit for execution decisions. Delayed consolidated data is not.
+    execution_grade_feeds: [iex_realtime, fixture_realtime]
+  loosening_delay_hours: 24
+
+clustering:
+  # Correlation clusters for the cluster limit (decision Q7). Residual daily returns, average linkage.
+  lookback_days: 252
+  min_observations: 200
+  # Correlation distance sqrt((1 - rho) / 2). 0.5 joins names with average residual correlation above 0.5.
+  max_distance: 0.5
+  # Adjusted Rand index against the last stable run. Below this, orders fall back to sector clusters.
+  min_stability: 0.5
+  refresh_days: 28
+
+execution:
+  mode: auto_simulation
+  # Must stay false. The loader refuses any other value.
+  live_trading_enabled: false
+  simulator_starting_equity_usd: 100000
+  order_type: limit
+  # Buy limit = ask + offset x spread. Sell limit = bid - offset x spread.
+  limit_offset_fraction: 0.5
+  # The separate risk service process. Scheduled execution cannot run without it.
+  risk_service_url: http://127.0.0.1:8765
+
+sources:
+  alpaca:
+    # Paper host only. The loader rejects any other trading host.
+    trading_base_url: https://paper-api.alpaca.markets
+    data_base_url: https://data.alpaca.markets
+    # Consolidated history is free once the request ends this many minutes in the past.
+    bars_feed: sip
+    sip_delay_minutes: 15
+    # Unadjusted bars. Corporate actions are stored separately.
+    adjustment: raw
+    symbols_per_request: 200
+    request_timeout_seconds: 30
+    max_retries: 3
+  recorder:
+    run_time_local: "16:20"
+    close_time_local: "16:00"
+    heartbeat_max_age_hours: 26
+  sec:
+    data_base_url: https://data.sec.gov
+    tickers_url: https://www.sec.gov/files/company_tickers.json
+    archives_base_url: https://www.sec.gov/Archives/edgar/data
+    # SEC fair-access limit. A declared User-Agent with contact details is required, and it
+    # is read from this environment variable, never stored in the repository.
+    max_requests_per_second: 10
+    user_agent_env: SEC_USER_AGENT
+    # When a filing's acceptance time is unknown: EDGAR assigns the filing date to anything
+    # accepted by 17:30 ET, so the value was public by then at the latest.
+    filed_date_fallback_time_local: "17:30"
+    concepts:
+      - us-gaap:EarningsPerShareDiluted
+      - us-gaap:EarningsPerShareBasic
+      - us-gaap:Revenues
+      - us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax
+      - us-gaap:NetIncomeLoss
+      - us-gaap:OperatingIncomeLoss
+      - us-gaap:Assets
+      - us-gaap:StockholdersEquity
+  fred:
+    # FRED API v1. The key is read from this environment variable, never stored here.
+    base_url: https://api.stlouisfed.org/fred
+    api_key_env: FRED_API_KEY
+    # ALFRED gives release dates, not times. A value counts as known from this time on its release date.
+    release_time_local: "17:00"
+    # Series are produced by US agencies, fetched under FRED's terms. Trading use stays unverified.
+    series:
+      - {id: CPIAUCSL, license: fred_terms}
+      - {id: UNRATE, license: fred_terms}
+      - {id: PAYEMS, license: fred_terms}
+      - {id: GDPC1, license: fred_terms}
+      - {id: FEDFUNDS, license: fred_terms}
+      - {id: DGS10, license: fred_terms}
+  trials:
+    # ClinicalTrials.gov API v2. No key. It serves only the latest version of each study.
+    base_url: https://clinicaltrials.gov/api/v2
+    # The API coerces larger page sizes down to 1,000.
+    page_size: 1000
+    license: clinicaltrials_gov
+
+models:
+  ts_momentum:
+    lookback_days: 252
+    skip_days: 21
+    clip: 3.0
+
+research:
+  # Share of the newest history the experiment lab holds out for the one out-of-sample run.
+  lab_holdout_fraction: 0.3
+  inbox:
+    # Hosts the inbox may fetch by itself. Empty: every link asks Aditi to paste the passage.
+    auto_fetch_hosts: []
+    summary_max_chars: 600
+    max_file_bytes: 5000000
+  reproduction:
+    # Spec decision criteria: same sign, and inside the paper's interval or at least half its size.
+    min_fraction_of_paper: 0.5
+    interval_z: 1.96
+  # Decision criteria by study type (spec Research pipeline). All provisional, none universal.
+  criteria:
+    new_factor_min_t: 3.0
+    fdr_level: 0.05
+    forecast_significance: 0.05
+    forecast_subperiods: 3
+    forecast_min_subperiods_passed: 2
+    event_significance: 0.05
+    practitioner_min_claims: 30
+    practitioner_interval_level: 0.90
+    novelty_similarity: 0.6
+  # Half spread assumed in research portfolios when no historical quote exists.
+  default_half_spread: 0.0005
+  # Newey-West lag for monthly academic returns.
+  monthly_hac_lag: 6
+  osap_release: "2026.10"
+
+news:
+  # Lawful RSS feeds only (spec principle 11). Summaries and hashes are kept, never full articles.
+  feeds:
+    - {name: sec_press, url: "https://www.sec.gov/news/pressreleases.rss", license: us_government_public}
+    - {name: sec_litigation, url: "https://www.sec.gov/enforcement-litigation/litigation-releases/rss", license: us_government_public}
+    - {name: fed_press, url: "https://www.federalreserve.gov/feeds/press_all.xml", license: us_government_public}
+  cluster_similarity: 0.6
+  cluster_window_hours: 72
+  live_view_hours: 72
+  recent_view_days: 90
+  max_summary_chars: 500
+
+markets:
+  # Listings on these venues can be tagged direct. Everything else is research only (spec principle 11).
+  us_exchanges: [NYSE, NASDAQ, ARCA, AMEX, BATS, NYSEARCA, NYSEAMERICAN, IEX]
+  # Follow-the-sun job slots, as UTC times of day.
+  sessions_utc: {asia_pacific: "08:00", europe: "17:00", us: "21:20", overnight_review: "02:00"}
+
+sizing:
+  # Phase 1 sizing for a single Level A model. Must stay at or under the hard position limit.
+  target_weight_per_name: 0.04
+  max_names: 20
+  # Most short positions the decision may propose. Shorts also need the short limits above 0.
+  max_short_names: 10
+  min_trade_value_usd: 100
+
+teaching:
+  # Leitner boxes for spaced review, in days.
+  review_intervals_days: [1, 3, 7, 14, 30]
+  # Episode windows around well-known dates. Each stays NOT AVAILABLE until stored data covers it.
+  crises:
+    - {name: "1987 crash", start: 1987-10-12, end: 1987-10-30}
+    - {name: "1997 Asian crisis selloff", start: 1997-10-20, end: 1997-10-31}
+    - {name: "2008 financial crisis", start: 2008-09-15, end: 2009-03-09}
+    - {name: "2015 China devaluation selloff", start: 2015-08-11, end: 2015-08-31}
+    - {name: "March 2020 pandemic selloff", start: 2020-02-19, end: 2020-03-23}
+    - {name: "2022 rate rise selloff", start: 2022-01-03, end: 2022-10-12}

@@ -1,0 +1,4 @@
+Acronym,Authors,Year,Journal,SampleStartYear,SampleEndYear,Return,T-Stat,Sign,Signal Rep Quality,Predictability in OP,LongDescription
+Mom12m,Jegadeesh and Titman,1993,JF,1964,1989,1.31,3.74,1.0,1_good,1_clear,Momentum (12 month)
+STreversal,Jegadeesh,1990,JF,1934,1987,1.99,12.44,-1.0,1_good,1_clear,Short term reversal
+BetaFP,Frazzini and Pedersen,2014,JFE,1929,2012,0.7,7.12,1.0,3_distant,2_likely,Frazzini-Pedersen Beta

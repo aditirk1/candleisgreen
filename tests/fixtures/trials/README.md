@@ -1,0 +1,1 @@
+Constructed in the ClinicalTrials.gov API v2 response shape (checked against a live response and the OpenAPI description on 2026-11-24). Sponsors, trial IDs and values are invented. No real registry records are committed because the terms page could not be read automatically.
