@@ -750,6 +750,27 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         rows = with_store(lambda store, master: lab.crisis_library(store, list(cfg.teaching.crises), clock()))
         return {"episodes": rows if rows is not None else []}
 
+    @app.get("/api/asset-classes")
+    def asset_classes():
+        """Each asset class with what the capability registry allows: research, historical prices, paper execution."""
+        import yaml as _yaml
+        from ..core.capabilities import load_capabilities
+        caps = load_capabilities()
+        spec = _yaml.safe_load((Path(__file__).resolve().parents[2] / "config" / "asset_classes.yaml").read_text())["asset_classes"]
+
+        def facet(name):
+            c = caps.get(name)
+            return {"capability": name, "status": c.status.value, "label": c.label, "reason": c.reason,
+                    "usable": c.status.value in ("available", "limited")}
+        out = []
+        for a in spec:
+            row = {"id": a["id"], "label": a["label"], "research": facet(a["research"]), "history": facet(a["history"]),
+                   "paper_execution": facet(a["paper_execution"]), "extra": [facet(x) for x in a.get("extra", [])]}
+            row["summary"] = ("Paper trading" if row["paper_execution"]["usable"] else
+                              "Research only" if row["research"]["usable"] or row["history"]["usable"] else "No usable data")
+            out.append(row)
+        return {"asset_classes": out, "note": "From config/capabilities.yaml. No market prices, Greeks or forecasts are shown where data is not available"}
+
     @app.get("/api/inbox")
     def inbox_list():
         return {"captures": inbox.list(), "auto_fetch_hosts": list(cfg.research.inbox.auto_fetch_hosts)}

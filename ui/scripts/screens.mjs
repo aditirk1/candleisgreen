@@ -240,6 +240,13 @@ check(await page.getByText(/Revenue model/).isVisible() && await page.getByText(
 check((await page.getByRole("columnheader", { name: "Age (days)" }).count()) >= 2, "every company metric shows its age");
 await page.screenshot({ path: `${out}/company-light.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
+await page.getByRole("tablist").getByRole("tab", { name: "Asset classes", exact: true }).click();
+await page.getByRole("heading", { name: "Asset classes" }).waitFor();
+check((await page.getByText("Paper trading", { exact: true }).count()) >= 1 && (await page.getByText("No usable data").count()) === 3 && await page.getByText("Research only", { exact: true }).isVisible(), "asset classes show paper trading for stocks only, research only for forex and no data for options, futures and crypto");
+await page.getByText("Options", { exact: true }).click();
+check(await page.getByText(/indicative options feed/).isVisible(), "options explain why they cannot be traded");
+await page.screenshot({ path: `${out}/asset-classes-light.png`, fullPage: true });
+texts.push(await ownText(page.locator("body")));
 await nav("Backtests");
 await page.getByText(/Trials recorded/).waitFor();
 check((await page.getByText("xs_momentum_12_1").count()) > 0 && (await page.getByText("Sharpe", { exact: true }).count()) > 0, "Backtests shows each signal with a Sharpe ratio");

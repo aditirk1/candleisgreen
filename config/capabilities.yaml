@@ -61,6 +61,22 @@ capabilities:
     status: not_available
     sources: []
     reason: Alpaca lists futures as coming soon (checked 2026-11-27). Other brokers need paid futures market data
+  fx_rates:
+    status: limited
+    sources: [fred]
+    reason: Daily reference rates from the FRED H.10 series, research only. No intraday quotes
+  fx_trading:
+    status: not_available
+    sources: []
+    reason: Alpaca offers no currency trading. FX appears only as the currency part of a foreign stock's return
+  futures_data:
+    status: not_available
+    sources: []
+    reason: No free futures price source. Exchange futures data needs a paid license
+  crypto_data:
+    status: not_available
+    sources: []
+    reason: Alpaca's free plan includes crypto prices, but no recorder for them is built yet
   options_data_and_flow:
     status: not_available
     reason: No free source of historical or real-time options data
