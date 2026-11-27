@@ -26,7 +26,10 @@ function ExperimentRow({ e }: { e: Experiment }) {
 
 const EXP_HEAD = <thead><tr><th>Study</th><th>Result</th><th className="num">Mean (% a month)</th><th className="num">t</th><th className="num">Months</th><th>Pre-registered rule</th><th className="num">Variants</th><th>Registered</th></tr></thead>;
 
+const RESEARCH_TABS: [string, string][] = [["digest", "Today"], ["claims", "Claims and evidence"], ["inbox", "Capture inbox"]];
+
 export function ResearchScreen({ tick, focus }: { tick: number; focus: string | null }) {
+  const [tab, setTab] = useState(focus ? "claims" : "digest");
   const [data, setData] = useState<Overview | null>(null);
   const [chain, setChain] = useState<Chain | null>(null);
   const [sel, setSel] = useState<string | null>(focus);
@@ -37,8 +40,16 @@ export function ResearchScreen({ tick, focus }: { tick: number; focus: string | 
   const d = data.digests[0];
   async function decide(id: string, verb: "approve" | "decline") { await post(`/api/promotions/${id}/${verb}`); getJSON<Overview>("/api/research").then(setData); }
   return (
-    <>
+    <div className="page">
+      <div className="page-head"><h1>Research</h1>
+        <div className="segmented" role="group" aria-label="Research sections">
+          {RESEARCH_TABS.map(([k, label]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{label}</button>)}
+        </div>
+      </div>
+      {tab === "inbox" && <>
       <InboxPanel tick={tick} />
+      </>}
+      {tab === "digest" && <>
       <div className="grid2">
         <section className="panel"><h2>Daily research digest {d ? d.date : ""}</h2>
           {!d ? <p className="muted">No digest yet</p> : (<table><tbody>
@@ -68,6 +79,8 @@ export function ResearchScreen({ tick, focus }: { tick: number; focus: string | 
             <tbody>{data.models.map((m) => <tr key={m.experiment_id}><td>{m.champion}</td><td>{m.challenger}</td><td className="muted">{m.result.test}</td>
               <td className="num">{m.result.pvalue.toFixed(3)}</td><td className="num">{m.result.subperiods_held} of 3</td><td>{m.result.data_labels.join(", ")}</td><td>{m.result.recommendation}</td></tr>)}</tbody></table>)}
       </section>
+      </>}
+      {tab === "claims" && <>
       <section className="panel"><h2>Claim cards ({data.trial_count} variants tried in total)</h2>
         <table><thead><tr><th>Claim</th><th>Status</th><th className="num">Paper (% a month)</th><th className="num">Paper t</th><th>Sample</th><th>Signal</th><th className="num">Tier</th><th>Evidence</th></tr></thead>
           <tbody>{data.claims.map((c) => (
@@ -91,6 +104,7 @@ export function ResearchScreen({ tick, focus }: { tick: number; focus: string | 
         {data.failures.length === 0 ? <p className="muted">No failed experiments</p> : (
           <table>{EXP_HEAD}<tbody>{data.failures.map((e) => <ExperimentRow key={e.experiment_id} e={e} />)}</tbody></table>)}
       </section>
-    </>
+      </>}
+    </div>
   );
 }

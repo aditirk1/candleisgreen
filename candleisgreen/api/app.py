@@ -276,12 +276,48 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         run = research.latest_run()
         return run or {"status": "NOT AVAILABLE", "reason": "No Composite run has been recorded"}
 
+    index_cache: dict = {}
+
+    def company_index(path, master):
+        """SEC names change rarely, so the index is rebuilt only when the file or entity names change."""
+        from .. import news_insight as ni
+        key = (str(path), Path(path).stat().st_mtime if Path(path).exists() else 0, len(master.entity_names()))
+        if index_cache.get("key") != key:
+            index_cache.update(key=key, index=ni.CompanyIndex.build(path, master))
+        return index_cache["index"]
+
     @app.get("/api/news")
-    def news_view(view: str = "live"):
-        now = clock()
+    def news_view(view: str = "live", ticker: Optional[str] = None):
         from datetime import timedelta
+        from .. import news_insight as ni
+        now = clock()
         span = timedelta(hours=cfg.news.live_view_hours) if view == "live" else timedelta(days=cfg.news.recent_view_days)
-        return {"view": view.upper(), "clusters": news.clusters(now, since=now - span)}
+        clusters = news.clusters(now, since=now - span)
+        rules = ni.load_rules()
+        tickers_file = workdir / "sec" / "company_tickers.json"
+
+        def enrich(store, master):
+            index = company_index(tickers_file if tickers_file.exists() else ni.TICKERS_FIXTURE, master)
+            earliest = min((datetime.fromisoformat(c["first_usable_at"]) for c in clusters), default=now)
+            closes = ni.load_closes(store, earliest - timedelta(days=10), now)
+            market_cache: dict = {}
+            out = []
+            for c in clusters:
+                text = f"{c['headline']} {c['summary']}"
+                linked = sorted(set(c["tickers"]) | set(index.link(text)))
+                summary = c["summary"] if c["summary"] and c["summary"].strip().rstrip(".") != c["headline"].strip().rstrip(".") else None
+                out.append({**c, "summary": summary, "tickers": linked, "category": ni.classify_story(text, c["feeds"], rules),
+                            "prices": ni.price_moves(closes, master, linked, datetime.fromisoformat(c["first_usable_at"]), market_cache)})
+            return out
+
+        rows = with_store(enrich)
+        if rows is None:
+            rows = [{**c, "category": ni.classify_story(f"{c['headline']} {c['summary']}", c["feeds"], rules), "prices": None} for c in clusters]
+        if ticker:
+            rows = [r for r in rows if ticker.upper() in r["tickers"]]
+        rows.sort(key=lambda r: (r["first_usable_at"], len(r["tickers"]), r["items"]), reverse=True)
+        return {"view": view.upper(), "clusters": rows,
+                "note": "Why it may matter is a general description. What prices did is an observation, not proof of cause"}
 
     @app.get("/api/reasoning")
     def reasoning(symbol: str):
@@ -371,6 +407,78 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         macro = with_store(lambda store, master: macro_view(store, cfg, clock()))
         return {"sessions": sessions, "fx": rates, "momentum_by_market": evidence, "entitlements": entitlements,
                 "markets": markets, "macro": macro if macro is not None else []}
+
+    @app.get("/api/stock/{symbol}")
+    def stock_view(symbol: str):
+        """Everything about one ticker in plain words, built only from recorded data."""
+        import math
+        import yaml as _yaml
+        from ..data.adjust import adjust_closes
+        from ..models import ts_momentum
+        sym = symbol.upper()
+        now = clock()
+        ff12 = {i["code"]: i["name"] for i in _yaml.safe_load(
+            (Path(__file__).resolve().parents[2] / "config" / "ff12_sic.yaml").read_text())["industries"]}
+
+        def run(store, master):
+            iid = master.instrument_for_symbol(sym)
+            if iid is None:
+                return {"symbol": sym, "status": "NOT AVAILABLE", "reason": f"{sym} is not in the recorded data"}
+            inst = next((i for i in master.instruments() if i["instrument_id"] == iid), {})
+            names = [n for _, n in master.entity_names(iid)]
+            sector = master.sector_at(iid, now)
+            obs = store.as_of(now).series(iid, "close")
+            adj = [c for _, c in adjust_closes([(o.event_time.date(), o.value) for o in obs], master.actions(iid), now.date())]
+
+            def change(days):
+                return adj[-1] / adj[-1 - days] - 1 if len(adj) > days and adj[-1 - days] else None
+            rets = [b / a - 1 for a, b in zip(adj[-64:-1], adj[-63:]) if a]
+            vol = (sum((r - sum(rets) / len(rets)) ** 2 for r in rets) / (len(rets) - 1)) ** 0.5 * math.sqrt(252) if len(rets) > 2 else None
+            m = cfg.models.ts_momentum
+            signal = ts_momentum.score(adj, m)
+            trend = None
+            if len(adj) > m.lookback_days:
+                past = adj[-1 - m.lookback_days]
+                recent = adj[-1 - m.skip_days]
+                trend = recent / past - 1 if past else None
+            if signal is None:
+                view = "NOT AVAILABLE. Less than a year of recorded prices, so the trend model has no reading"
+            else:
+                direction = "rose" if (trend or 0) > 0 else "fell"
+                view = (f"Over the past year, leaving out the last month, the price {direction} {abs(trend or 0) * 100:.1f}%. "
+                        f"The trend model reads this as {'an uptrend' if signal > 0 else 'a downtrend'} "
+                        f"with strength {signal:.2f} on a scale of -{m.clip:.0f} to +{m.clip:.0f}. "
+                        + ("It only buys uptrends, so this name is a buy candidate." if signal > 0
+                           else "It only buys uptrends, so it would not buy this name now."))
+            latest = [p for p in journal.proposals() if p.symbol == sym]
+            prop = latest[-1] if latest else None
+            run_rec = research.latest_run() or {}
+            score = next((x["score"] for x in run_rec.get("scores", []) if x["symbol"] == sym), None)
+            tag = master.tag(iid, cfg.markets.us_exchanges)
+            return {
+                "symbol": sym, "status": "OK", "instrument_id": iid,
+                "name": names[0] if names else inst.get("name") or sym,
+                "type": inst.get("security_type"), "type_inferred": inst.get("type_inferred"),
+                "industry": {"code": sector, "plain": ff12.get(sector, "Not classified. No SEC industry code recorded")},
+                "price": {"last": obs[-1].value if obs else None, "date": obs[-1].event_time.date().isoformat() if obs else None,
+                          "source": obs[-1].vendor if obs else None,
+                          "change": {"1 day": change(1), "1 month": change(21), "3 months": change(63), "1 year": change(252)},
+                          "volatility_annual": vol},
+                "history": [{"date": o.event_time.date().isoformat(), "close": o.value} for o in obs[-260:]],
+                "system_view": view, "signal": signal, "composite_score": score,
+                "proposal": {"session_date": prop.session_date, "side": prop.side, "quantity": prop.quantity,
+                             "status": prop.status} if prop else None,
+                "can_trade": tag in ("direct", "proxy"),
+                "tag_note": {"direct": "Can be traded in the simulator and the paper account",
+                             "proxy": "Traded as a stand-in for another exposure",
+                             "research_only": "Research only. Orders are blocked"}.get(tag, tag),
+            }
+        out = with_store(run)
+        if out is None:
+            return {"symbol": sym, "status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
+        if out["status"] == "OK":
+            out["news"] = news_view(view="recent", ticker=sym)["clusters"][:5]
+        return out
 
     @app.get("/api/autopsy")
     def autopsy_view():

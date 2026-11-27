@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24, **326 passed, 0 failed** in about 163 seconds on Python 3.13.
+Latest full run: 2026-11-24, **331 passed, 0 failed** in about 171 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -282,3 +282,11 @@ Interface check: 66 Playwright checks passed.
 | `tests/test_experiment_lab.py` | 3 | Null hypothesis, available and missing data, and the holdout rule, a vague idea asks for input, submit pre-registers through the factory and a repeat is linked as a duplicate, the API redesigns on submit |
 
 Interface check: 68 Playwright checks passed.
+
+## Interface redesign and readable news, 2026-11-27
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_news_insight.py` | 5 | Categories by words then feed, company links need the full capitalized name, price moves only from closes known by then, the bulk read matches the as-of rule, news and stock endpoints |
+
+Interface check: 79 Playwright checks passed, now including the light theme, story cards with their three parts, the AXP link, category filters, market-relevant news first, expandable opportunity rows, and the stock panel from a ticker click and from the search box. The first run found the news endpoint took 4.3 seconds with ten instruments because it reread every price series per story. It now reads all closes once and takes about 0.03 seconds.

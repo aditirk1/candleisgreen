@@ -4,7 +4,7 @@ import { MODE_LABELS } from "../format";
 
 type Data = { mode: string; venue: string; live_trading: string; credentials: { name: string; purpose: string; status: string }[]; monthly_cost_usd: number; config_version: string; providers: string[] };
 
-export function SettingsScreen({ tick, theme, setTheme, guide, setGuide }: { tick: number; theme: string; setTheme: (t: "terminal" | "glass") => void; guide: boolean; setGuide: (g: boolean) => void }) {
+export function SettingsScreen({ tick, theme, setTheme, guide, setGuide }: { tick: number; theme: string; setTheme: (t: "light" | "glass" | "terminal") => void; guide: boolean; setGuide: (g: boolean) => void }) {
   const [data, setData] = useState<Data | null>(null);
   useEffect(() => { getJSON<Data>("/api/settings").then(setData); }, [tick]);
   if (!data) return <div className="panel muted">Loading</div>;
@@ -28,8 +28,9 @@ export function SettingsScreen({ tick, theme, setTheme, guide, setGuide }: { tic
         </dl>
         <h2>Accessibility</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}>Light theme</button>
+          <button className={theme === "glass" ? "active" : ""} onClick={() => setTheme("glass")}>Dark theme</button>
           <button className={theme === "terminal" ? "active" : ""} onClick={() => setTheme("terminal")}>Terminal theme</button>
-          <button className={theme === "glass" ? "active" : ""} onClick={() => setTheme("glass")}>Glass theme</button>
           <button className={guide ? "active" : ""} onClick={() => setGuide(!guide)}>{guide ? "Guide mode on" : "Guide mode off"}</button>
         </div>
         <p className="muted">Gain and loss always carry a sign or arrow beside the color. Glass turns solid when the system asks for reduced transparency.</p>

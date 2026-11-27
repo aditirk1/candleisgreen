@@ -152,7 +152,7 @@ class NewsStore:
             groups.setdefault(it.cluster_id, []).append(it)
         return [{"cluster_id": cid, "headline": g[-1].title, "items": len(g), "feeds": sorted({x.feed for x in g}),
                  "first_usable_at": min(x.first_usable_at for x in g).isoformat(), "tickers": sorted({t for x in g for t in x.tickers}),
-                 "links": [x.link for x in g]} for cid, g in groups.items()]
+                 "links": [x.link for x in g], "summary": max((x.summary for x in g), key=len)} for cid, g in groups.items()]
 
 
 def fetch(feed: FeedConfig, user_agent: str, timeout: float = 30) -> bytes:

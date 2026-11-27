@@ -9,7 +9,10 @@ type View = { cursor: string; symbol: string; prices: { date: string; value: num
 
 const input = { font: "inherit", background: "transparent", color: "var(--text)", border: "var(--panel-border)", borderRadius: "var(--radius)", padding: "4px 8px" } as const;
 
+const LEARN_TABS: [string, string][] = [["practice", "Practice"], ["lessons", "Lessons"], ["trades", "Your trades"], ["experiments", "Experiments"]];
+
 export function LearnScreen({ tick }: { tick: number }) {
+  const [tab, setTab] = useState("practice");
   const [cursor, setCursor] = useState("2026-10-01T21:30:00+00:00");
   const [symbol, setSymbol] = useState("UPCO");
   const [view, setView] = useState<View | null>(null);
@@ -29,7 +32,13 @@ export function LearnScreen({ tick }: { tick: number }) {
     const d = new Date(cursor); d.setUTCDate(d.getUTCDate() + days); setCursor(d.toISOString().replace(".000Z", "+00:00"));
   }
   return (
-    <>
+    <div className="page">
+      <div className="page-head"><h1>Learn</h1>
+        <div className="segmented" role="group" aria-label="Learn sections">
+          {LEARN_TABS.map(([k, label]) => <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>{label}</button>)}
+        </div>
+      </div>
+      {tab === "practice" && (<>
       <section className="panel"><h2>Replay, as known then</h2>
         <p>Replay clock {timeET(cursor)}. Prices, news and corrections appear only after the time they were first usable. {view?.intraday}</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -66,7 +75,8 @@ export function LearnScreen({ tick }: { tick: number }) {
             <tbody>{(preds?.calibration.bins ?? []).map((b) => <tr key={b.range}><td>{b.range}</td><td className="num">{b.count}</td><td className="num">{b.hit_rate === null ? "NOT AVAILABLE" : Math.round(b.hit_rate * 100)}</td></tr>)}</tbody></table>
         </section>
       </div>
-      <LearnLab tick={tick} cursor={cursor} />
-    </>
+      </>)}
+      {tab !== "practice" && <LearnLab tick={tick} cursor={cursor} part={tab} />}
+    </div>
   );
 }

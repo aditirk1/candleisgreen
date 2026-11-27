@@ -20,14 +20,14 @@ export function Term({ k, children }: { k: string; children: ReactNode }) {
 }
 
 export const EXPLAIN: Record<string, string[]> = {
-  overview: ["The three numbers at the top are account value, the change since the last decision, and how much of the account is invested.", "The equity curve is the simulator account value after each decision run.", "Alerts are one line each: ticker, event, time. Positions are priced from the last recorded close."],
+  overview: ["The three numbers at the top are account value, the change since the last decision, and how much of the account is invested.", "Next session plan lists what the models propose for the next trading day. In manual mode nothing trades until you approve it on Execution.", "Click any ticker to see what the company is, what its price did and what the system thinks of it."],
   opportunities: ["Each row is a proposal from the last decision run for the next session.", "Expected return stays NOT AVAILABLE until a model is calibrated, so only direction and rank are used.", "The risk column is the first line of the model's reason. The risk service checks every order again at execution."],
   reasoning: ["Type a ticker to see the forecast, the risk verdict, which Composite signals agree or oppose, and recent news.", "Why not explains an abstention or a veto from recorded facts only."],
   execution: ["Approve or reject proposals in the queue. Approved orders go to the simulator as limit orders in the execution window.", "Fills show slippage against the quote midpoint at arrival. Reconciliation compares the journal with the broker."],
   research: ["Claim cards show each research claim by status with its evidence chain.", "The failure archive keeps negative results visible so they count against the trial total."],
   composite: ["Each signal shows its tier, three scores and capital weight. Exclusion reasons show the parameter and its basis.", "Results are RETROSPECTIVE until prospective forecasts exist."],
   markets: ["Search an instrument to see its recorded closes, tag, sector and Composite score.", "Instruments tagged research_only can never receive orders."],
-  news: ["Stories are clustered from official feeds. What prices did is kept on the Reasoning screen, apart from what happened."],
+  news: ["Each card is one story from an official source, with repeats merged. Click it to open three parts.", "What happened is the source's own summary. Why it may matter is a general description of that kind of news, not a forecast.", "What prices did shows the next recorded close for each named company beside all recorded stocks. It is an observation, not proof of cause."],
   earnings: ["Figures come from SEC filings with a link to each one. Beat or miss never appears because no consensus estimate is recorded."],
   experts: ["Every data source with its license and what it may be used for.", "Practitioner claims need 30 scored claims in a domain before they can become a signal."],
   backtests: ["Each row is a signal's walk-forward research portfolio after costs. The trial count sits beside every result."],

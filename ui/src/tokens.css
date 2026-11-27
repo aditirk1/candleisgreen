@@ -15,6 +15,8 @@
   --row: 28px;
   --radius: 2px;
   --gap: 8px;
+  --shadow: none;
+  --hover: #1A1E25;
 }
 [data-theme="glass"] {
   --bg: linear-gradient(160deg, #0E1420, #16213A);
@@ -34,6 +36,28 @@
   --radius: 12px;
   --gap: 16px;
 }
+[data-theme="light"] {
+  --bg: #F3F5F9;
+  --panel: #FFFFFF;
+  --panel-solid: #FFFFFF;
+  --panel-border: 1px solid #E3E7EE;
+  --panel-blur: none;
+  --text: #111827;
+  --muted: #4B5563;
+  /* Darker than the Glass accent and gain colors so text keeps 4.5:1 contrast on white. */
+  --accent: #2F5BD3;
+  --gain: #0F7A55;
+  --loss: #C2303B;
+  --font-num: Inter, system-ui, sans-serif;
+  --font-label: Inter, system-ui, sans-serif;
+  --label-size: 14px;
+  --row: 40px;
+  --radius: 12px;
+  --gap: 16px;
+  --shadow: 0 1px 2px rgba(17, 24, 39, 0.06);
+  --hover: #F0F3F8;
+}
+[data-theme="glass"] { --hover: rgba(255, 255, 255, 0.08); --shadow: none; }
 @media (prefers-reduced-transparency: reduce) {
   [data-theme="glass"] { --panel: #16213A; --panel-blur: none; }
 }

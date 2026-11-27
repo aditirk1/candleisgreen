@@ -37,8 +37,9 @@ The overnight run stopped at about 01:35 ET when the usage limit was reached, so
 20. **Scheduled trading day and Tier 5 shadow tracking.** The scheduler now runs the decision at 16:30, execution at 09:35 and expiry at 10:30, all in New York time, with execution through the risk service process. The daily Composite run follows the decision, and any Tier 4 signal gets a prospective shadow book whose `promotion_check` pass opens a proposal only Aditi can decide. Execution quotes come from Alpaca's free IEX latest quotes and the paper clock.
 21. **Concept map and daily lesson.** Glossary terms carry prerequisites, the Learn screen lists them in learning order, and one lesson a day uses the largest recorded move on the latest session, with its source and the time it became known.
 22. **Experiment lab.** A plain-words idea becomes a null hypothesis, a data plan with free substitutes for missing data, and a holdout test rule, then is pre-registered through the same factory as a paper. The server redesigns the idea on submit, so the stored plan is exactly what the rules produce.
+23. **Interface redesign.** Light theme, grouped sidebar, a calmer front page (key numbers, next session plan, top stories, holdings), opportunity rows that open their evidence, Learn and Research in tabs, and a stock panel for any ticker. News cards give the source summary, why that kind of news can matter, the companies named, and what their prices did next, with market-relevant stories first.
 
-Full suite: 326 passed. Playwright: 68 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
+Full suite: 331 passed. Playwright: 79 checks. Details in `TEST_RESULTS.md`. Phase 7 (live trading) is not started and needs a separate written decision from Aditi.
 
 ## Half done
 

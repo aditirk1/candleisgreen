@@ -122,6 +122,27 @@ class AsOfView:
         assert_no_lookahead(out, self.decision_time)
         return out
 
+    def values_between(self, field: str, start: datetime, end: datetime) -> dict[str, list[tuple[datetime, float]]]:
+        """Every instrument's latest usable value per event time in [start, end], in one query.
+        The same availability rule as `series`: only rows usable strictly before the view time."""
+        rows = self._store._conn.execute(
+            """
+            SELECT instrument_id, event_time, value, first_usable_at FROM (
+                SELECT *, row_number() OVER (PARTITION BY instrument_id, vendor, field, event_time
+                                             ORDER BY vintage DESC) AS rn
+                FROM observations
+                WHERE field = ? AND first_usable_at < ? AND event_time >= ? AND event_time <= ?
+            ) WHERE rn = 1 AND value IS NOT NULL ORDER BY instrument_id, event_time
+            """,
+            [field, to_micros(self.decision_time), to_micros(ensure_utc(start)), to_micros(ensure_utc(end))],
+        ).fetchall()
+        out: dict[str, list[tuple[datetime, float]]] = {}
+        for iid, et, value, usable in rows:
+            if usable >= to_micros(self.decision_time):
+                raise LookaheadError(f"{iid} value usable at {usable} read at {self.decision_time}")
+            out.setdefault(iid, []).append((from_micros(et), value))
+        return out
+
 
 class PointInTimeStore:
     def __init__(self, path: str | Path = ":memory:", read_only: bool = False):

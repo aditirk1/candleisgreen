@@ -12,7 +12,7 @@ type Crisis = { name: string; start: string; end: string; status: string; reason
 
 const CHANGES: [string, string, number][] = [["vol_multiplier", "Multiply volatility by", 2], ["last_price_pct", "Move the latest close by (%)", -10], ["spread_bps", "Set the spread to (bps)", 50], ["remove_news", "Remove a news story", 0]];
 
-export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
+export function LearnLab({ tick, cursor, part }: { tick: number; cursor: string; part: string }) {
   const [autopsy, setAutopsy] = useState<Autopsy[]>([]);
   const [cf, setCf] = useState<CF | null>(null);
   const [cfForm, setCfForm] = useState({ symbol: "UPCO", change: "vol_multiplier", amount: 2 });
@@ -47,6 +47,7 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
   const card = cards[0];
   return (
     <>
+      {part === "lessons" && (<>
       <div className="grid2">
         <section className="panel"><h2>Daily lesson {lesson?.date ?? ""}</h2>
           {!lesson ? <p className="muted">Loading</p> : lesson.status === "NOT AVAILABLE" ? <p className="na">NOT AVAILABLE. {lesson.reason}</p> : (
@@ -69,6 +70,16 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
               </tbody></table>)}
         </section>
       </div>
+        <section className="panel"><h2>Spaced review</h2>
+          {!card ? <p className="muted">No cards due</p> : (<>
+            <p className="muted">{card.kind === "wrong_prediction" ? "From your own wrong prediction" : "Glossary"}. Box {card.box}. {cards.length} due.</p>
+            <p>{card.prompt}</p>
+            {shown ? (<><p>{card.answer}</p><div style={{ display: "flex", gap: 8 }}><button onClick={() => grade(true)}>I knew it</button><button onClick={() => grade(false)}>I did not</button></div></>)
+              : <button onClick={() => setShown(true)}>Show answer</button>}
+          </>)}
+        </section>
+      </>)}
+      {part === "trades" && (<>
       <section className="panel"><h2>Market autopsy, simulated trades</h2>
         {autopsy.length === 0 ? <p className="muted">No simulated fills yet</p> : autopsy.map((a) => (
           <div key={a.fill_id} style={{ marginBottom: 12 }}>
@@ -82,7 +93,6 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
             </dl>
           </div>))}
       </section>
-      <div className="grid2">
         <section className="panel"><h2>Counterfactual, hypothetical only</h2>
           <form onSubmit={(e) => { e.preventDefault(); runCf(); }} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input aria-label="Counterfactual ticker" className="field" value={cfForm.symbol} onChange={(e) => setCfForm({ ...cfForm, symbol: e.target.value.toUpperCase() })} />
@@ -101,15 +111,9 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
               <dt>Why</dt><dd>{cf.note}</dd>
             </dl>))}
         </section>
-        <section className="panel"><h2>Spaced review</h2>
-          {!card ? <p className="muted">No cards due</p> : (<>
-            <p className="muted">{card.kind === "wrong_prediction" ? "From your own wrong prediction" : "Glossary"}. Box {card.box}. {cards.length} due.</p>
-            <p>{card.prompt}</p>
-            {shown ? (<><p>{card.answer}</p><div style={{ display: "flex", gap: 8 }}><button onClick={() => grade(true)}>I knew it</button><button onClick={() => grade(false)}>I did not</button></div></>)
-              : <button onClick={() => setShown(true)}>Show answer</button>}
-          </>)}
-        </section>
-      </div>
+
+      </>)}
+      {part === "experiments" && (<>
       <section className="panel"><h2>Experiment lab</h2>
         <form onSubmit={(e) => { e.preventDefault(); designIdea(); }} style={{ display: "flex", gap: 8 }}>
           <input aria-label="Trade idea" className="field" style={{ flex: 1 }} value={idea} onChange={(e) => setIdea(e.target.value)} placeholder="For example: $UPCO shares will outperform over the next 5 days" />
@@ -132,6 +136,7 @@ export function LearnLab({ tick, cursor }: { tick: number; cursor: string }) {
         <table><thead><tr><th>Episode</th><th>Start</th><th>End</th><th>Status</th><th>What current rules would have done</th></tr></thead>
           <tbody>{crises.map((c) => <tr key={c.name}><td>{c.name}</td><td>{c.start}</td><td>{c.end}</td><td className={c.status === "AVAILABLE" ? "" : "na"}>{c.status}{c.reason ? `. ${c.reason}` : ""}</td><td className="muted">{c.what_current_rules_would_do}</td></tr>)}</tbody></table>
       </section>
+      </>)}
     </>
   );
 }
