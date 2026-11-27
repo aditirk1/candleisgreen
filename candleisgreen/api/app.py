@@ -408,6 +408,36 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         return {"sessions": sessions, "fx": rates, "momentum_by_market": evidence, "entitlements": entitlements,
                 "markets": markets, "macro": macro if macro is not None else []}
 
+    @app.get("/api/bars/{symbol}")
+    def bars_view(symbol: str, days: int = 260):
+        """Daily candles known at the clock: open, high, low and close adjusted for splits and dividends
+        with the same factor as the close, volume as reported."""
+        from ..data.adjust import adjust_closes
+        sym, now = symbol.upper(), clock()
+
+        def run(store, master):
+            iid = master.instrument_for_symbol(sym)
+            if iid is None:
+                return {"symbol": sym, "status": "NOT AVAILABLE", "reason": f"{sym} is not in the recorded data"}
+            view = store.as_of(now)
+            fields = {f: {o.event_time.date(): o.value for o in view.series(iid, f)} for f in ("open", "high", "low", "volume")}
+            closes = view.series(iid, "close")[-max(1, min(days, 5000)):]
+            raw = [(o.event_time.date(), o.value) for o in closes]
+            adj = dict(adjust_closes(raw, master.actions(iid), now.date()))
+            rows, missing = [], 0
+            for d, c in raw:
+                f = adj[d] / c if c else 1.0
+                o_, h, l = fields["open"].get(d), fields["high"].get(d), fields["low"].get(d)
+                if None in (o_, h, l):
+                    missing += 1
+                    o_ = h = l = c  # shown as a flat bar and counted below, never invented as a range
+                rows.append({"date": d.isoformat(), "open": o_ * f, "high": h * f, "low": l * f, "close": adj[d],
+                             "volume": fields["volume"].get(d)})
+            return {"symbol": sym, "status": "OK", "bars": rows, "missing_ohlc": missing,
+                    "source": closes[-1].vendor if closes else None,
+                    "note": "Prices adjusted for splits and dividends. Volume as reported. Daily bars only"}
+        return with_store(run) or {"symbol": sym, "status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
+
     @app.get("/api/stock/{symbol}")
     def stock_view(symbol: str):
         """Everything about one ticker in plain words, built only from recorded data."""
