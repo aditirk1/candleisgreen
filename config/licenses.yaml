@@ -46,3 +46,28 @@ licenses:
     research: permitted
     paper_trading: unverified
     note: Some series carry third-party copyright. Check per series before trading use
+  kraken_public:
+    description: Kraken public market data (OHLC, ticker, order book)
+    research: unverified
+    paper_trading: not_permitted
+    note: "Kraken's Global Terms (updated 2026-11-18, read in part on 2026-11-28) appear to limit use to your own benefit and to restrict third-party applications, bots and data extraction without written consent. Read sections 8 and 9 before marking research permitted"
+  oanda_practice:
+    description: OANDA v20 API data from your own fxTrade Practice account
+    research: unverified
+    paper_trading: unverified
+    note: "The API license text is shown when you create a personal access token. It could not be read on 2026-11-28. Read it when you create the token, then mark research permitted if it allows your use"
+  cftc_public_domain:
+    description: CFTC Commitments of Traders reports
+    research: permitted
+    paper_trading: permitted
+    note: "CFTC Web Policy: government information at the CFTC website is in the public domain. Acknowledge the CFTC in any published use"
+  cme_website:
+    description: CME Group website pages (Daily Bulletin, settlements, contract specs)
+    research: unverified
+    paper_trading: not_permitted
+    note: "cmegroup.com did not answer automated requests on 2026-11-28, so its terms of use could not be read. Nothing is fetched from it. Settlement files you download yourself can be uploaded as your own material"
+  user_upload:
+    description: Data files you uploaded yourself, such as futures settlement prices you downloaded
+    research: permitted
+    paper_trading: not_permitted
+    note: You confirm you may use the file for personal research. Results built on it stay research only

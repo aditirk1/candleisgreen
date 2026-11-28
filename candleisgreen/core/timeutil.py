@@ -67,3 +67,15 @@ def in_local_window(now: datetime, start_hhmm: str, end_hhmm: str, tz: str) -> b
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
+
+
+def parse_rfc3339(text: str) -> datetime:
+    """RFC 3339 with any number of fractional digits (Alpaca sends nanoseconds). Returns UTC."""
+    import re
+    m = re.match(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})?$", text.strip())
+    if not m:
+        raise ValueError(f"'{text}' is not an RFC 3339 time")
+    base, frac, zone = m.groups()
+    frac = (frac or "")[:7]
+    zone = "+00:00" if zone in (None, "Z") else zone
+    return ensure_utc(datetime.fromisoformat(base + frac + zone))

@@ -360,6 +360,93 @@ class TeachingConfig(_Section):
     crises: tuple[CrisisEpisode, ...]
 
 
+class OptionsRiskConfig(_Section):
+    max_premium_pct_equity: float = Field(ge=0, le=1)
+    max_total_premium_pct_equity: float = Field(ge=0, le=1)
+    max_loss_pct_equity: float = Field(ge=0, le=1)
+    min_days_to_expiry: int = Field(ge=0)
+    max_spread_pct_of_mid: float = Field(gt=0)
+    min_open_interest: int = Field(ge=0)
+    allow_uncovered_short_calls: bool
+    allow_uncovered_short_puts: bool
+    require_cash_for_early_assignment: bool
+
+
+class OptionsConfig(_Section):
+    feed: str
+    history_start: date
+    history_end_delay_minutes: int = Field(ge=0)
+    contract_multiplier: int = Field(gt=0)
+    auto_exercise_threshold_usd: float = Field(ge=0)
+    expiry_day_cutoff_local: str
+    risk: OptionsRiskConfig
+
+
+class CryptoRiskConfig(_Section):
+    max_position_pct_equity: float = Field(ge=0, le=1)
+    max_total_pct_equity: float = Field(ge=0, le=1)
+    max_spread_bps: float = Field(gt=0)
+    min_book_depth_usd: float = Field(ge=0)
+    max_book_age_seconds: float = Field(gt=0)
+    max_clock_skew_seconds: float = Field(ge=0)
+
+
+class CryptoConfig(_Section):
+    location: str
+    symbols: tuple[str, ...]
+    history_start: date
+    day_boundary_utc: str
+    fee_tiers: tuple[tuple[float, float, float], ...]
+    max_order_notional_usd: float = Field(gt=0)
+    risk: CryptoRiskConfig
+
+
+class ForexRiskConfig(_Section):
+    max_notional_pct_equity: float = Field(ge=0, le=1)
+    max_gross_leverage: float = Field(gt=0, le=1)
+    max_spread_pips: float = Field(gt=0)
+
+
+class ForexConfig(_Section):
+    practice_rest_url: str
+    instruments: tuple[str, ...]
+    granularity: str
+    daily_alignment_hour: int = Field(ge=0, le=23)
+    alignment_timezone: str
+    max_candles_per_request: int = Field(gt=0)
+    risk: ForexRiskConfig
+
+
+class FuturesRiskConfig(_Section):
+    max_margin_pct_equity: float = Field(ge=0, le=1)
+    max_notional_pct_equity: float = Field(ge=0, le=1)
+
+
+class FuturesConfig(_Section):
+    cot_release_weekday_offset_days: int = Field(ge=0)
+    cot_release_time_local: str
+    cot_conservative_usable_days: int = Field(ge=0)
+    cot_percentile_window_weeks: int = Field(gt=1)
+    roll_business_days_before_last_trade: int = Field(ge=0)
+    continuous_method: str
+    risk: FuturesRiskConfig
+
+
+class AssetsConfig(_Section):
+    options: OptionsConfig
+    crypto: CryptoConfig
+    forex: ForexConfig
+    futures: FuturesConfig
+
+    @model_validator(mode="after")
+    def _paper_or_practice_only(self) -> "AssetsConfig":
+        if not self.forex.practice_rest_url.startswith("https://api-fxpractice."):
+            raise ValueError("only the OANDA practice host is allowed")
+        if self.futures.continuous_method not in ("back_adjusted", "ratio_adjusted", "unadjusted"):
+            raise ValueError("unknown continuous futures method")
+        return self
+
+
 class AppConfig(_Section):
     config_version: str
     spec_version: str
@@ -376,6 +463,7 @@ class AppConfig(_Section):
     news: NewsConfig
     markets: MarketsConfig
     teaching: TeachingConfig
+    assets: AssetsConfig
 
     @model_validator(mode="after")
     def _sizing_inside_hard_limits(self) -> "AppConfig":

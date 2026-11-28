@@ -23,5 +23,6 @@ def test_only_stocks_can_be_paper_traded(tmp_path):
     for k in ("options", "futures", "forex", "crypto"):
         assert not rows[k]["paper_execution"]["usable"]
         assert rows[k]["paper_execution"]["label"].startswith("NOT AVAILABLE")
-    assert rows["forex"]["summary"] == "Research only"
-    assert rows["options"]["summary"] == rows["futures"]["summary"] == rows["crypto"]["summary"] == "No usable data"
+    # Options, futures, forex and crypto have research sources now. None can be paper traded through a broker.
+    for k in ("options", "futures", "forex", "crypto"):
+        assert rows[k]["summary"] == "Research only"

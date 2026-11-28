@@ -301,3 +301,70 @@ teaching:
     - {name: "2015 China devaluation selloff", start: 2015-08-11, end: 2015-08-31}
     - {name: "March 2020 pandemic selloff", start: 2020-02-19, end: 2020-03-23}
     - {name: "2022 rate rise selloff", start: 2022-01-03, end: 2022-10-12}
+
+assets:
+  # Asset classes beyond US stocks. Research and simulation inside the platform only, unless a
+  # level in config/capabilities.yaml says otherwise. Every value is classified in parameters.yaml.
+  options:
+    # Alpaca's free plan serves the indicative options feed, a modified derivative of OPRA quotes.
+    feed: indicative
+    history_start: "2024-02-01"
+    # Free plan historical requests may not include the latest 15 minutes.
+    history_end_delay_minutes: 15
+    contract_multiplier: 100
+    # Alpaca exercises a long contract at expiry when it is in the money by at least this much.
+    auto_exercise_threshold_usd: 0.01
+    # On expiry day Alpaca accepts no new opening orders from this time, ET.
+    expiry_day_cutoff_local: "15:30"
+    risk:
+      max_premium_pct_equity: 0.01
+      max_total_premium_pct_equity: 0.05
+      max_loss_pct_equity: 0.02
+      min_days_to_expiry: 7
+      max_spread_pct_of_mid: 0.10
+      min_open_interest: 100
+      allow_uncovered_short_calls: false
+      allow_uncovered_short_puts: false
+      # Short legs can be assigned on any day. The account must hold the cash that assignment would need.
+      require_cash_for_early_assignment: true
+  crypto:
+    # Alpaca US venue. Its volume is Alpaca's own book, not the whole market.
+    location: us
+    symbols: [BTC/USD, ETH/USD, SOL/USD, LTC/USD, LINK/USD, AVAX/USD]
+    history_start: "2021-01-01"
+    # Daily bars run from 00:00 UTC to 00:00 UTC. Crypto trades every day.
+    day_boundary_utc: "00:00"
+    # 30-day USD volume floor, maker bps, taker bps.
+    fee_tiers: [[0, 15, 25], [100000, 12, 22], [500000, 10, 20], [1000000, 8, 18], [10000000, 5, 15], [25000000, 2, 13], [50000000, 2, 12], [100000000, 0, 10]]
+    max_order_notional_usd: 200000
+    risk:
+      max_position_pct_equity: 0.02
+      max_total_pct_equity: 0.05
+      max_spread_bps: 50
+      min_book_depth_usd: 1000
+      # An order book older than this, missing its time, or stamped in the future is refused.
+      max_book_age_seconds: 15
+      max_clock_skew_seconds: 2
+  forex:
+    practice_rest_url: https://api-fxpractice.oanda.com
+    instruments: [EUR_USD, GBP_USD, USD_JPY, AUD_USD, USD_CAD, USD_CHF]
+    granularity: D
+    # OANDA daily candles close at 17:00 New York time by default.
+    daily_alignment_hour: 17
+    alignment_timezone: America/New_York
+    max_candles_per_request: 5000
+    risk:
+      max_notional_pct_equity: 0.10
+      max_gross_leverage: 1.0
+      max_spread_pips: 3
+  futures:
+    # CFTC Commitments of Traders: Tuesday positions, released Friday 15:30 ET, holidays delay one or two days.
+    cot_release_weekday_offset_days: 3
+    cot_release_time_local: "15:30"
+    cot_conservative_usable_days: 6
+    cot_percentile_window_weeks: 156
+    roll_business_days_before_last_trade: 5
+    continuous_method: back_adjusted
+    risk:
+      max_margin_pct_equity: 0.10
+      max_notional_pct_equity: 1.0

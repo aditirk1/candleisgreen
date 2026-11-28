@@ -210,3 +210,51 @@ parameters:
   markets.sessions_utc.overnight_review: {basis: provisional, review: "After the US jobs, before Asia opens"}
   teaching.review_intervals_days: {basis: provisional, review: "A common Leitner ladder. Adjust from Aditi's measured recall"}
   teaching.crises: {basis: provisional, review: "Episode windows chosen around well-known market dates. Check each against index data once licensed data covers it"}
+
+  assets.options.feed: {basis: external_fact, source: "Alpaca market data plans: Basic (free) gets the Indicative Pricing Feed for options, OPRA needs Algo Trader Plus (https://docs.alpaca.markets/docs/about-market-data-api)", as_of: "2026-11-28"}
+  assets.options.history_start: {basis: external_fact, source: "https://docs.alpaca.markets/docs/historical-option-data: historical option data since February 2024", as_of: "2026-11-28"}
+  assets.options.history_end_delay_minutes: {basis: external_fact, source: "https://docs.alpaca.markets/docs/about-market-data-api: Basic historical access excludes the latest 15 minutes", as_of: "2026-11-28"}
+  assets.options.contract_multiplier: {basis: external_fact, source: "https://docs.alpaca.markets/reference/get-options-contracts: multiplier is always 100 for standard contracts", as_of: "2026-11-28"}
+  assets.options.auto_exercise_threshold_usd: {basis: external_fact, source: "https://docs.alpaca.markets/docs/options-trading: contracts in the money by at least 0.01 are exercised at expiry without an instruction", as_of: "2026-11-28"}
+  assets.options.expiry_day_cutoff_local: {basis: external_fact, source: "https://docs.alpaca.markets/docs/options-trading-overview: no new opening orders from 3:30 pm on expiry day", as_of: "2026-11-28"}
+  assets.options.risk.max_premium_pct_equity: {basis: safeguard, change_policy: Aditi approves}
+  assets.options.risk.max_total_premium_pct_equity: {basis: safeguard, change_policy: Aditi approves}
+  assets.options.risk.max_loss_pct_equity: {basis: safeguard, change_policy: Aditi approves}
+  assets.options.risk.min_days_to_expiry: {basis: provisional, review: Revisit with measured assignment and pin risk in the options simulator}
+  assets.options.risk.max_spread_pct_of_mid: {basis: provisional, review: "Indicative quotes are not executable. Revisit only with measured fills, which the free plan cannot give"}
+  assets.options.risk.min_open_interest: {basis: provisional, review: Revisit with measured spreads by open interest bucket}
+  assets.options.risk.allow_uncovered_short_calls: {basis: safeguard, change_policy: Aditi approves. Unlimited loss}
+  assets.options.risk.allow_uncovered_short_puts: {basis: safeguard, change_policy: Aditi approves}
+  assets.options.risk.require_cash_for_early_assignment: {basis: safeguard, change_policy: "Aditi approves. Nothing is borrowed to trade, and early assignment happens without notice"}
+
+  assets.crypto.location: {basis: provisional, review: "Alpaca US book. Compare with the Kraken locations once Kraken's terms are confirmed"}
+  assets.crypto.symbols: {basis: provisional, review: Research list. Revisit with measured spreads and depth per pair}
+  assets.crypto.history_start: {basis: external_fact, source: "Live read of BTC/USD daily bars from data.alpaca.markets v1beta3, first bar 2021-01-01", as_of: "2026-11-28"}
+  assets.crypto.day_boundary_utc: {basis: external_fact, source: "Live read: Alpaca daily crypto bars are stamped 00:00 UTC", as_of: "2026-11-28"}
+  assets.crypto.fee_tiers: {basis: external_fact, source: "https://docs.alpaca.markets/docs/crypto-trading fee table, maker and taker bps by 30-day volume", as_of: "2026-11-28"}
+  assets.crypto.max_order_notional_usd: {basis: external_fact, source: "https://docs.alpaca.markets/docs/crypto-trading: an order must not exceed 200k USD notional", as_of: "2026-11-28"}
+  assets.crypto.risk.max_position_pct_equity: {basis: safeguard, change_policy: Aditi approves}
+  assets.crypto.risk.max_total_pct_equity: {basis: safeguard, change_policy: Aditi approves}
+  assets.crypto.risk.max_spread_bps: {basis: provisional, review: Revisit with measured spreads on the Alpaca book}
+  assets.crypto.risk.min_book_depth_usd: {basis: provisional, review: Revisit with measured depth on the Alpaca book}
+  assets.crypto.risk.max_book_age_seconds: {basis: safeguard, change_policy: "Aditi approves. Matches the stock quote age limit"}
+  assets.crypto.risk.max_clock_skew_seconds: {basis: safeguard, change_policy: Aditi approves. A book stamped further in the future than this is refused}
+
+  assets.forex.practice_rest_url: {basis: external_fact, source: "https://developer.oanda.com/rest-live-v20/development-guide/ API URLs table, fxTrade Practice", as_of: "2026-11-28"}
+  assets.forex.instruments: {basis: provisional, review: Major pairs only. Revisit with measured practice spreads}
+  assets.forex.granularity: {basis: provisional, review: Daily first. Intraday only after daily research is checked}
+  assets.forex.daily_alignment_hour: {basis: external_fact, source: "https://developer.oanda.com/rest-live-v20/pricing-ep/ candles dailyAlignment default 17", as_of: "2026-11-28"}
+  assets.forex.alignment_timezone: {basis: external_fact, source: "https://developer.oanda.com/rest-live-v20/pricing-ep/ candles alignmentTimezone default America/New_York", as_of: "2026-11-28"}
+  assets.forex.max_candles_per_request: {basis: external_fact, source: "https://developer.oanda.com/rest-live-v20/pricing-ep/ candles count maximum 5000", as_of: "2026-11-28"}
+  assets.forex.risk.max_notional_pct_equity: {basis: safeguard, change_policy: Aditi approves}
+  assets.forex.risk.max_gross_leverage: {basis: safeguard, change_policy: Aditi approves. Nothing is borrowed to trade}
+  assets.forex.risk.max_spread_pips: {basis: provisional, review: Revisit with measured OANDA practice spreads by hour}
+
+  assets.futures.cot_release_weekday_offset_days: {basis: external_fact, source: "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm: published Friday using the preceding Tuesday's data", as_of: "2026-11-28"}
+  assets.futures.cot_release_time_local: {basis: external_fact, source: "https://www.cftc.gov/MarketReports/CommitmentsofTraders/ReleaseSchedule/index.htm: released at 3:30 p.m. Eastern", as_of: "2026-11-28"}
+  assets.futures.cot_conservative_usable_days: {basis: safeguard, change_policy: "Aditi approves. Holidays delay a release by one or two days, so history counts from the following Monday"}
+  assets.futures.cot_percentile_window_weeks: {basis: provisional, review: Three years of weekly reports. Any test of positioning varies it and counts each variant}
+  assets.futures.roll_business_days_before_last_trade: {basis: provisional, review: Revisit with open interest migration once settlement data is available}
+  assets.futures.continuous_method: {basis: provisional, review: Back-adjusted series keep returns right and levels wrong. Ratio adjustment is the alternative}
+  assets.futures.risk.max_margin_pct_equity: {basis: safeguard, change_policy: Aditi approves}
+  assets.futures.risk.max_notional_pct_equity: {basis: safeguard, change_policy: Aditi approves}

@@ -34,3 +34,8 @@ include = ["candleisgreen*"]
 testpaths = ["tests"]
 addopts = "-q"
 pythonpath = ["."]
+markers = [
+  "live: calls a real external API, read only. Runs only with CANDLE_LIVE=1",
+  "recorded: uses a real response saved from the source in tests/fixtures",
+  "documented_shape: uses invented values in the response shape a source documents. Not evidence that the live API matches",
+]

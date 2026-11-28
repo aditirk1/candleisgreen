@@ -15,13 +15,20 @@ def test_map_loads_and_every_gap_has_a_reason():
 
 
 @pytest.mark.parametrize("name", [
-    "options_data_and_flow", "realtime_consolidated_quotes", "intraday_trading",
+    "options_trading", "realtime_consolidated_quotes", "intraday_trading",
     "analyst_consensus_estimates", "licensed_news", "non_us_execution",
 ])
 def test_features_without_free_data_are_refused(name):
     caps = load_capabilities()
     with pytest.raises(CapabilityNotAvailableError, match="NOT AVAILABLE"):
         caps.require(name)
+
+
+def test_free_options_and_crypto_data_are_limited_not_refused():
+    """Alpaca's free indicative options feed and crypto data exist. Missing code was never proof of missing data."""
+    caps = load_capabilities()
+    for name in ("options_data_and_flow", "crypto_data", "futures_data"):
+        assert caps.require(name).status is Status.LIMITED
 
 
 def test_core_research_and_paper_execution_are_available():

@@ -46,6 +46,17 @@ Raising a short limit is a loosening: it waits `risk.loosening_delay_hours` and 
 
 Every order is classed by what it does to the position. Orders that add risk (a buy that grows a long, a sale that opens or grows a short) face the position, short, gross, cluster and daily loss checks. Orders that reduce risk (selling a long, buying to cover a short) pass those checks even after the daily loss stop. A short also needs the broker to list the stock as shortable and easy to borrow, and an unknown borrow status blocks it. Hard-to-borrow stocks are never shorted, because they need a locate. One order can never turn a long into a short. The position is closed first and the short can open at the next decision. Clusters and sectors count longs and shorts together, by absolute value.
 
+### Options, crypto, forex and futures
+
+None of these sends a broker order today. Their checks run before every simulated fill and will run before any broker order. Limits are safeguards in `config/default.yaml` under `assets`, classified in `config/parameters.yaml`.
+
+| Asset class | Checks |
+| --- | --- |
+| Options | No strategy with an unlimited possible loss. Short calls covered by shares or a long call. Short puts covered by a long put or by cash. Cash for an early assignment of any short leg. Multi-leg orders need a net limit and fill whole or not at all. Broker orders need executable quotes, so indicative quotes never reach one. Largest possible loss at most 2% of the account, premium paid at most 1%, all premium at most 5%. At least 7 days to expiry (provisional). No opening order on expiry day from 15:30 ET. Spread at most 10% of the midpoint and open interest at least 100 (provisional). Indicative quotes are never treated as executable, so the execution-grade quote rule still blocks any broker options order |
+| Crypto | Order book at most 15 seconds old, with a time, not stamped in the future. No short sales and no margin. Each order at most 200,000 USD (Alpaca's limit). Each pair at most 2% of the account, all crypto at most 5%. Spread at most 50 basis points and enough book depth near the midpoint (provisional) |
+| Forex | Each position at most 10% of the account. All positions together at most 1 times the account, so nothing is borrowed. Spread at most 3 pips (provisional) |
+| Futures | Only contracts whose size matches the CFTC record or a CME check. Margin at most 10% of the account. Contract value at most 1 times the account. No trade without a margin you enter, because CME margins could not be read. Positions close at settlement when the account falls below maintenance margin |
+
 ## 3. Order of checks
 
 `evaluate(intent, context, limits)` runs every check, in this order, and approves only when all pass. It does not stop at the first failure, so the decision lists every reason.

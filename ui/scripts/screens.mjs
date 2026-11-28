@@ -192,7 +192,7 @@ check((await page.getByText("research only").count()) >= 5, "every non-US market
 check(await page.getByRole("row", { name: /Tokyo Stock Exchange Research only/ }).isVisible() && (await page.getByRole("cell", { name: "Research only", exact: true }).count()) >= 4, "market rule table tags non-US exchanges research only");
 check(await page.getByText("Euro (EUR)").isVisible(), "FX rates from FRED shown");
 check(await page.getByText("Unemployment rate").isVisible() && (await page.getByText(/No published value recorded yet/).count()) >= 1, "macro shows the stored vintage and NOT AVAILABLE for series without one");
-check(await page.getByText(/NOT AVAILABLE\. No free source of historical or real-time options data/).isVisible(), "entitlement map shows options as NOT AVAILABLE");
+check(await page.getByText(/NOT AVAILABLE\. Paper options orders through Alpaca are not sent yet/).isVisible() && await page.getByText(/LIMITED\. Alpaca's free indicative feed/).isVisible(), "entitlement map shows free options data as limited and options trading as not available");
 await page.screenshot({ path: `${out}/global-terminal.png`, fullPage: true });
 
 const texts = [await ownText(page.locator("body"))];
@@ -244,10 +244,49 @@ await page.screenshot({ path: `${out}/company-light.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 await page.getByRole("tablist").getByRole("tab", { name: "Asset classes", exact: true }).click();
 await page.getByRole("heading", { name: "Asset classes" }).waitFor();
-check((await page.getByText("Paper trading", { exact: true }).count()) >= 1 && (await page.getByText("No usable data").count()) === 3 && await page.getByText("Research only", { exact: true }).isVisible(), "asset classes show paper trading for stocks only, research only for forex and no data for options, futures and crypto");
-await page.getByText("Options", { exact: true }).click();
-check(await page.getByText(/indicative options feed/).isVisible(), "options explain why they cannot be traded");
+const levelRow = (name) => page.getByRole("row", { name: new RegExp(`^${name} `) });
+await levelRow("Crypto").waitFor();
+check((await page.getByRole("columnheader", { name: "Broker paper trading" }).count()) === 1 && (await page.getByRole("columnheader", { name: "Live trading" }).count()) === 1, "asset classes show all eight levels");
+check((await levelRow("Stocks and ETFs").innerText()).includes("✓ Yes") && (await page.getByText("✗ No").count()) >= 5, "only stocks can be paper traded through a broker and nothing trades live");
+check((await levelRow("Crypto").innerText()).match(/✓ Yes/g).length === 6, "crypto history and current prices marked as checked");
+await levelRow("Options").click();
+check(await page.getByText(/OPRA needs a paid plan and is refused/).isVisible(), "options levels explain the free indicative feed");
+const assetView = (v) => page.getByRole("group", { name: "Asset class view" }).getByRole("button", { name: v, exact: true }).click();
+await assetView("Options");
+await page.getByText(/options chain needs your free Alpaca paper keys/).waitFor();
+check(true, "options chain says it needs Alpaca keys instead of showing invented quotes");
+await page.getByRole("button", { name: "Show payoff" }).click();
+await page.getByText("Largest possible loss").waitFor();
+check(await page.getByRole("img", { name: "Profit or loss at expiry by underlying price" }).isVisible() && await page.getByText("604.00").isVisible(), "a call spread shows its payoff, largest loss and break-even");
+await page.getByLabel("Leg 2 contracts").fill("-2");
+await page.getByRole("button", { name: "Show payoff" }).click();
+await page.getByText(/No limit\. The risk checks refuse this/).waitFor();
+check(true, "an extra short call shows an unlimited possible loss");
+await page.getByRole("button", { name: "Calculate" }).click();
+await page.getByText("Model value per share").waitFor();
+check(await page.getByText(/A model value, never a market price/).isVisible(), "theoretical values are labeled as model output");
 await page.screenshot({ path: `${out}/asset-classes-light.png`, fullPage: true });
+texts.push(await ownText(page.locator("body")));
+await assetView("Crypto");
+await page.getByText(/Not recorded yet\. Press Record/).waitFor();
+check(await page.getByText(/Volume is Alpaca's own, not the whole market/).isVisible(), "crypto says what its volume covers");
+await assetView("Forex");
+await page.getByText(/NOT AVAILABLE yet/).waitFor();
+check(await page.getByText(/NOT AVAILABLE yet\. Two steps turn it on/).isVisible() && await page.getByText(/OANDA_PRACTICE_TOKEN/).isVisible(), "forex lists the steps that turn it on");
+await assetView("Futures");
+await page.getByRole("heading", { name: "Contracts" }).waitFor();
+check((await page.getByRole("cell", { name: "Not yet checked" }).count()) === 5 && await page.getByRole("cell", { name: "ESZ26" }).isVisible(), "futures contracts show the contract to hold and unchecked terms");
+await page.getByLabel("Settlement prices").fill("date,contract,settle\n2026-11-18,ESZ26,6000\n2026-11-19,ESZ26,6010\n");
+await page.getByRole("button", { name: "Store prices" }).click();
+await page.getByText(/Confirm that the source's terms allow/).waitFor();
+check(true, "settlement prices are refused without a license confirmation");
+await page.getByLabel("Where the prices came from").fill("CME Daily Bulletin, downloaded by hand");
+await page.getByLabel(/The source's terms allow my personal research use/).check();
+await page.getByRole("button", { name: "Store prices" }).click();
+await page.getByText(/Stored 2 settlement prices for ESZ26/).waitFor();
+await page.getByRole("button", { name: "Join into one series" }).click();
+await page.getByText(/2 days, adjusted at each roll/).waitFor();
+check(true, "uploaded settlements join into a continuous series");
 texts.push(await ownText(page.locator("body")));
 await nav("Ownership");
 await page.getByText("Insider transactions, SEC Form 4").waitFor();
@@ -375,6 +414,13 @@ for (const name of ["Overview", "Opportunities", "Reasoning", "Markets", "Earnin
   await page.waitForTimeout(700);
   const t = await ownText(page.locator("main"));
   leaks(name, t);
+}
+await nav("Markets");
+await page.getByRole("tablist").getByRole("tab", { name: "Asset classes", exact: true }).click();
+for (const v of ["Options", "Crypto", "Forex", "Futures"]) {
+  await page.getByRole("group", { name: "Asset class view" }).getByRole("button", { name: v, exact: true }).click();
+  await page.waitForTimeout(500);
+  leaks(`Asset classes ${v}`, await ownText(page.locator("main")));
 }
 await nav("Research");
 for (const sub of ["Today", "Research ideas", "Capture inbox"]) {

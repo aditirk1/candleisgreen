@@ -15,11 +15,17 @@ Source: `SPEC.md` v3.2, sections "Source registry and expert discovery" and "Dat
 | Open Source Asset Pricing | Long-short portfolio returns and signal documentation | `cc_by_4_0` | Permitted | Permitted | Built, release 2026.10 |
 | JKP Global Factor Data | Factor returns by country | `cc_by_nc_4_0` | Permitted | Unverified, so research only | Built |
 | Kenneth French library | Factor returns, Fama-French 12 SIC mapping | `french_library` | Permitted | Unverified | SIC mapping built |
+| Alpaca options, indicative feed | Contracts, chain snapshots with Alpaca's Black-Scholes Greeks and implied volatility, bars since February 2024. A free, modified version of OPRA quotes, never executable. OPRA itself needs a paid plan and is refused in code | `alpaca_market_data` | Permitted | Permitted, but indicative quotes fail the execution-grade quote rule | Built against the documented shape (read 2026-11-28). Live check needs paper keys |
+| Alpaca crypto data | Daily bars, latest quotes, order books, trades for the Alpaca US book. Volume is Alpaca's own | `alpaca_market_data` | Permitted | Permitted | Built. Checked live without keys on 2026-11-28: BTC/USD daily bars from 2021-01-01, order book current |
+| Kraken public data | OHLC (latest 720 intervals only), ticker, order book | `kraken_public` | Unverified. Global Terms appear to restrict third-party applications and data extraction | Not permitted | Built and blocked by its license. Public endpoints answered on 2026-11-28 |
+| OANDA v20 practice | Candles with bid, ask and mid (history to 2005), current prices, instrument terms. Practice host only. Own credentials `OANDA_PRACTICE_TOKEN`, `OANDA_PRACTICE_ACCOUNT_ID` | `oanda_practice` | Unverified. API license text is shown when the token is created and could not be read | Unverified | Built read only, no order methods. Live check needs a practice token |
+| CFTC Commitments of Traders | Weekly positions by trader group: legacy (from 1986), disaggregated and traders in financial futures (from 2006), futures only, from the Public Reporting Environment | `cftc_public_domain` | Permitted | Permitted | Built. Checked live on 2026-11-28 for ES, NQ, CL, GC and ZN |
+| CME Group website | Daily Bulletin, settlements, contract specifications | `cme_website` | Unverified. Site did not answer automated requests on 2026-11-28 | Not permitted | Not used. Contract terms in `config/futures_contracts.yaml` are marked unverified. Settlement files you download yourself can be uploaded under `user_upload` |
 | QuantConnect | Outside exploration only | none | Not connected | Not connected | Never a dependency, no data extracted |
 
 ## Not available, kept in the architecture
 
-Options data, intraday consolidated data, analyst consensus estimates, licensed news and non-US execution. Reasons are in `config/capabilities.yaml`.
+Executable options quotes (OPRA), futures prices, intraday consolidated data, analyst consensus estimates, licensed news and non-US execution. Reasons are in `config/capabilities.yaml`. Each asset class lists its eight levels, from a free source existing to live trading, in the `asset_*` entries of the same file.
 
 ## People and institutions
 
