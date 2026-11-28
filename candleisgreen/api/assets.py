@@ -194,9 +194,9 @@ def build(workdir: Path, cfg: AppConfig, clock) -> APIRouter:
         if not has_token:
             steps.append("Open a free OANDA fxTrade Practice account, create a personal access token, and set OANDA_PRACTICE_TOKEN and OANDA_PRACTICE_ACCOUNT_ID")
         if lic.research.value != "permitted":
-            steps.append("Read OANDA's API license when you create the token, then mark oanda_practice as permitted for research in config/licenses.yaml")
+            steps.append("Read OANDA's API license when you create the token. If it allows your personal research, mark the OANDA practice license as permitted")
         stored = {s[1]: s for s in store.symbols("fx")}
-        return {"status": "OK" if not steps else "NOT AVAILABLE", "steps": steps, "instruments": list(cfg.assets.forex.instruments),
+        return {"status": "OK" if not steps else "NOT AVAILABLE", "steps": steps, "license_file": "config/licenses.yaml, entry oanda_practice", "instruments": list(cfg.assets.forex.instruments),
                 "stored": {k: {"days": v[2], "last": v[3].isoformat() if v[3] else None} for k, v in stored.items()},
                 "reference": "Daily reference rates from FRED stay on Markets, Global. They have no bid or ask, so they cannot model spreads",
                 "limits": {"max_spread_pips": cfg.assets.forex.risk.max_spread_pips, "max_notional_pct_equity": cfg.assets.forex.risk.max_notional_pct_equity,

@@ -170,3 +170,9 @@ details.block > *:not(summary) { margin-top: 6px; }
 details.tech { border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 6px 10px; font-size: var(--fs-xs); color: var(--text-muted); }
 details.tech summary { cursor: pointer; font-weight: 600; }
 .tech-body { font-family: var(--font-num); word-break: break-all; margin-top: 6px; }
+.warn-text { color: var(--warn); }
+.scroll-x { overflow-x: auto; }
+.payoff { width: 100%; height: auto; max-height: 260px; display: block; margin-top: 8px; }
+.panel h3 { font-size: var(--fs-sm); margin: 8px 0 6px; }
+td .field, .facts .field { width: 100%; min-width: 0; box-sizing: border-box; }
+td select.field { min-width: 76px; }

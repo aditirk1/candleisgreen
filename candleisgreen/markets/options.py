@@ -157,8 +157,12 @@ def profile(legs: Sequence[Leg], stock: Optional[StockLeg] = None, points: int =
         bes.append(top - vals[-1] / slope_up)
     pts: tuple[tuple[float, float], ...] = ()
     if points:
-        step = top / points
-        pts = tuple((round(i * step, 4), round(f(i * step), 2)) for i in range(points + 1))
+        # Chart range around the strikes, where the payoff changes shape.
+        a, b = (strikes[0], strikes[-1]) if strikes else (top / 2, top / 2)
+        half = max((b - a) * 1.5, (a + b) / 2 * 0.08)
+        lo, hi = max(0.0, a - half), b + half
+        step = (hi - lo) / points
+        pts = tuple((round(lo + i * step, 4), round(f(lo + i * step), 2)) for i in range(points + 1))
     net = sum(l.quantity * l.contract.multiplier * l.premium for l in legs)
     return StrategyProfile(net_premium=net, max_loss=max_loss, max_gain=max_gain,
                            breakevens=tuple(sorted(round(b, 4) for b in set(bes))), points=pts)

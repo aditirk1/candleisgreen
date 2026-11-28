@@ -2,6 +2,63 @@
 
 Last updated: 2026-11-27. Working branch: `ux-redesign-intelligence`, draft pull request https://github.com/aditirk1/candleisgreen/pull/2, based on `spec-review-and-phase0` (draft pull request https://github.com/aditirk1/candleisgreen/pull/1).
 
+## Options, crypto, forex and futures (branch `multi-asset-research`, based on `ux-redesign-intelligence`)
+
+Each asset class now records eight levels in `config/capabilities.yaml` (entries `asset_*`), shown on Markets, Asset classes. Live trading is never built. No broker order is sent for any of the four new asset classes.
+
+### Where each asset class stands
+
+| Level | Options | Crypto | Forex | Futures |
+| --- | --- | --- | --- | --- |
+| Free source exists | Yes, Alpaca indicative feed | Yes, Alpaca. Kraken as comparison | Yes, OANDA practice, FRED | Partly. CFTC positioning yes, CME terms unread |
+| Adapter built | Yes | Yes. Kraken blocked by license | Yes, read only, no order methods | Partly. CFTC yes, CME no |
+| History checked live | Waiting for Alpaca keys | Yes, 2026-11-28, BTC/USD from 2021-01-01 | Waiting for OANDA token | Partly. CFTC checked 2026-11-28. No prices |
+| Current prices checked live | Waiting for Alpaca keys | Yes, 2026-11-28, order book | Waiting for OANDA token | No free source |
+| Research | Partly. Payoff calculator and model work, chain needs keys | Yes | Partly. FRED rates now, spreads need OANDA | Partly. Positioning, contract calendar, rolls, continuous series on uploads |
+| Simulation | Yes | Yes | Waiting. Built, runs on OANDA prices | Partly. Daily simulator on uploads, margins entered by hand |
+| Broker paper trading | Waiting. Order builder done, nothing sends it | No. Needs keys and a read-only check first | No | No. Alpaca lists futures as coming soon |
+| Live trading | No | No | No | No |
+
+### Completed and tested
+
+- Options (`candleisgreen/markets/options.py`, `options_sim.py`, `sources/alpaca_options.py`): OCC symbols, exact payoff profiles with break-evens, labeled Black-Scholes values, expiry exercise and assignment on Alpaca's rule, risk checks, a simulator labeled indicative, a read-only client that refuses OPRA, an order builder in Alpaca's documented shape. `tests/test_options.py` (12).
+- Crypto (`markets/crypto.py`, `sources/alpaca_crypto.py`, `sources/kraken.py`): fees from Alpaca's published tiers, order book spread and depth, risk checks with no shorts and no margin, a simulator that walks the book. `tests/test_crypto.py` (10).
+- Forex (`markets/forex.py`, `sources/oanda.py`): practice host only, daily candles ending 17:00 New York across daylight saving, spreads from bid and ask, size and leverage checks, a simulator. `tests/test_forex.py` (7).
+- Futures (`markets/futures.py`, `sources/cftc.py`, `config/futures_contracts.yaml`): last trading and first notice rules, rolls, three continuous series methods, a daily simulator with margin calls, CFTC positioning with conservative usable times. `tests/test_futures.py` (9), on real CFTC reports.
+- Shared: `markets/store.py` (point-in-time store, separate from stocks), `sources/public_http.py` (read-only, host allowlist), `markets/service.py` (recording jobs), `api/assets.py` (routes), registry and API tests in `tests/test_asset_levels.py` (6).
+- Live checks in `tests/test_live_sources.py`, skipped unless `CANDLE_LIVE=1`. Crypto and CFTC passed on 2026-11-28. Options and OANDA wait for credentials.
+
+`make ci`: 402 passed, 4 skipped (the live checks). Playwright: 124 checks passed, including Focus-mode guards on every asset class view.
+
+### Waiting on you
+
+1. Alpaca paper keys (`APCA_API_KEY_ID`, `APCA_API_SECRET_KEY`): turns on the options chain and the options and stock live checks. Then run `CANDLE_LIVE=1 .venv/bin/python -m pytest tests/test_live_sources.py -v`.
+2. OANDA: open a free fxTrade Practice account, create a token, set `OANDA_PRACTICE_TOKEN` and `OANDA_PRACTICE_ACCOUNT_ID`. Read the API license shown when you create the token. If it allows personal research, set `oanda_practice` research to `permitted` in `config/licenses.yaml`.
+3. Kraken (optional): read sections 8 and 9 of kraken.com/legal/global-terms. Only if they allow this use, set `kraken_public` research to `permitted`.
+4. CME: open the five contract specification pages linked in `config/futures_contracts.yaml`, compare the terms, and set `verified: true` with the date.
+
+### Commands
+
+```
+.venv/bin/python -m candleisgreen.markets.service crypto --workdir var/live
+.venv/bin/python -m candleisgreen.markets.service cot --workdir var/live
+```
+
+Both need only an internet connection. The app's Record latest and Read latest reports buttons do the same.
+
+### Known flaws
+
+- The crypto practice balance lives in memory and resets when the app restarts.
+- Forex and options simulators have no screen for placing practice orders yet. Their code is tested directly.
+- The holiday list covers 2026 and 2027 only, so futures dates after 2027 are refused.
+- Exchange holidays use the NYSE list. CME holidays mostly match it but are not checked.
+
+### Next steps
+
+1. With keys: run the live checks, then build Alpaca paper crypto orders through the independent risk service, with the crypto checks added there.
+2. With an OANDA token: record candles, fit the spread model, run the forex simulator on real bid and ask.
+3. Keep options broker orders off until Aditi decides how indicative quotes relate to the execution-grade quote rule.
+
 ## UX redesign and financial intelligence upgrade (branch `ux-redesign-intelligence`)
 
 ### Completed and tested
