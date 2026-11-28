@@ -58,6 +58,7 @@ button.icon.active { color: var(--accent); border-color: var(--accent); }
 .field { font: inherit; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 8px; }
 .segmented { display: inline-flex; gap: 0; }
 .segmented button { border-radius: 0; margin-left: -1px; }
+.segmented button.active, .segmented button:focus-visible { position: relative; z-index: 1; }
 .segmented button:first-child { border-radius: var(--radius) 0 0 var(--radius); margin-left: 0; }
 .segmented button:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
 .segmented.small button { font-size: var(--fs-xs); padding: 3px 8px; }
