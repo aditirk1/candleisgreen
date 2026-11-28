@@ -1,6 +1,48 @@
 # HANDOFF.md
 
-Last updated: 2026-11-24 01:50 ET. Branch: `spec-review-and-phase0`. Draft pull request: https://github.com/aditirk1/candleisgreen/pull/1
+Last updated: 2026-11-27. Working branch: `ux-redesign-intelligence`, draft pull request https://github.com/aditirk1/candleisgreen/pull/2, based on `spec-review-and-phase0` (draft pull request https://github.com/aditirk1/candleisgreen/pull/1).
+
+## UX redesign and financial intelligence upgrade (branch `ux-redesign-intelligence`)
+
+### Completed and tested
+
+| Priority | What is built | Tested by |
+| --- | --- | --- |
+| 1. Information architecture | Six destinations (Home, Discover, Markets, Intelligence, Portfolio, Learn), Research workspace and Settings below a divider, contextual tabs, Focus (default) and Advanced modes, back and forward through the URL hash. Every earlier screen and command still works | Playwright: navigation through every destination and tab, command bar |
+| 2. Themes | Light and Dark from one token set (type, surfaces, borders, text, accent, gain and loss, warning, charts, hover). Light has no gradients or translucency. Charts redraw on a switch. Choice saved in the browser | Playwright: light background value, charts drawn in both themes, 14 principal screenshots in both themes |
+| 3. Market intelligence | Story cards with source summary or an explicit "excerpt only repeats the headline", source and timestamps per item, companies and industries, why it may matter, labeled hypotheses, measured price reaction, portfolio relevance. Documented relevance score, MATERIAL or ROUTINE, relevance or recency sort, headline search, category, industry, watchlist and saved filters, read and save marks. Templated headlines about different events no longer merge | `tests/test_news_insight.py` (9), Playwright news checks |
+| 4. Home | Demo or live data banner, account value, profit and loss, invested capital, account and market status, performance chart with ranges and an empty state, Needs Attention, material developments, top opportunities, watchlist, positions, folded System Health. Kill switch in the top bar | `/api/home` in tests, Playwright Home checks |
+| 5. Opportunities | Compact table with signal strength, one month and one year change, and in Advanced volatility, trading volume and tier. Ticker or row opens an evidence drawer: conclusion, horizon, model reasoning, supporting and opposing signals, risk checks and uncertainty, news and catalysts, provenance, links to Reasoning, Research and the company page. Keyboard: focus in, Tab trapped, Escape closes, focus returns | Playwright drawer checks by keyboard |
+| 6. Company pages | Markets, Company tab. SEC profile, financials from XBRL with filing links, period and age in days, price to earnings only with sourced inputs, measured risks, recorded catalysts, news, candles with volume, trade or abstain reason | `tests/test_company.py` (3), Playwright company checks |
+| 7. Asset classes | Markets, Asset classes tab. Stocks and ETFs, options, futures, forex, crypto from `config/asset_classes.yaml` and the capability registry | `tests/test_asset_classes.py` (2), Playwright |
+| 8. Ownership intelligence | Form 4 insider transactions (transaction and disclosure dates apart, 10b5-1 flag, codes explained), 13F holdings (summed per security, quarter end and filing apart, limits stated), Schedule 13D and 13G filing dates. Research only. Overnight refresh when `SEC_USER_AGENT` is set. Intelligence, Insiders and institutions tab | `tests/test_ownership.py` (3) on real SEC filings, Playwright |
+
+Also: candlestick charts with volume and ranges everywhere prices are shown (`/api/bars`), the Home crash on blocked orders fixed earlier, and demo candles that open at the prior close.
+
+Plain language pass (D-127 to D-129): every screen, the Research workspace tabs and the evidence drawer show plain names instead of code names (for example "Momentum, 12-month winners against losers" for `xs_momentum_12_1`, "Largest position, share of account" for `max_position_pct_equity`). Reasons from the backend are rewritten in `ui/src/labels.ts`. IDs, hashes, versions and config paths moved into Advanced mode's "Technical details". The API is unchanged.
+
+`make ci`: 357 passed. Frontend production build passes. Playwright: 114 checks passed, including a guard that Focus mode shows no code names, config paths, record IDs or hashes.
+
+### Unavailable, with the reason shown in the app
+
+| Capability | Why |
+| --- | --- |
+| Options, futures, crypto and forex trading | Options: only an indicative free feed, which fails the execution-grade quote rule. Futures: not offered by Alpaca, other sources charge. Crypto: free data exists, not built. Forex: Alpaca offers no currency trading |
+| Option Greeks, futures quotes | No data source. Nothing is computed |
+| Congressional disclosures | Not built. Disclosure up to 45 days late, many scanned reports, source terms unchecked |
+| Government procurement, regulatory actions beyond News | Not built. USAspending.gov and the Federal Register need their terms and formats checked |
+| Political sector exposure | Not built. Needs classified companies and a pre-registered event study |
+| Revenue model, 10-K business description and risk factors | Not parsed. The page uses the SEC industry code description and says so |
+| Price to book, price to sales | Shares outstanding are not collected |
+| Earnings calendar | No free source |
+| CUSIP to ticker mapping for 13F holdings | No free CUSIP map |
+| Holder and stake inside 13D and 13G filings | Not parsed yet |
+
+### Next steps
+
+1. Run against live data once keys exist (Alpaca paper keys, `SEC_USER_AGENT`, `FRED_API_KEY`) and compare response shapes.
+2. Collect shares outstanding (XBRL `dei:EntityCommonStockSharesOutstanding`) so price to book and price to sales can be shown.
+3. Pre-register a test of open-market insider purchases (code P, not 10b5-1) before anything is built on them.
 
 ## Timeline note
 

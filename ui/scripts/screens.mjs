@@ -15,7 +15,18 @@ const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 // Our own text only. Verbatim source text (headlines, filing summaries) is marked and left as published.
 const ownText = (loc) => loc.evaluate((el) => { const c = el.cloneNode(true); c.querySelectorAll("[data-source-text]").forEach((n) => n.remove()); document.body.appendChild(c); const t = c.innerText; c.remove(); return t; });
-const nav = (name) => page.locator("nav").getByRole("button", { name, exact: true }).click();
+// Screens sit under six destinations plus the Research workspace and Settings. Old screen names map to [destination, tab].
+const NAV = { Overview: ["Home"], Opportunities: ["Discover", "Opportunities"], Reasoning: ["Discover", "Reasoning"],
+  Execution: ["Portfolio", "Orders and approvals"], "Audit and Rules": ["Portfolio", "Risk and rules"], Markets: ["Markets", "Instruments"],
+  Earnings: ["Markets", "Earnings"], Global: ["Markets", "Global"], News: ["Intelligence", "News"], Ownership: ["Intelligence", "Insiders and institutions"], Learn: ["Learn"],
+  Research: ["Research workspace", "Research"], Composite: ["Research workspace", "Composite"], Backtests: ["Research workspace", "Backtests"],
+  Experts: ["Research workspace", "Experts"], Settings: ["Settings"] };
+const nav = async (name) => {
+  const [dest, sub] = NAV[name];
+  await page.locator("nav").getByRole("button", { name: dest, exact: true }).click();
+  if (sub) await page.getByRole("tablist").getByRole("tab", { name: sub, exact: true }).click();
+};
+const setTheme = async (t) => { if ((await page.evaluate(() => document.documentElement.dataset.theme)) !== t) await page.getByRole("button", { name: "Theme" }).click(); };
 const tab = (group, name) => page.getByRole("group", { name: group }).getByRole("button", { name, exact: true }).click();
 await page.addInitScript(() => { if (!sessionStorage.getItem("init")) { localStorage.setItem("theme", "terminal"); localStorage.setItem("guide", "off"); sessionStorage.setItem("init", "1"); } });
 const check = (cond, msg) => { if (!cond) { console.error("FAIL " + msg); process.exitCode = 1; } else console.log("ok   " + msg); };
@@ -26,7 +37,10 @@ check(await page.getByRole("dialog", { name: "First-run tour" }).isVisible(), "f
 await page.getByRole("button", { name: "Skip tour" }).click();
 check(await page.getByText("SIMULATION").first().isVisible(), "SIMULATION label visible on Overview");
 check((await page.locator("table").count()) >= 1, "holdings table rendered");
-check(await page.getByText(/Next session plan/).isVisible(), "next session plan on the front page");
+check(await page.getByText("Needs attention", { exact: true }).isVisible() && await page.getByText(/^Top research opportunities/).isVisible() && await page.getByText("Market developments", { exact: true }).isVisible(), "Home shows attention, developments and opportunities");
+check(await page.getByText("DEMO DATA.").isVisible(), "synthetic demo data is labeled on Home");
+check(await page.getByText(/^Not enough history yet/).isVisible(), "performance chart shows an empty state until enough history exists");
+check((await page.getByRole("button", { name: "KILL" }).count()) === 1, "kill switch is in the top bar");
 check((await page.getByText(/data job missed its schedule|Systems OK|Feed/).count()) > 0, "system status shown in the top bar");
 await page.screenshot({ path: `${out}/overview-terminal.png`, fullPage: true });
 
@@ -47,10 +61,10 @@ await page.screenshot({ path: `${out}/execution-terminal.png`, fullPage: true })
 await page.getByRole("button", { name: "KILL" }).click();
 await page.getByText("KILL SWITCH ON").waitFor();
 check(await page.getByText("ON. New orders are blocked").isVisible(), "kill switch shown as ON after engaging");
-await page.getByLabel("Theme").selectOption("glass");
+await setTheme("light");
 await page.screenshot({ path: `${out}/execution-glass-kill.png`, fullPage: true });
 
-await page.getByLabel("Theme").selectOption("terminal");
+await setTheme("dark");
 await nav("Earnings");
 await page.getByText("Scorecard, as reported in SEC filings").waitFor();
 check(await page.getByText("BusEq").first().isVisible(), "issuer shows its Fama-French 12 industry");
@@ -60,21 +74,23 @@ check(!earningsText.includes("beat") && !earningsText.includes("miss"), "no beat
 await page.screenshot({ path: `${out}/earnings-terminal.png`, fullPage: true });
 
 await nav("Composite");
-await page.getByText("Composite run").waitFor();
-check((await page.getByText("xs_momentum_12_1").count()) > 0, "Composite lists each signal");
-check(await page.getByText("RETROSPECTIVE").first().isVisible(), "Composite run labeled retrospective");
-check(await page.getByText("SYNTHETIC").first().isVisible(), "synthetic data labeled on the Composite screen");
-check((await page.getByText(/PROVISIONAL|SAFEGUARD/).count()) > 0, "exclusion reasons carry their parameter basis");
+await page.getByRole("heading", { name: "How the signals combine" }).waitFor();
+check(await page.getByText("Momentum, 12-month winners against losers").isVisible(), "Composite lists each signal by a plain name");
+check(await page.getByText(/Results are back-tested, not recorded in advance/).isVisible(), "Composite run labeled back-tested");
+check(await page.getByText(/come from demo data, so they are not evidence/).isVisible(), "demo data labeled on the Composite screen");
+await page.getByText("Momentum, 12-month winners against losers").click();
+check((await page.getByText(/\((safety rule|starting setting, under review|from published research)\)/).count()) > 0, "exclusion reasons say where each threshold comes from");
+check((await page.getByText(/Evidence level \d of 6\. Trading needs level/).count()) > 0, "exclusion reasons are written in plain words");
 await page.screenshot({ path: `${out}/composite-terminal.png`, fullPage: true });
-await page.getByRole("button", { name: "Evidence chain" }).first().click();
-await page.getByText("Evidence chain:").waitFor();
-check(await page.getByText("reproduction").first().isVisible(), "evidence chain opens from the Composite screen");
-check(await page.getByText("Failure archive").isVisible(), "failure archive shown");
-check(await page.getByText("▼ FAILED").first().isVisible(), "negative result visible");
+await page.getByRole("button", { name: "See the research behind it" }).first().click();
+await page.getByRole("heading", { name: /^Evidence: / }).waitFor();
+check(await page.getByText("Reproduce the published result").first().isVisible(), "evidence opens from the Composite screen");
+check(await page.getByText("Failure archive, ideas that did not hold up").isVisible(), "failure archive shown");
+check(await page.getByText("▼ Did not hold up").first().isVisible(), "negative result visible");
 await tab("Research sections", "Today");
 check(await page.getByText("Daily research digest").isVisible(), "daily research digest shown");
-check(await page.getByText("NEEDS DATA: analyst estimates").isVisible(), "missing data flagged with a free substitute");
-check((await page.getByText("xs_momentum_12_1").count()) > 0 && await page.getByRole("heading", { name: "Re-evaluation cases" }).isVisible(), "re-evaluation case listed");
+check(await page.getByText(/Needs data: analyst estimates/).isVisible(), "missing data flagged with a free substitute");
+check(await page.getByRole("heading", { name: "Signals under review" }).isVisible() && (await page.getByRole("cell", { name: "Momentum, 12-month winners against losers" }).count()) > 0, "signal review listed");
 check(await page.getByText("Clark-West adjusted mean squared error").isVisible(), "Level B against Level A uses Clark-West");
 check((await page.getByText("keep the champion").count()) === 2, "synthetic comparisons never recommend a switch");
 await tab("Research sections", "Capture inbox");
@@ -90,28 +106,38 @@ check(true, "inbox asks for input instead of fetching a link");
 await page.screenshot({ path: `${out}/research-terminal.png`, fullPage: true });
 await tab("Research sections", "Today");
 await page.getByRole("button", { name: "Decline" }).click();
-await page.getByText("DECLINED").first().waitFor({ timeout: 5000 }).catch(() => {});
-check(await page.getByText("user:aditi").first().isVisible(), "promotion decided by Aditi only");
+await page.getByRole("cell", { name: "Declined" }).first().waitFor({ timeout: 5000 }).catch(() => {});
+check(await page.getByRole("cell", { name: "You", exact: true }).first().isVisible(), "promotion decided by Aditi only");
 
 await nav("News");
-await page.getByRole("button", { name: "Last 90 days" }).click();
+await page.getByRole("button", { name: "90 days", exact: true }).click();
 await page.locator(".story").first().waitFor();
 const shown = await page.locator(".story").count();
 check(shown >= 3 && shown < 20, `market-relevant stories first, the rest folded away (${shown} shown)`);
-await page.getByRole("button", { name: /Show other official news/ }).click();
+await page.getByRole("button", { name: /Show routine announcements/ }).click();
 check((await page.locator(".story").count()) >= 10, "News shows one card per story");
 const axp = page.locator(".story", { hasText: "American Express" }).first();
 check((await axp.locator(".story-tickers").innerText()).includes("AXP"), "a company named in a story is linked to its ticker");
 await axp.locator(".story-head").click();
 check(await axp.getByText("What happened").isVisible() && await axp.getByText("Why it may matter").isVisible() && await axp.getByText("What prices did").isVisible(), "a story opens into what happened, why it may matter and what prices did");
 check(await axp.getByText(/not proof the story caused it/).isVisible(), "price moves labeled as observation, not cause");
-await page.getByRole("button", { name: /^Enforcement \(/ }).click();
-check((await page.locator(".story").count()) >= 5, "stories filter by category");
+await page.getByLabel("Category").selectOption("Enforcement");
+check((await page.locator(".story").count()) >= 1, "stories filter by category");
+await page.getByLabel("Category").selectOption("all");
+await page.getByLabel("Search headlines").fill("Nova Scotia");
+check((await page.locator(".story").count()) === 1, "headline search narrows the list");
+await page.getByLabel("Search headlines").fill("");
+await page.getByRole("button", { name: "Newest" }).click();
+await page.locator(".story").first().waitFor();
+check(true, "stories sort by recency");
+const firstSave = page.locator(".story button.icon").first();
+await firstSave.click();
+check((await firstSave.getAttribute("aria-pressed")) === "true", "a story can be saved");
 await page.screenshot({ path: `${out}/news-terminal.png`, fullPage: true });
 
 await nav("Reasoning");
 await page.getByText("Data freshness").waitFor();
-check(await page.getByText("ts_momentum_252_21 1.0.0").isVisible(), "Reasoning shows the forecast's model and version");
+check((await page.getByText("Trend model, 12-month price trend").count()) > 0, "Reasoning names the forecast's model in plain words");
 check(await page.getByText("Agreeing and opposing signals").isVisible(), "Reasoning shows agreeing and opposing signals");
 await page.getByLabel("Ticker").fill("DNCO");
 await page.getByRole("button", { name: "Explain" }).click();
@@ -160,26 +186,36 @@ await page.getByRole("button", { name: "I knew it" }).click();
 check(true, "spaced review card answered");
 
 await nav("Global");
-await page.getByText("Follow-the-sun jobs").waitFor();
-await page.getByText("USA").first().waitFor({ timeout: 5000 }).catch(() => {});
+await page.getByText("Scheduled jobs through the day").waitFor();
+await page.getByText("United States").first().waitFor({ timeout: 5000 }).catch(() => {});
 check((await page.getByText("research only").count()) >= 5, "every non-US market is research only on the Global screen");
-check(await page.getByText("XTKS Tokyo Stock Exchange").isVisible() && (await page.getByText("RESEARCH_ONLY").count()) >= 4, "market rule table tags non-US exchanges research only");
-check(await page.getByText("DEXUSEU").isVisible(), "FX rates from FRED shown");
-check(await page.getByText("UNRATE").isVisible() && (await page.getByText(/no vintage stored yet/).count()) >= 1, "macro shows the stored vintage and NOT AVAILABLE for series without one");
+check(await page.getByRole("row", { name: /Tokyo Stock Exchange Research only/ }).isVisible() && (await page.getByRole("cell", { name: "Research only", exact: true }).count()) >= 4, "market rule table tags non-US exchanges research only");
+check(await page.getByText("Euro (EUR)").isVisible(), "FX rates from FRED shown");
+check(await page.getByText("Unemployment rate").isVisible() && (await page.getByText(/No published value recorded yet/).count()) >= 1, "macro shows the stored vintage and NOT AVAILABLE for series without one");
 check(await page.getByText(/NOT AVAILABLE\. No free source of historical or real-time options data/).isVisible(), "entitlement map shows options as NOT AVAILABLE");
 await page.screenshot({ path: `${out}/global-terminal.png`, fullPage: true });
 
 const texts = [await ownText(page.locator("body"))];
 
 await nav("Opportunities");
-await page.getByText(/Proposed positions for/).waitFor();
+await page.getByText(/^Opportunities for /).waitFor();
 check((await page.locator("tbody tr").count()) >= 2, "Opportunities lists proposed positions");
-check(!(await page.getByText(/NOT AVAILABLE\. The model is not calibrated/).isVisible()), "evidence stays hidden until a row is opened");
+check((await page.getByRole("dialog").count()) === 0, "evidence stays hidden until a row is opened");
+await page.locator("tr.clickable").first().focus();
+await page.keyboard.press("Enter");
+const drawer = page.getByRole("dialog");
+await drawer.getByText("Conclusion").waitFor();
+check(await drawer.getByText(/It is not a forecast return or a probability, because the model is not calibrated/).isVisible(), "uncalibrated signal is never shown as a forecast");
+for (const part of ["Model reasoning", "Supporting and opposing signals", "Risk checks and uncertainty", "News and catalysts", "Data provenance"]) {
+  check(await drawer.getByText(part, { exact: true }).isVisible(), `drawer has ${part}`);
+}
+check(await drawer.getByRole("button", { name: "Close" }).evaluate((el) => el === document.activeElement), "keyboard focus moves into the drawer");
+await page.keyboard.press("Escape");
+check((await page.getByRole("dialog").count()) === 0, "Escape closes the drawer");
 await page.locator("tr.clickable").first().click();
-check(await page.getByText(/NOT AVAILABLE\. The model is not calibrated/).isVisible(), "expected return NOT AVAILABLE until calibration");
 await page.screenshot({ path: `${out}/opportunities-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
-await page.getByRole("button", { name: /Open reasoning for/ }).click();
+await page.getByRole("dialog").getByRole("button", { name: "Full reasoning" }).click();
 await page.getByText("Data freshness").waitFor();
 check(true, "Opportunities opens Reasoning for the selected ticker");
 
@@ -187,16 +223,45 @@ await nav("Markets");
 await page.getByLabel("Search instruments").fill("UPCO");
 await page.locator("tbody tr").first().click();
 await page.locator("[aria-label='Price chart'] canvas").first().waitFor();
-check(await page.getByText("UPCO closes, as recorded").waitFor({ timeout: 5000 }).then(() => true, () => false), "Markets charts a selected instrument");
+check(await page.getByText("UPCO daily prices").waitFor({ timeout: 5000 }).then(() => true, () => false), "Markets charts a selected instrument");
 await page.getByRole("button", { name: "Add UPCO to watchlist" }).click();
 check(await page.getByRole("button", { name: "Remove UPCO from watchlist" }).isVisible(), "watchlist add works");
 await page.screenshot({ path: `${out}/markets-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 
+await nav("Markets");
+await page.getByRole("tablist").getByRole("tab", { name: "Company", exact: true }).click();
+await page.getByText("Why the system would trade or abstain").waitFor();
+check(await page.locator("[aria-label='Company price chart'] canvas").first().waitFor({ timeout: 5000 }).then(() => true, () => false), "company page draws price and volume");
+await page.getByLabel("Company ticker").fill("AAPL");
+await page.getByRole("button", { name: "Open", exact: true }).click();
+await page.getByText(/Electronic Computers/).waitFor();
+check((await page.locator("a[href*='sec.gov/Archives']").count()) > 0, "company financials link to their SEC filings");
+check(await page.getByText(/NOT AVAILABLE\. No recorded price/).first().isVisible(), "valuation without a price says NOT AVAILABLE with the reason");
+check(await page.getByText(/Revenue model/).isVisible() && await page.getByText(/The 10-K business section \(Item 1\) is not parsed/).isVisible(), "unverified revenue model is labeled, not invented");
+check((await page.getByRole("columnheader", { name: "Age (days)" }).count()) >= 2, "every company metric shows its age");
+await page.screenshot({ path: `${out}/company-light.png`, fullPage: true });
+texts.push(await ownText(page.locator("body")));
+await page.getByRole("tablist").getByRole("tab", { name: "Asset classes", exact: true }).click();
+await page.getByRole("heading", { name: "Asset classes" }).waitFor();
+check((await page.getByText("Paper trading", { exact: true }).count()) >= 1 && (await page.getByText("No usable data").count()) === 3 && await page.getByText("Research only", { exact: true }).isVisible(), "asset classes show paper trading for stocks only, research only for forex and no data for options, futures and crypto");
+await page.getByText("Options", { exact: true }).click();
+check(await page.getByText(/indicative options feed/).isVisible(), "options explain why they cannot be traded");
+await page.screenshot({ path: `${out}/asset-classes-light.png`, fullPage: true });
+texts.push(await ownText(page.locator("body")));
+await nav("Ownership");
+await page.getByText("Insider transactions, SEC Form 4").waitFor();
+check(await page.getByText("RESEARCH ONLY.").isVisible(), "insider and institutional data labeled research only");
+check(await page.getByRole("columnheader", { name: "Disclosed" }).isVisible() && await page.getByRole("columnheader", { name: "Traded" }).isVisible(), "transaction and disclosure dates shown separately");
+check(await page.getByText("10b5-1 plan").first().isVisible(), "pre-scheduled sales flagged");
+check(await page.getByText(/BERKSHIRE HATHAWAY/).isVisible() && await page.getByText(/not a complete or current portfolio/).isVisible(), "13F holdings shown with their limits");
+check((await page.getByText(/^NOT AVAILABLE\. Not built/).count()) >= 3, "unbuilt political and procurement modules labeled not available");
+await page.screenshot({ path: `${out}/ownership-light.png`, fullPage: true });
+texts.push(await ownText(page.locator("body")));
 await nav("Backtests");
-await page.getByText(/Trials recorded/).waitFor();
-check((await page.getByText("xs_momentum_12_1").count()) > 0 && (await page.getByText("Sharpe", { exact: true }).count()) > 0, "Backtests shows each signal with a Sharpe ratio");
-check(await page.getByRole("columnheader", { name: "Trials" }).isVisible(), "trial count beside every Sharpe");
+await page.getByRole("heading", { name: "Backtests" }).waitFor();
+check((await page.getByText("Momentum, 12-month winners against losers").count()) > 0 && (await page.getByText("Return per unit of risk").count()) > 0, "Backtests shows each signal with a Sharpe ratio");
+check(await page.getByText(/versions tested in total, which matters because/).isVisible(), "trial count shown beside the Sharpe ratios");
 await page.screenshot({ path: `${out}/backtests-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 
@@ -207,24 +272,25 @@ await page.screenshot({ path: `${out}/experts-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 
 await nav("Audit and Rules");
-await page.getByText("Hash chain verified").waitFor();
-await page.getByLabel("New value for max_position_pct_equity").fill("0.04");
-await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("button", { name: "Request" }).click();
+await page.getByText(/Log verified\. No record has been changed/).waitFor();
+const posRow = page.getByRole("row", { name: /^Largest position, share of account/ });
+await page.getByLabel("New value for Largest position, share of account").fill("0.04");
+await posRow.getByRole("button", { name: "Request" }).click();
 await page.getByText(/Applied now/).waitFor();
 check(true, "tightening a hard limit applies at once");
-await page.getByLabel("New value for max_position_pct_equity").fill("0.5");
-await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("button", { name: "Request" }).click();
+await page.getByLabel("New value for Largest position, share of account").fill("0.5");
+await posRow.getByRole("button", { name: "Request" }).click();
 await page.getByText(/needs confirmation/).waitFor();
-await page.getByRole("row", { name: /max_position_pct_equity/ }).getByRole("button", { name: "Confirm" }).click();
+await posRow.getByRole("button", { name: "Confirm" }).click();
 await page.getByText(/Not confirmed/).waitFor();
 check(true, "loosening waits and cannot be confirmed early");
-check((await page.getByText("PROVISIONAL", { exact: false }).count()) > 0, "parameters listed with their basis");
+check((await page.getByRole("cell", { name: "Starting setting, under review" }).count()) > 0, "parameters listed with their basis");
 check(await page.getByText("ON.", { exact: true }).isVisible() && await page.getByText(/Up to 3\.0% of the account per stock and 30% in total/).isVisible(), "short selling shown as on at 3% per stock and 30% in total");
 await page.getByRole("button", { name: "Turn off now" }).click();
 await page.getByText("OFF.", { exact: true }).waitFor();
 check(true, "turning shorting off applies at once");
 await page.getByRole("button", { name: "Request turning on" }).click();
-await page.getByText(/max_short_position_pct_equity waits until/).waitFor();
+await page.getByText(/Largest short position, share of account waits until/).waitFor();
 check(await page.getByRole("button", { name: "Confirm turning on" }).waitFor({ timeout: 5000 }).then(() => true, () => false), "turning shorting on waits for the delay and a confirmation");
 await page.getByRole("button", { name: "Confirm turning on" }).click();
 await page.getByText(/not confirmed/).first().waitFor();
@@ -233,7 +299,7 @@ await page.screenshot({ path: `${out}/rules-terminal.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 
 await nav("Settings");
-await page.getByText("Credentials and providers").waitFor();
+await page.getByText("API keys and data sources").waitFor();
 check(await page.getByText("APCA_API_KEY_ID").isVisible(), "credential status listed");
 check(await page.getByText("Live trading").isVisible(), "live trading shown as not built");
 await page.screenshot({ path: `${out}/settings-terminal.png`, fullPage: true });
@@ -241,7 +307,7 @@ texts.push(await ownText(page.locator("body")));
 
 await page.getByLabel("Command").fill("UPCO NEWS");
 await page.getByLabel("Command").press("Enter");
-await page.getByText("UPCO only").waitFor();
+await page.getByText("Market intelligence, UPCO").waitFor();
 check(true, "command UPCO NEWS opens News for one ticker");
 await page.getByLabel("Command").fill("why didn't we buy DLST");
 await page.getByLabel("Command").press("Enter");
@@ -249,10 +315,11 @@ await page.getByText("Why not?").waitFor();
 check(await page.getByText(/not in the tradable universe/).first().isVisible(), "plain phrase opens Why not for DLST");
 await page.getByLabel("Command").fill("RULES");
 await page.getByLabel("Command").press("Enter");
-await page.getByText("Hard limits").waitFor();
+await page.getByRole("heading", { name: "Hard limits" }).waitFor();
 check(true, "command RULES opens Audit and Rules");
 
-await page.getByRole("button", { name: "GUIDE OFF" }).click();
+await page.getByRole("group", { name: "Display mode" }).getByRole("button", { name: "Advanced" }).click();
+await page.getByRole("button", { name: "Guide off" }).click();
 await nav("Opportunities");
 await page.getByText(/How strongly the model leans/).first().waitFor();
 check(true, "Guide mode shows plain labels with the technical term");
@@ -264,7 +331,7 @@ texts.push(await ownText(page.locator("body")));
 
 await page.getByRole("button", { name: "UPCO", exact: true }).first().click();
 const panel = page.getByRole("dialog", { name: "About UPCO" });
-await panel.getByText("What the system thinks").waitFor();
+await panel.getByText("Conclusion").waitFor();
 check(await panel.getByText(/trend model reads this as an uptrend/).isVisible(), "stock panel explains the system view in plain words");
 check(await panel.getByText(/Upward Industries/).first().isVisible() && await panel.locator("[aria-label='Stock price chart'] canvas").first().isVisible(), "stock panel shows the company and its chart");
 texts.push(await ownText(panel));
@@ -273,17 +340,60 @@ await page.getByLabel("Command").fill("UPCO");
 await page.getByLabel("Command").press("Enter");
 check(await page.getByRole("dialog", { name: "About UPCO" }).isVisible(), "typing a ticker opens its stock panel");
 await page.keyboard.press("Escape");
-await page.getByLabel("Theme").selectOption("light");
+await setTheme("light");
 await nav("Overview");
 await page.getByText("Account value (USD)").waitFor();
 const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-check(bg === "rgb(243, 245, 249)", `light theme uses a light background (${bg})`);
+check(bg === "rgb(246, 247, 249)", `light theme uses a neutral off-white background (${bg})`);
 await page.screenshot({ path: `${out}/overview-light.png`, fullPage: true });
 await nav("News");
 await page.locator(".story").first().waitFor();
 await page.screenshot({ path: `${out}/news-light.png`, fullPage: true });
 texts.push(await ownText(page.locator("body")));
 
+// Principal screens in both themes, for review. Charts must redraw after each switch.
+await page.getByRole("group", { name: "Display mode" }).getByRole("button", { name: "Focus" }).click();
+for (const theme of ["light", "dark"]) {
+  await setTheme(theme);
+  for (const [name, file] of [["Overview", "home"], ["Opportunities", "opportunities"], ["News", "news"], ["Markets", "markets"], ["Execution", "portfolio"], ["Learn", "learn"], ["Research", "research-workspace"]]) {
+    await nav(name);
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${out}/principal-${file}-${theme}.png`, fullPage: true });
+  }
+  await nav("Markets");
+  await page.locator("[aria-label='Price chart'] canvas").first().waitFor();
+  check(true, `price chart drawn in the ${theme} theme`);
+}
+// Focus mode is for people. Code names, config paths, record IDs and hashes stay in Advanced mode's technical details.
+const INTERNAL = [/\b[a-z0-9]+_[a-z0-9_]+\b/, /\b[a-z_]+\.[a-z_]+\.[a-z_.]+\b/, /config\/\S+/, /\.ya?ml\b/, /\b(?:inst|claim|exp|run|var|promo|case|fc|cap|story|clu|card|obs)_[a-z0-9]+/, /\b[0-9a-f]{16,}\b/, /\[[a-z_.]+\]/];
+const focusLeaks = [];
+// Web addresses such as papers.example.org are fine. Only dotted config paths count.
+const isHost = (m) => /\.(org|com|gov|net|io|edu)$/.test(m);
+const leaks = (where, t) => { for (const rx of INTERNAL) for (const m of t.matchAll(new RegExp(rx, "g"))) if (!isHost(m[0])) { focusLeaks.push(`${where}: ${m[0]}`); break; } };
+for (const name of ["Overview", "Opportunities", "Reasoning", "Markets", "Earnings", "Global", "News", "Ownership", "Execution", "Audit and Rules", "Composite", "Backtests", "Experts", "Settings"]) {
+  await nav(name);
+  await page.waitForTimeout(700);
+  const t = await ownText(page.locator("main"));
+  leaks(name, t);
+}
+await nav("Research");
+for (const sub of ["Today", "Research ideas", "Capture inbox"]) {
+  await tab("Research sections", sub);
+  await page.waitForTimeout(500);
+  const t = await ownText(page.locator("main"));
+  leaks(`Research ${sub}`, t);
+}
+await nav("Opportunities");
+await page.locator("tr.clickable").first().click();
+await page.getByRole("dialog").getByText("Conclusion").waitFor();
+const dt = await ownText(page.getByRole("dialog"));
+leaks("drawer", dt);
+await page.keyboard.press("Escape");
+check(focusLeaks.length === 0, `Focus mode shows no code names, config paths or record IDs (${focusLeaks.join(" | ")})`);
+await page.getByRole("group", { name: "Display mode" }).getByRole("button", { name: "Advanced" }).click();
+await nav("Composite");
+check(await page.getByText("Technical details").first().waitFor({ timeout: 5000 }).then(() => true, () => false), "Advanced mode keeps the technical details");
+await page.getByRole("group", { name: "Display mode" }).getByRole("button", { name: "Focus" }).click();
 const text = texts.join("\n");
 check(!/[—–;·]/.test(text), "no em dashes, semicolons or middle dots in visible text");
 check(!/manual_simulation|auto_simulation/.test(text), "modes shown in plain words");

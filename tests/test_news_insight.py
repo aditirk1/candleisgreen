@@ -74,3 +74,55 @@ def test_news_and_stock_endpoints(tmp_path):
     assert max(h["date"] for h in s["history"]) <= EXEC_NOW.date().isoformat()
     assert s["can_trade"] and s["price"]["change"]["1 year"] is not None
     assert api.get("/api/stock/NOPE").json()["status"] == "NOT AVAILABLE"
+
+
+def test_ranking_components_and_materiality():
+    ranking, rules = ni.load_ranking(), ni.load_rules()
+    rate = ni.classify_story("Federal Reserve issues FOMC statement", ["fed_press"], rules)
+    r = ni.rank("Federal Reserve issues FOMC statement", [], rate, 1, ranking, set())
+    assert r["materiality"] == "MATERIAL" and r["score"] == 3.0  # rate news moves the whole market
+    enf = ni.classify_story("enforcement action against American Express Company", ["fed_press"], rules)
+    named = ni.rank("enforcement action against American Express Company", ["AXP"], enf, 1, ranking, set())
+    assert named["materiality"] == "MATERIAL" and named["score"] == 4.0
+    held = ni.rank("enforcement action against American Express Company", ["AXP"], enf, 3, ranking, {"AXP"})
+    assert held["score"] == 4.0 + 3.0 + 1.0  # held company and two repeats
+    routine = ni.rank("Federal Reserve announces College Fed Challenge winners", [], None, 1, ranking, set())
+    assert routine["materiality"] == "ROUTINE" and routine["score"] < 0
+    people = ni.rank("Nihat Cardak", [], ni.classify_story("Nihat Cardak", ["sec_litigation"], rules), 1, ranking, set())
+    assert people["materiality"] == "ROUTINE"  # a case against individuals cannot move a listed stock
+    assert sum(c["points"] for c in held["components"]) == held["score"]
+
+
+def test_api_sorts_by_relevance_or_recency_and_reports_excerpt_quality(tmp_path):
+    from candleisgreen.sources.rss import NewsStore, ingest
+    from tests.phase1_env import ROOT
+
+    env = build_env(tmp_path, "manual_simulation")
+    env.store.close()
+    news = NewsStore(tmp_path / "news.sqlite")
+    for name, fname in (("fed_press", "fed_press"), ("sec_press", "sec_press")):
+        feed = next(f for f in env.cfg.news.feeds if f.name == name)
+        ingest(feed, (ROOT / "tests" / "fixtures" / "rss" / f"{fname}.xml").read_bytes(), news, EXEC_NOW - timedelta(hours=2), env.cfg)
+    news.close()
+    api = TestClient(create_app(tmp_path, "http://127.0.0.1:9", env.cfg, clock=lambda: EXEC_NOW))
+    rel = api.get("/api/news", params={"view": "live"}).json()
+    scores = [r["rank"]["score"] for r in rel["clusters"]]
+    assert scores == sorted(scores, reverse=True) and rel["sort"] == "relevance"
+    rec = api.get("/api/news", params={"view": "live", "sort": "recency"}).json()["clusters"]
+    assert [r["first_usable_at"] for r in rec] == sorted((r["first_usable_at"] for r in rec), reverse=True)
+    fed = [r for r in rel["clusters"] if r["feeds"] == ["fed_press"]]
+    assert all(r["excerpt"] == "headline_only" for r in fed)  # Fed items repeat the title
+    assert any(r["excerpt"] == "summary" for r in rel["clusters"] if "sec_press" in r["feeds"])
+    item = rel["clusters"][0]["items_detail"][0]
+    assert {"feed", "link", "published_at", "first_seen_at", "first_usable_at", "license"} <= set(item)
+    assert all(r["category"] is None or r["category"]["hypothesis"] for r in rel["clusters"])
+
+
+def test_templated_headlines_about_different_events_stay_separate():
+    from candleisgreen.sources.rss import same_story
+
+    assert not same_story("Federal Reserve Board announces approval of application by Isabella Bank Corporation",
+                          "Federal Reserve Board announces approval of application by Fleur Capital Corporation", 0.6)
+    assert not same_story("Minutes of the Federal Open Market Committee, October 27-28, 2026",
+                          "Minutes of the Federal Open Market Committee, September 15-16, 2026", 0.6)
+    assert same_story("SEC Charges Acme Corp. With Fraud", "SEC charges Acme Corp. with fraud", 0.6)

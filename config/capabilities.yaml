@@ -48,7 +48,7 @@ capabilities:
   short_selling_us:
     status: limited
     sources: [alpaca_paper_trading]
-    reason: Easy-to-borrow US stocks only, within Aditi's short limits of 3% per stock and 30% in total. Hard-to-borrow names need a locate and are never shorted. Alpaca requires at least 2,000 USD of equity
+    reason: Easy-to-borrow US stocks only, within your short limits of 3% per stock and 30% in total. Hard-to-borrow names need a locate and are never shorted. Alpaca requires at least 2,000 USD of equity
   options_trading:
     status: not_available
     sources: []
@@ -61,6 +61,50 @@ capabilities:
     status: not_available
     sources: []
     reason: Alpaca lists futures as coming soon (checked 2026-11-27). Other brokers need paid futures market data
+  fx_rates:
+    status: limited
+    sources: [fred]
+    reason: Daily reference rates from the FRED H.10 series, research only. No intraday quotes
+  fx_trading:
+    status: not_available
+    sources: []
+    reason: Alpaca offers no currency trading. FX appears only as the currency part of a foreign stock's return
+  futures_data:
+    status: not_available
+    sources: []
+    reason: No free futures price source. Exchange futures data needs a paid license
+  crypto_data:
+    status: not_available
+    sources: []
+    reason: Alpaca's free plan includes crypto prices, but no recorder for them is built yet
+  insider_transactions:
+    status: limited
+    sources: [sec_edgar_form4]
+    reason: Research only until a pre-registered test passes. Non-derivative Form 4 transactions only, usable from EDGAR acceptance time
+  institutional_holdings:
+    status: limited
+    sources: [sec_edgar_13f]
+    reason: Quarter-end long positions in 13(f) securities, filed up to 45 days later. Never a complete or current portfolio and no evidence of skill. CUSIPs are not mapped to tickers because no free CUSIP map exists
+  large_holder_filings:
+    status: limited
+    sources: [sec_edgar_submissions]
+    reason: Filing dates of Schedules 13D and 13G from the issuer's EDGAR filing list. The holder and stake inside each filing are not parsed yet
+  congressional_disclosures:
+    status: not_available
+    sources: []
+    reason: Not built. Periodic transaction reports reach the public up to 45 days after a trade, and many House reports are scanned documents. The source terms need checking before any automated collection
+  government_procurement:
+    status: not_available
+    sources: []
+    reason: Not built. USAspending.gov publishes federal awards. Its terms and response format need checking first. Award dates and announcement dates would be kept apart
+  regulatory_actions:
+    status: not_available
+    sources: []
+    reason: Not built beyond News. SEC and Federal Reserve press releases already arrive through News. A Federal Register integration would need its terms and format checked first
+  political_sector_exposure:
+    status: not_available
+    sources: []
+    reason: Not built. Needs recorded companies with industry codes and a pre-registered event study before any exposure is shown
   options_data_and_flow:
     status: not_available
     reason: No free source of historical or real-time options data

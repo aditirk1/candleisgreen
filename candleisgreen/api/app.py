@@ -186,6 +186,81 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
             "positions": acct["positions"], "alerts": alerts[:20],
         }
 
+    @app.get("/api/home")
+    def home():
+        """Everything the Home screen needs, most important first. Additive: /api/overview is unchanged."""
+        from zoneinfo import ZoneInfo
+        from ..calendars import is_trading_day
+        from ..core.timeutil import in_local_window
+        now = clock()
+        acct = account()
+        hist = journal.equity_history()
+        start = cfg.execution.simulator_starting_equity_usd
+        prev = hist[-2][1] if len(hist) >= 2 else start
+        gross = sum(abs(p["market_value"] or 0.0) for p in acct["positions"])
+        shorts = sum(-(p["market_value"] or 0.0) for p in acct["positions"] if p["quantity"] < 0)
+        st = status()
+        rs = st["risk_service"]
+        local = now.astimezone(ZoneInfo(cfg.time.market_timezone))
+        trading_day = is_trading_day(local.date())
+        is_open = trading_day and in_local_window(now, "09:30", "16:00", cfg.time.market_timezone)
+        sources = {p["price_source"] for p in acct["positions"]}
+        vendors = with_store(lambda store, master: sorted({o.vendor for i in master.instruments()[:50]
+                                                            for o in store.as_of(now).series(i["instrument_id"], "close")[-1:]})) or []
+        synthetic = any("synthetic" in (v or "") for v in list(sources) + vendors)
+        attention = []
+        if rs.get("kill_switch") is True:
+            attention.append({"severity": "critical", "text": "Kill switch is on. No new orders can be sent", "screen": "execution"})
+        if rs.get("status") != "OK":
+            attention.append({"severity": "critical", "text": f"Risk service {rs.get('status')}. Every order is blocked", "screen": "settings"})
+        if st["feed"]["status"] != "OK":
+            attention.append({"severity": "critical", "text": "Price data job missed its schedule. Decisions use old prices", "screen": "global"})
+        if journal.last_reconciliation() is False:
+            attention.append({"severity": "critical", "text": "Broker and journal positions do not match. Trading is paused", "screen": "execution"})
+        props = journal.proposals()
+        latest = max((p.session_date for p in props), default=None)
+        waiting = [p for p in props if p.session_date == latest and p.status == "proposed"]
+        if waiting and cfg.execution.mode in ("manual_simulation", "broker_paper_approval"):
+            attention.append({"severity": "action", "text": f"{len(waiting)} proposals for {latest} wait for your approval", "screen": "execution"})
+        blocked = [p for p in props if p.session_date == latest and p.status == "blocked"]
+        if blocked:
+            attention.append({"severity": "info", "text": f"{len(blocked)} orders for {latest} were blocked by the risk service: "
+                              + ", ".join(sorted({p.symbol for p in blocked})), "screen": "execution"})
+        try:
+            lim = risk._call("GET", "/limits")
+            for k, v in lim.get("pending", {}).items():
+                ready = datetime.fromisoformat(v["confirmable_from"]) <= now
+                attention.append({"severity": "action" if ready else "info",
+                                  "text": f"Limit change {k} to {v['value']} {'can be confirmed now' if ready else 'waits until ' + datetime.fromisoformat(v['confirmable_from']).astimezone(ZoneInfo(cfg.time.market_timezone)).strftime('%Y-%m-%d %H:%M ET')}",
+                                  "screen": "rules"})
+        except Exception:
+            pass
+        loss = (prev - acct["equity"]) / prev if prev else 0.0
+        stop = cfg.risk.hard_limits.daily_loss_stop_pct_equity
+        if loss >= 0.75 * stop:
+            attention.append({"severity": "critical" if loss >= stop else "action",
+                              "text": f"Loss since the last decision is {loss:.2%}, the stop is {stop:.2%}", "screen": "rules"})
+        health = [
+            {"part": "Risk service", "status": rs.get("status"), "detail": "kill switch on" if rs.get("kill_switch") else "kill switch off"},
+            {"part": "Price data job", "status": st["feed"]["status"], "detail": f"last run {st['feed']['last_run'] or 'never'}"},
+            {"part": "Reconciliation", "status": {True: "OK", False: "MISMATCH", None: "NOT RUN"}[journal.last_reconciliation()], "detail": "broker against journal"},
+            {"part": "Workstation API", "status": "OK", "detail": f"config {cfg.config_version}"},
+        ]
+        return {
+            "venue": venue, "mode": cfg.execution.mode, "now": now.isoformat(),
+            "data": {"kind": "SYNTHETIC" if synthetic else ("LIVE" if vendors else "NONE"),
+                     "note": "Every price is invented" if synthetic else ("Recorded market data, delayed" if vendors else "No price data recorded yet")},
+            "market": {"status": "OPEN" if is_open else "CLOSED", "trading_day": trading_day, "local_time": local.strftime("%H:%M")},
+            "account": {"value": acct["equity"], "cash": acct["cash"], "starting_value": start,
+                        "change_since_last_decision": acct["equity"] - prev,
+                        "change_since_start": acct["equity"] - start, "change_since_start_pct": (acct["equity"] - start) / start,
+                        "invested_pct": gross / acct["equity"] if acct["equity"] else 0.0,
+                        "short_pct": shorts / acct["equity"] if acct["equity"] else 0.0},
+            "performance": [{"time": t, "value": v} for t, v in hist],
+            "needs_attention": attention, "system_health": health,
+            "positions": acct["positions"],
+        }
+
     @app.get("/api/execution")
     def execution():
         props = journal.proposals()
@@ -287,7 +362,7 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         return index_cache["index"]
 
     @app.get("/api/news")
-    def news_view(view: str = "live", ticker: Optional[str] = None):
+    def news_view(view: str = "live", ticker: Optional[str] = None, sort: str = "relevance"):
         from datetime import timedelta
         from .. import news_insight as ni
         now = clock()
@@ -296,8 +371,28 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         rules = ni.load_rules()
         tickers_file = workdir / "sec" / "company_tickers.json"
 
+        ranking = ni.load_ranking()
+        held = {p.symbol: p for p in journal.proposals() if p.status in ("proposed", "approved")}
+        positions = journal.positions()
+
+        def relevance(store, master, linked):
+            notes, sectors = [], {}
+            for t in linked:
+                iid = master.instrument_for_symbol(t)
+                if iid is None:
+                    continue
+                sec = master.sector_at(iid, now)
+                if sec and sec != "UNKNOWN":
+                    sectors[t] = sec
+                if positions.get(iid):
+                    notes.append(f"{t} is held: {positions[iid]:g} shares")
+                if t in held:
+                    notes.append(f"{t} has a proposal for {held[t].session_date}: {held[t].side} {held[t].quantity:g}")
+            return notes, sectors
+
         def enrich(store, master):
             index = company_index(tickers_file if tickers_file.exists() else ni.TICKERS_FIXTURE, master)
+            held_syms = set(held) | {s for iid in positions for s in master.symbols(iid)[-1:]}
             earliest = min((datetime.fromisoformat(c["first_usable_at"]) for c in clusters), default=now)
             closes = ni.load_closes(store, earliest - timedelta(days=10), now)
             market_cache: dict = {}
@@ -306,18 +401,35 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
                 text = f"{c['headline']} {c['summary']}"
                 linked = sorted(set(c["tickers"]) | set(index.link(text)))
                 summary = c["summary"] if c["summary"] and c["summary"].strip().rstrip(".") != c["headline"].strip().rstrip(".") else None
-                out.append({**c, "summary": summary, "tickers": linked, "category": ni.classify_story(text, c["feeds"], rules),
+                cat = ni.classify_story(text, c["feeds"], rules)
+                notes, sectors = relevance(store, master, linked)
+                out.append({**c, "summary": summary, "tickers": linked, "category": cat,
+                            "excerpt": "summary" if summary else "headline_only",
+                            "sectors": sectors, "model_relevance": notes,
+                            "rank": ni.rank(c["headline"], linked, cat, c["items"], ranking, held_syms),
+                            "published_at": c["published_at"].isoformat() if c.get("published_at") else None,
                             "prices": ni.price_moves(closes, master, linked, datetime.fromisoformat(c["first_usable_at"]), market_cache)})
             return out
 
         rows = with_store(enrich)
         if rows is None:
-            rows = [{**c, "category": ni.classify_story(f"{c['headline']} {c['summary']}", c["feeds"], rules), "prices": None} for c in clusters]
+            rows = []
+            for c in clusters:
+                cat = ni.classify_story(f"{c['headline']} {c['summary']}", c["feeds"], rules)
+                rows.append({**c, "category": cat, "prices": None, "sectors": {}, "model_relevance": [],
+                             "excerpt": "summary" if c["summary"] else "headline_only",
+                             "published_at": c["published_at"].isoformat() if c.get("published_at") else None,
+                             "rank": ni.rank(c["headline"], c["tickers"], cat, c["items"], ranking, set(held))})
         if ticker:
             rows = [r for r in rows if ticker.upper() in r["tickers"]]
-        rows.sort(key=lambda r: (r["first_usable_at"], len(r["tickers"]), r["items"]), reverse=True)
+        if sort == "recency":
+            rows.sort(key=lambda r: (r["first_usable_at"], r["rank"]["score"]), reverse=True)
+        else:
+            rows.sort(key=lambda r: (r["rank"]["score"], r["first_usable_at"]), reverse=True)
         return {"view": view.upper(), "clusters": rows,
-                "note": "Why it may matter is a general description. What prices did is an observation, not proof of cause"}
+                "sort": sort, "ranking": {"material_threshold": ranking["material_threshold"],
+                                          "method": "Sum of: names a listed company, names a company held or proposed, category weight, repeats, minus a routine-announcement penalty. Weights in config/news_rules.yaml"},
+                "note": "Why it may matter is a general description. Implications are untested hypotheses. What prices did is an observation, not proof of cause"}
 
     @app.get("/api/reasoning")
     def reasoning(symbol: str):
@@ -407,6 +519,105 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         macro = with_store(lambda store, master: macro_view(store, cfg, clock()))
         return {"sessions": sessions, "fx": rates, "momentum_by_market": evidence, "entitlements": entitlements,
                 "markets": markets, "macro": macro if macro is not None else []}
+
+    @app.get("/api/bars/{symbol}")
+    def bars_view(symbol: str, days: int = 260):
+        """Daily candles known at the clock: open, high, low and close adjusted for splits and dividends
+        with the same factor as the close, volume as reported."""
+        from ..data.adjust import adjust_closes
+        sym, now = symbol.upper(), clock()
+
+        def run(store, master):
+            iid = master.instrument_for_symbol(sym)
+            if iid is None:
+                return {"symbol": sym, "status": "NOT AVAILABLE", "reason": f"{sym} is not in the recorded data"}
+            view = store.as_of(now)
+            fields = {f: {o.event_time.date(): o.value for o in view.series(iid, f)} for f in ("open", "high", "low", "volume")}
+            closes = view.series(iid, "close")[-max(1, min(days, 5000)):]
+            raw = [(o.event_time.date(), o.value) for o in closes]
+            adj = dict(adjust_closes(raw, master.actions(iid), now.date()))
+            rows, missing = [], 0
+            for d, c in raw:
+                f = adj[d] / c if c else 1.0
+                o_, h, l = fields["open"].get(d), fields["high"].get(d), fields["low"].get(d)
+                if None in (o_, h, l):
+                    missing += 1
+                    o_ = h = l = c  # shown as a flat bar and counted below, never invented as a range
+                rows.append({"date": d.isoformat(), "open": o_ * f, "high": h * f, "low": l * f, "close": adj[d],
+                             "volume": fields["volume"].get(d)})
+            return {"symbol": sym, "status": "OK", "bars": rows, "missing_ohlc": missing,
+                    "source": closes[-1].vendor if closes else None,
+                    "note": "Prices adjusted for splits and dividends. Volume as reported. Daily bars only"}
+        return with_store(run) or {"symbol": sym, "status": "NOT AVAILABLE", "reason": "Price data is busy or missing"}
+
+    @app.get("/api/company/{symbol}")
+    def company_view(symbol: str):
+        """Company intelligence page. Every metric has a source, a period and its age in days."""
+        import yaml as _yaml
+        from .. import company as co
+        from ..data.adjust import adjust_closes
+        from ..sources.trials import as_of as trials_as_of
+        sym, now = symbol.upper(), clock()
+        ff12 = {i["code"]: i["name"] for i in _yaml.safe_load(
+            (Path(__file__).resolve().parents[2] / "config" / "ff12_sic.yaml").read_text())["industries"]}
+
+        def run(store, master):
+            iid = master.instrument_for_symbol(sym)
+            if iid is None:
+                rows = store.connection.execute("SELECT instrument_id FROM issuers WHERE upper(ticker) = ?", [sym]).fetchall()
+                iid = rows[0][0] if rows else None
+            if iid is None:
+                return {"symbol": sym, "status": "NOT AVAILABLE", "reason": f"{sym} is not in the recorded data or the SEC issuer list"}
+            prof = master.profile(iid, now) or {}
+            inst = next((i for i in master.instruments() if i["instrument_id"] == iid), {})
+            view = store.as_of(now)
+            obs = view.series(iid, "close")
+            vols = {o.event_time.date(): o.value for o in view.series(iid, "volume")}
+            adj = [c for _, c in adjust_closes([(o.event_time.date(), o.value) for o in obs], master.actions(iid), now.date())]
+            price = None
+            if obs:
+                price = {"value": obs[-1].value, "date": obs[-1].event_time.date().isoformat(), "source": obs[-1].vendor,
+                         "as_of_dt": obs[-1].first_usable_at}
+            fund = co.fundamentals(store, iid, now)
+            sector = master.sector_at(iid, now)
+            tag = master.tag(iid, cfg.markets.us_exchanges) if inst else "research_only"
+            synthetic = bool(obs) and obs[-1].vendor.endswith("synthetic")
+            catalysts = [{"event": f"Trial {t['nct_id']} primary completion", "date": t["primary_completion"],
+                          "detail": f"{t['phases'] or 'phase not given'}, {t['overall_status']}, date {(t['primary_completion_type'] or '').lower() or 'type not given'}",
+                          "source": "ClinicalTrials.gov, recorded " + t["observed_at"][:10]}
+                         for t in trials_as_of(store.connection, now, iid) if t.get("primary_completion")]
+            filed = [m for m in fund.values() if m.get("status") == "OK"]
+            return {
+                "symbol": sym, "status": "OK", "instrument_id": iid,
+                "profile": {
+                    "name": prof.get("name") or inst.get("name") or sym,
+                    "description": (f"{prof['sicDescription']} (SEC industry code {prof.get('sic')})" if prof.get("sicDescription")
+                                    else "NOT AVAILABLE. No SEC industry description recorded"),
+                    "industry": ff12.get(sector, "Not classified"), "industry_code": sector,
+                    "revenue_model": "NOT AVAILABLE. No verified source. The 10-K business section (Item 1) is not parsed",
+                    "state_of_incorporation": prof.get("stateOfIncorporation"), "fiscal_year_end": prof.get("fiscalYearEnd"),
+                    "exchanges": prof.get("exchanges"), "source": prof.get("_source", "NOT AVAILABLE"), "observed_at": prof.get("_observed_at"),
+                },
+                "price": {k: v for k, v in (price or {}).items() if k != "as_of_dt"} or None,
+                "fundamentals": fund, "valuation": co.valuation(fund, price, now),
+                "latest_filing": max((m["as_of"] for m in filed), default=None),
+                "risks": co.risks(adj, [vols.get(o.event_time.date(), 0.0) for o in obs], [o.value for o in obs], tag, synthetic, cfg),
+                "catalysts": catalysts,
+                "catalyst_note": "No free earnings or event calendar. Upcoming dates come only from recorded clinical trials",
+                "tag": tag, "synthetic": synthetic, "has_prices": bool(obs),
+            }
+        out = with_store(run) or {"symbol": sym, "status": "NOT AVAILABLE", "reason": "Data is busy or missing"}
+        if out.get("status") == "OK":
+            out["news"] = news_view(view="recent", ticker=sym)["clusters"][:6]
+            stock = stock_view(sym) if out.pop("has_prices") else {}
+            try:
+                why = reasoning(sym).get("why_not")
+            except Exception:
+                why = None
+            out["signals"] = {"system_view": stock.get("system_view", "NOT AVAILABLE. No recorded prices, so the trend model has no reading"),
+                              "signal": stock.get("signal"), "composite_score": stock.get("composite_score"),
+                              "proposal": stock.get("proposal"), "why_not": why}
+        return out
 
     @app.get("/api/stock/{symbol}")
     def stock_view(symbol: str):
@@ -539,6 +750,54 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         rows = with_store(lambda store, master: lab.crisis_library(store, list(cfg.teaching.crises), clock()))
         return {"episodes": rows if rows is not None else []}
 
+    @app.get("/api/intelligence/ownership")
+    def ownership_view(symbol: Optional[str] = None):
+        """Insider transactions, large-holder filings and 13F holdings as disclosed by the clock. Research only."""
+        from ..core.capabilities import load_capabilities
+        from ..sources import ownership as own
+        now = clock()
+        caps = load_capabilities()
+        modules = ["insider_transactions", "institutional_holdings", "large_holder_filings", "congressional_disclosures",
+                   "government_procurement", "regulatory_actions", "political_sector_exposure"]
+
+        def run(store, master):
+            cik = None
+            if symbol:
+                rows = store.connection.execute("SELECT cik FROM issuers WHERE upper(ticker) = ?", [symbol.upper()]).fetchall()
+                cik = rows[0][0] if rows else None
+            holdings = own.holdings_as_of(store.connection, now)
+            return {"insiders": own.insiders_as_of(store.connection, now, symbol)[:200],
+                    "large_holders": own.large_holders_as_of(store.connection, now, cik)[:50],
+                    "holdings": holdings[:200], "holdings_total": len(holdings)}
+        data = with_store(run) or {"insiders": [], "large_holders": [], "holdings": [], "holdings_total": 0}
+        return {**data, "symbol": symbol, "research_only": True,
+                "sources": [{"module": m, "status": caps.get(m).status.value, "label": caps.get(m).label} for m in modules],
+                "caveats": ["Transaction or quarter-end dates and disclosure dates are shown separately. Records count only from disclosure",
+                            "A 13F is a delayed snapshot of long positions. It is not a complete or current portfolio and not evidence of skill",
+                            "Sales flagged as 10b5-1 were scheduled in advance under a trading plan",
+                            "Nothing here feeds an order until a pre-registered test passes"]}
+
+    @app.get("/api/asset-classes")
+    def asset_classes():
+        """Each asset class with what the capability registry allows: research, historical prices, paper execution."""
+        import yaml as _yaml
+        from ..core.capabilities import load_capabilities
+        caps = load_capabilities()
+        spec = _yaml.safe_load((Path(__file__).resolve().parents[2] / "config" / "asset_classes.yaml").read_text())["asset_classes"]
+
+        def facet(name):
+            c = caps.get(name)
+            return {"capability": name, "status": c.status.value, "label": c.label, "reason": c.reason,
+                    "usable": c.status.value in ("available", "limited")}
+        out = []
+        for a in spec:
+            row = {"id": a["id"], "label": a["label"], "research": facet(a["research"]), "history": facet(a["history"]),
+                   "paper_execution": facet(a["paper_execution"]), "extra": [facet(x) for x in a.get("extra", [])]}
+            row["summary"] = ("Paper trading" if row["paper_execution"]["usable"] else
+                              "Research only" if row["research"]["usable"] or row["history"]["usable"] else "No usable data")
+            out.append(row)
+        return {"asset_classes": out, "note": "From config/capabilities.yaml. No market prices, Greeks or forecasts are shown where data is not available"}
+
     @app.get("/api/inbox")
     def inbox_list():
         return {"captures": inbox.list(), "auto_fetch_hosts": list(cfg.research.inbox.auto_fetch_hosts)}
@@ -568,8 +827,35 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
             rows.append({"proposal_id": p.proposal_id, "symbol": p.symbol, "side": p.side, "quantity": p.quantity,
                          "signal_strength": p.signal_strength, "expected_return": "NOT AVAILABLE. The model is not calibrated",
                          "entry": "Limit order priced from a fresh quote at execution", "model": f"{p.model_id} {p.model_version}",
-                         "tier": tier, "status": p.status, "risk": p.reason.split(chr(10))[0] if p.reason else ""})
-        return {"session_date": latest, "venue": venue, "rows": rows}
+                         "tier": tier, "status": p.status, "risk": p.reason.split(chr(10))[0] if p.reason else "",
+                         "instrument_id": p.instrument_id, "decision_date": p.decision_date})
+        now = clock()
+
+        def metrics(store, master):
+            import math
+            from ..data.adjust import adjust_closes
+            n = cfg.universe.dollar_volume_window_days
+            for r in rows:
+                obs = store.as_of(now).series(r["instrument_id"], "close")
+                vols = store.as_of(now).series(r["instrument_id"], "volume")[-n:]
+                adj = [c for _, c in adjust_closes([(o.event_time.date(), o.value) for o in obs], master.actions(r["instrument_id"]), now.date())]
+                ch = lambda k: adj[-1] / adj[-1 - k] - 1 if len(adj) > k and adj[-1 - k] else None
+                rets = [b / a - 1 for a, b in zip(adj[-64:-1], adj[-63:]) if a]
+                m = sum(rets) / len(rets) if rets else 0.0
+                vol = math.sqrt(sum((x - m) ** 2 for x in rets) / (len(rets) - 1) * 252) if len(rets) > 2 else None
+                closes_by_day = {o.event_time.date(): o.value for o in obs}
+                dv = sorted(v.value * closes_by_day.get(v.event_time.date(), 0.0) for v in vols)
+                r["metrics"] = {"change_1m": ch(21), "change_1y": ch(252), "volatility_annual": vol,
+                                "median_dollar_volume_20d": dv[len(dv) // 2] if dv else None,
+                                "price": obs[-1].value if obs else None,
+                                "as_of": obs[-1].event_time.date().isoformat() if obs else None,
+                                "source": obs[-1].vendor if obs else None}
+                r["direction"] = {"buy": "Long", "sell": "Exit long", "sell_short": "Short", "buy_to_cover": "Exit short"}.get(r["side"], r["side"])
+                r["horizon"] = "About one month, re-decided each trading day" if r["model"].startswith("ts_momentum") else "NOT AVAILABLE"
+            return True
+        with_store(metrics)
+        return {"session_date": latest, "venue": venue, "rows": rows,
+                "note": "Signal strength ranks names. It is not a forecast return or a probability"}
 
     @app.get("/api/markets")
     def markets(symbol: Optional[str] = None):

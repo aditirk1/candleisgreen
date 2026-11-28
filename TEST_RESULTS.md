@@ -1,6 +1,6 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-24, **346 passed, 0 failed** in about 182 seconds on Python 3.13.
+Latest full run: 2026-11-27, **357 passed, 0 failed** in about 221 seconds on Python 3.13.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
 
@@ -298,3 +298,24 @@ Interface check: 79 Playwright checks passed, now including the light theme, sto
 | `tests/test_short_selling.py` | 15 | Off by default, a short within every limit approved, each short rule blocks (borrow refused, borrow unknown, per-stock, pending shorts, total short, gross exposure, missing data), no long-to-short flip, covering always allowed even after the loss stop, gross counting in the book check, turning on waits 24 hours and needs Aditi, a downtrend shorted end to end through the risk service process within the 3% limit, and no short proposed while the limits are 0 |
 
 Interface check: 84 Playwright checks passed. The Short selling card shows ON at 3% and 30%, turning off applies at once, and turning back on waits for the delay and a confirmation. The demo now holds a real DNCO short. The run also found a latent bug: Overview failed whenever an order was blocked, because proposals never loaded their update time. Fixed.
+
+## UX redesign, priorities 1 to 5, 2026-11-27 (branch `ux-redesign-intelligence`)
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_news_insight.py` | 8 | Adds the ranking components and MATERIAL or ROUTINE split, relevance and recency sorting through the API, excerpt quality, item-level sources and timestamps, labeled hypotheses, and templated headlines about different events kept apart |
+
+Interface check: 99 Playwright checks passed, including the six destinations and Research workspace, the demo data banner, the Home empty state for performance, Needs Attention, news search, category filter, recency sort and save, the material and routine split, the opportunity drawer opened by keyboard with every evidence section, focus moving into it and Escape closing it, the light theme background, and price charts drawn after switching to each theme. Fourteen screenshots of the principal screens in both themes are in `docs/screens/principal-*.png`. Frontend production build passes.
+
+## Company pages, priority 6, 2026-11-27
+
+`tests/test_company.py` (3 tests): an SEC-only company has sourced financials with period and age, an honest NOT AVAILABLE for valuation without a price, unparsed revenue model and risk factors labeled, a priced demo company without filings shows price risks and the trend view, and price to earnings needs every input with a source. Interface check: 104 Playwright checks passed, including the company chart, SEC filing links, the age column and the labeled gaps.
+
+## Asset classes and ownership intelligence, priorities 7 and 8, 2026-11-27
+
+| File | Tests | Covers |
+| --- | --- | --- |
+| `tests/test_asset_classes.py` | 2 | Every asset class facet names a real capability, and only stocks and ETFs can be paper traded |
+| `tests/test_ownership.py` | 3 | A real Form 4 parses with transaction and disclosure dates apart and the 10b5-1 flag, ingestion is safe to rerun and point in time, a purchase is recognized, a real 13F sums rows per security and stays invisible until its disclosure |
+
+Interface check: 111 Playwright checks passed.

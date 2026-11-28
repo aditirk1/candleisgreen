@@ -93,6 +93,26 @@ def similarity(a: str, b: str) -> float:
     return len(wa & wb) / len(wa | wb) if wa and wb else 0.0
 
 
+_ENTITY = re.compile(r"\b(?:\d[\d,./-]*|[A-Z][A-Za-z&.'-]+)")
+_COMMON = {"Federal", "Reserve", "Board", "Bank", "SEC", "The", "Announces", "Issues", "Releases", "Charges", "Minutes",
+           "Committee", "Open", "Market", "Securities", "Exchange", "Commission", "Corporation", "Company", "Inc", "LLC"}
+
+
+def distinguishing(title: str) -> set[str]:
+    """Names and numbers that tell two templated headlines apart, such as the bank named or the meeting dates."""
+    return {t.rstrip(".,") for t in _ENTITY.findall(title) if t.rstrip(".,") not in _COMMON}
+
+
+def same_story(a: str, b: str, threshold: float) -> bool:
+    """Similar wording is not enough. Templated headlines about different firms or dates stay separate."""
+    if similarity(a, b) < threshold:
+        return False
+    la, lb = set(_WORD.findall(a.lower())), set(_WORD.findall(b.lower()))
+    da = {w for t in distinguishing(a) for w in _WORD.findall(t.lower())}
+    db = {w for t in distinguishing(b) for w in _WORD.findall(t.lower())}
+    return da <= lb and db <= la  # every name and number in one headline appears in the other
+
+
 class NewsStore:
     def __init__(self, path: str | Path, shared_across_threads: bool = False):
         self.conn = sqlite_connect(path, shared_across_threads)
@@ -107,10 +127,12 @@ class NewsStore:
         best, best_sim = None, 0.0
         for cid, other in self.conn.execute(
                 "SELECT cluster_id, title FROM news_items WHERE first_usable_at BETWEEN ? AND ?", (lo, hi)).fetchall():
+            if not same_story(title, other, cfg.news.cluster_similarity):
+                continue
             sim = similarity(title, other)
             if sim > best_sim:
                 best, best_sim = cid, sim
-        return best if best and best_sim >= cfg.news.cluster_similarity else make_id("story", {"title": title, "at": when})
+        return best if best else make_id("story", {"title": title, "at": when})
 
     def add(self, feed: FeedConfig, items: Iterable[dict], seen_at: datetime, cfg: AppConfig) -> int:
         seen_at = ensure_utc(seen_at)
@@ -152,7 +174,13 @@ class NewsStore:
             groups.setdefault(it.cluster_id, []).append(it)
         return [{"cluster_id": cid, "headline": g[-1].title, "items": len(g), "feeds": sorted({x.feed for x in g}),
                  "first_usable_at": min(x.first_usable_at for x in g).isoformat(), "tickers": sorted({t for x in g for t in x.tickers}),
-                 "links": [x.link for x in g], "summary": max((x.summary for x in g), key=len)} for cid, g in groups.items()]
+                 "links": [x.link for x in g], "summary": max((x.summary for x in g), key=len),
+                 "published_at": min((x.published_at for x in g if x.published_at), default=None),
+                 "items_detail": [{"feed": x.feed, "title": x.title, "link": x.link, "license": x.license,
+                                   "published_at": x.published_at.isoformat() if x.published_at else None,
+                                   "first_seen_at": x.first_seen_at.isoformat(),
+                                   "first_usable_at": x.first_usable_at.isoformat()} for x in g]}
+                for cid, g in groups.items()]
 
 
 def fetch(feed: FeedConfig, user_agent: str, timeout: float = 30) -> bytes:

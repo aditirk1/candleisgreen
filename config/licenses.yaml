@@ -23,7 +23,7 @@ licenses:
     paper_trading: unverified
     note: Personal research only until terms are confirmed
   user_capture:
-    description: Material Aditi pasted into the Research Capture Inbox. Only a hash, a short summary and extracted claims are kept
+    description: Material you pasted into the Research Capture Inbox. Only a hash, a short summary and extracted claims are kept
     research: permitted
     paper_trading: unverified
     note: A captured claim must be tested on licensed data before anything trades on it

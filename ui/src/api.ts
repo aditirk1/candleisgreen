@@ -1,6 +1,15 @@
+/** An error written for people. String(e) gives the message alone, without "Error:". */
+export class ApiError extends Error {
+  constructor(message: string, readonly path: string, readonly status: number | null) { super(message); }
+  toString() { return this.message; }
+}
+const OFFLINE = "Cannot reach the CandleIsGreen server. Start it with make demo in a terminal, then refresh this page.";
+
 export async function getJSON<T>(path: string): Promise<T> {
-  const r = await fetch(path);
-  if (!r.ok) throw new Error(`${path} returned ${r.status}`);
+  let r: Response;
+  try { r = await fetch(path); } catch { throw new ApiError(OFFLINE, path, null); }
+  if (r.status === 502 || r.status === 503 || r.status === 504) throw new ApiError(OFFLINE, path, r.status);
+  if (!r.ok) throw new ApiError(`This section could not be loaded (server error ${r.status}). Refresh to try again.`, path, r.status);
   return r.json() as Promise<T>;
 }
 

@@ -197,6 +197,8 @@ sources:
     # When a filing's acceptance time is unknown: EDGAR assigns the filing date to anything
     # accepted by 17:30 ET, so the value was public by then at the latest.
     filed_date_fallback_time_local: "17:30"
+    # Investment managers whose 13F holdings are collected, by CIK. Empty by default. Research only.
+    managers_13f: []
     concepts:
       - us-gaap:EarningsPerShareDiluted
       - us-gaap:EarningsPerShareBasic

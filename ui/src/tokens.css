@@ -1,63 +1,83 @@
-/* Design tokens. Components never hard-code colors or sizes. A theme switch changes tokens only. */
-:root, [data-theme="terminal"] {
+/* Design tokens. Components read only these variables, so a theme switch changes tokens and nothing else.
+   Two themes: light (neutral off-white, no gradients or translucency) and dark (the terminal theme). */
+:root, [data-theme="light"] {
+  /* Typography */
+  --font-ui: Inter, "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-num: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 18px;
+  --fs-xl: 26px;
+  /* Surfaces and borders */
+  --bg: #F6F7F9;
+  --surface: #FFFFFF;
+  --surface-2: #F1F3F6;
+  --border: #E2E5EA;
+  --border-strong: #C9CED6;
+  --hover: #EEF1F5;
+  --shadow: 0 1px 2px rgba(17, 24, 39, 0.05);
+  /* Text */
+  --text: #111827;
+  --text-muted: #4B5563;
+  /* Accent and states. Each text color keeps at least 4.5:1 contrast on --surface. */
+  --accent: #1F4FBF;
+  --accent-contrast: #FFFFFF;
+  --focus: #1F4FBF;
+  --gain: #0F7A55;
+  --loss: #B42330;
+  --warn: #8A5A00;
+  --warn-bg: #FFF6E5;
+  --critical-bg: #FDECEE;
+  /* Charts */
+  --chart-line: #1F4FBF;
+  --chart-grid: #ECEFF3;
+  --chart-text: #4B5563;
+  --chart-up: #0F7A55;
+  --chart-down: #B42330;
+  --chart-volume: rgba(75, 85, 99, 0.25);
+  /* Layout */
+  --radius: 8px;
+  --gap: 16px;
+  --row: 40px;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --font-ui: "IBM Plex Sans", Inter, system-ui, sans-serif;
   --bg: #0B0D10;
-  --panel: #12151A;
-  --panel-border: 1px solid #232830;
-  --panel-blur: none;
+  --surface: #12151A;
+  --surface-2: #171B21;
+  --border: #232830;
+  --border-strong: #343B46;
+  --hover: #1A1E25;
+  --shadow: none;
   --text: #D7DCE2;
-  --muted: #8A93A0;
+  --text-muted: #8A93A0;
   --accent: #FFB000;
+  --accent-contrast: #0B0D10;
+  --focus: #FFB000;
   --gain: #3FB950;
   --loss: #F85149;
-  --font-num: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
-  --font-label: "IBM Plex Sans", Inter, system-ui, sans-serif;
-  --label-size: 12px;
-  --row: 28px;
-  --radius: 2px;
-  --gap: 8px;
-  --shadow: none;
-  --hover: #1A1E25;
+  --warn: #E3B341;
+  --warn-bg: #2A2210;
+  --critical-bg: #2B1416;
+  --chart-line: #FFB000;
+  --chart-grid: #1C2028;
+  --chart-text: #8A93A0;
+  --chart-up: #3FB950;
+  --chart-down: #F85149;
+  --chart-volume: rgba(138, 147, 160, 0.3);
+  --radius: 4px;
+  --row: 34px;
+  color-scheme: dark;
 }
-[data-theme="glass"] {
-  --bg: linear-gradient(160deg, #0E1420, #16213A);
-  --panel: rgba(255, 255, 255, 0.06);
-  --panel-solid: rgba(22, 33, 58, 0.9);
-  --panel-border: 1px solid rgba(255, 255, 255, 0.12);
-  --panel-blur: blur(16px);
-  --text: #E8EDF5;
-  --muted: #9AA6B8;
-  --accent: #5B8CFF;
-  --gain: #34C78A;
-  --loss: #FF6B6B;
-  --font-num: Inter, system-ui, sans-serif;
-  --font-label: Inter, system-ui, sans-serif;
-  --label-size: 14px;
-  --row: 40px;
-  --radius: 12px;
-  --gap: 16px;
-}
-[data-theme="light"] {
-  --bg: #F3F5F9;
-  --panel: #FFFFFF;
-  --panel-solid: #FFFFFF;
-  --panel-border: 1px solid #E3E7EE;
+/* Older names used by existing screens, kept as aliases of the tokens above. */
+:root, [data-theme] {
+  --panel: var(--surface);
+  --panel-solid: var(--surface);
+  --panel-border: 1px solid var(--border);
   --panel-blur: none;
-  --text: #111827;
-  --muted: #4B5563;
-  /* Darker than the Glass accent and gain colors so text keeps 4.5:1 contrast on white. */
-  --accent: #2F5BD3;
-  --gain: #0F7A55;
-  --loss: #C2303B;
-  --font-num: Inter, system-ui, sans-serif;
-  --font-label: Inter, system-ui, sans-serif;
-  --label-size: 14px;
-  --row: 40px;
-  --radius: 12px;
-  --gap: 16px;
-  --shadow: 0 1px 2px rgba(17, 24, 39, 0.06);
-  --hover: #F0F3F8;
-}
-[data-theme="glass"] { --hover: rgba(255, 255, 255, 0.08); --shadow: none; }
-@media (prefers-reduced-transparency: reduce) {
-  [data-theme="glass"] { --panel: #16213A; --panel-blur: none; }
+  --muted: var(--text-muted);
+  --font-label: var(--font-ui);
+  --label-size: var(--fs-md);
 }

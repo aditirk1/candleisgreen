@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { getJSON, post } from "../api";
 import { timeET } from "../format";
+import { dataLabel, humanize, plainReason, signalName, statusName, studyName } from "../labels";
+import { Tech } from "../stock";
 import { InboxPanel } from "./Inbox";
 
 type Experiment = { experiment_id: string; claim_id: string; study_type: string; status: string; plan: Record<string, unknown>; result: Record<string, unknown> | null; registered_at: string; completed_at: string | null; variants: number; selection_note: string };
@@ -16,17 +18,17 @@ function ExperimentRow({ e }: { e: Experiment }) {
   const r = (e.result ?? {}) as Record<string, unknown>;
   return (
     <tr>
-      <td>{e.study_type}</td><td className={e.status === "FAILED" ? "loss" : e.status === "PASSED" ? "gain" : ""}>{e.status === "FAILED" ? "▼ FAILED" : e.status === "PASSED" ? "▲ PASSED" : e.status}</td>
-      <td className="num">{String(r.mean_monthly_pct ?? "NOT AVAILABLE")}</td><td className="num">{String(r.t_stat ?? "NOT AVAILABLE")}</td>
-      <td className="num">{String(r.months ?? "")}</td><td className="muted">{String(e.plan.rule ?? "")}</td><td className="num">{e.variants}</td>
+      <td>{studyName(e.study_type)}</td><td className={e.status === "FAILED" ? "loss" : e.status === "PASSED" ? "gain" : ""}>{e.status === "FAILED" ? "▼ Did not hold up" : e.status === "PASSED" ? "▲ Held up" : statusName(e.status)}</td>
+      <td className="num">{typeof r.mean_monthly_pct === "number" ? (r.mean_monthly_pct as number).toFixed(2) : "Not available"}</td><td className="num">{typeof r.t_stat === "number" ? (r.t_stat as number).toFixed(1) : "Not available"}</td>
+      <td className="num">{String(r.months ?? "")}</td><td className="muted">{plainReason(String(e.plan.rule ?? ""))}</td><td className="num">{e.variants}</td>
       <td>{timeET(e.registered_at)}</td>
     </tr>
   );
 }
 
-const EXP_HEAD = <thead><tr><th>Study</th><th>Result</th><th className="num">Mean (% a month)</th><th className="num">t</th><th className="num">Months</th><th>Pre-registered rule</th><th className="num">Variants</th><th>Registered</th></tr></thead>;
+const EXP_HEAD = <thead><tr><th>Test</th><th>Result</th><th className="num">Average return (% a month)</th><th className="num">t-statistic</th><th className="num">Months</th><th>Pass rule, set before testing</th><th className="num">Versions tried</th><th>Registered</th></tr></thead>;
 
-const RESEARCH_TABS: [string, string][] = [["digest", "Today"], ["claims", "Claims and evidence"], ["inbox", "Capture inbox"]];
+const RESEARCH_TABS: [string, string][] = [["digest", "Today"], ["claims", "Research ideas"], ["inbox", "Capture inbox"]];
 
 export function ResearchScreen({ tick, focus }: { tick: number; focus: string | null }) {
   const [tab, setTab] = useState(focus ? "claims" : "digest");
@@ -53,55 +55,55 @@ export function ResearchScreen({ tick, focus }: { tick: number; focus: string | 
       <div className="grid2">
         <section className="panel"><h2>Daily research digest {d ? d.date : ""}</h2>
           {!d ? <p className="muted">No digest yet</p> : (<table><tbody>
-            <tr><td>New hypotheses pre-registered</td><td className="num">{d.new_hypotheses.length}</td></tr>
-            <tr><td>Duplicates linked</td><td className="num">{d.duplicates.length}</td></tr>
-            <tr><td>Results recorded</td><td className="num">{d.results.length}</td></tr>
-            <tr><td>Contradictions of active signals</td><td className="num">{d.contradictions.length}</td></tr>
-            <tr><td>Re-evaluation cases opened</td><td className="num">{d.reevaluations_opened.length}</td></tr>
+            <tr><td>New ideas registered for testing</td><td className="num">{d.new_hypotheses.length}</td></tr>
+            <tr><td>Repeats of earlier ideas</td><td className="num">{d.duplicates.length}</td></tr>
+            <tr><td>Test results</td><td className="num">{d.results.length}</td></tr>
+            <tr><td>New research against a signal in use</td><td className="num">{d.contradictions.length}</td></tr>
+            <tr><td>Signal reviews opened</td><td className="num">{d.reevaluations_opened.length}</td></tr>
             <tr><td>Waiting for data</td><td className="num">{d.needs_data.length}</td></tr>
           </tbody></table>)}
-          {d && d.needs_data.map((n) => <p key={n.claim_id} className="muted">NEEDS DATA: {n.missing.join(", ")}. Free substitute: {Object.values(n.free_substitute).join(", ")}</p>)}
+          {d && d.needs_data.map((n) => <p key={n.claim_id} className="muted">Needs data: {n.missing.join(", ")}. Free substitute: {Object.values(n.free_substitute).join(", ")}</p>)}
         </section>
-        <section className="panel"><h2>Re-evaluation cases</h2>
+        <section className="panel"><h2>Signals under review</h2>
           {data.reevaluations.length === 0 ? <p className="muted">None</p> : (
-            <table><thead><tr><th>Signal</th><th>Trigger</th><th>Opened</th><th>Status</th></tr></thead>
-              <tbody>{data.reevaluations.map((c) => <tr key={c.case_id}><td>{c.signal_id}</td><td className="muted">{c.trigger_claim_id}</td><td>{timeET(c.opened_at)}</td><td>{c.status}</td></tr>)}</tbody></table>)}
-          <h2 style={{ marginTop: 12 }}>Promotions waiting for Aditi</h2>
+            <table><thead><tr><th>Signal</th><th>Opened</th><th>Status</th></tr></thead>
+              <tbody>{data.reevaluations.map((c) => <tr key={c.case_id}><td>{signalName(c.signal_id)}</td><td>{timeET(c.opened_at)}</td><td>{statusName(c.status)}</td></tr>)}</tbody></table>)}
+          <p className="muted small">A review opens when new research contradicts a signal in use.</p>
+          <h2 style={{ marginTop: 12 }}>Waiting for your decision</h2>
           {data.promotions.length === 0 ? <p className="muted">None</p> : (
-            <table><thead><tr><th>Signal</th><th className="num">To tier</th><th>Status</th><th>Decision</th></tr></thead>
-              <tbody>{data.promotions.map((p) => <tr key={p.proposal_id}><td>{p.signal_id}</td><td className="num">{p.to_tier}</td><td>{p.status}</td>
-                <td>{p.status === "PENDING" ? <span style={{ display: "flex", gap: 6 }}><button onClick={() => decide(p.proposal_id, "approve")}>Approve</button><button className="danger" onClick={() => decide(p.proposal_id, "decline")}>Decline</button></span> : p.decided_by}</td></tr>)}</tbody></table>)}
+            <table><thead><tr><th>Signal</th><th className="num">Move to evidence level</th><th>Status</th><th>Decision</th></tr></thead>
+              <tbody>{data.promotions.map((p) => <tr key={p.proposal_id}><td>{signalName(p.signal_id)}</td><td className="num">{p.to_tier}</td><td>{statusName(p.status)}</td>
+                <td>{p.status === "PENDING" ? <span style={{ display: "flex", gap: 6 }}><button onClick={() => decide(p.proposal_id, "approve")}>Approve</button><button className="danger" onClick={() => decide(p.proposal_id, "decline")}>Decline</button></span> : p.decided_by === "user:aditi" ? "You" : p.decided_by}</td></tr>)}</tbody></table>)}
         </section>
       </div>
-      <section className="panel"><h2>Model levels, challenger against champion</h2>
+      <section className="panel"><h2>Model comparisons, current model against a challenger</h2>
         {data.models.length === 0 ? <p className="muted">No comparisons yet</p> : (
-          <table><thead><tr><th>Champion</th><th>Challenger</th><th>Test</th><th className="num">p value</th><th className="num">Subperiods held</th><th>Data</th><th>Recommendation</th></tr></thead>
-            <tbody>{data.models.map((m) => <tr key={m.experiment_id}><td>{m.champion}</td><td>{m.challenger}</td><td className="muted">{m.result.test}</td>
-              <td className="num">{m.result.pvalue.toFixed(3)}</td><td className="num">{m.result.subperiods_held} of 3</td><td>{m.result.data_labels.join(", ")}</td><td>{m.result.recommendation}</td></tr>)}</tbody></table>)}
+          <table><thead><tr><th>Current model</th><th>Challenger</th><th>How compared</th><th className="num">Chance it is luck</th><th className="num">Periods it held in</th><th>Data</th><th>Result</th></tr></thead>
+            <tbody>{data.models.map((m) => <tr key={m.experiment_id}><td>{signalName(m.champion)}</td><td>{signalName(m.challenger)}</td><td className="muted">{m.result.test}</td>
+              <td className="num">{m.result.pvalue.toFixed(3)}</td><td className="num">{m.result.subperiods_held} of 3</td><td>{m.result.data_labels.map(dataLabel).join(", ")}</td><td>{m.result.recommendation.charAt(0).toUpperCase() + m.result.recommendation.slice(1)}</td></tr>)}</tbody></table>)}
       </section>
       </>}
       {tab === "claims" && <>
-      <section className="panel"><h2>Claim cards ({data.trial_count} variants tried in total)</h2>
-        <table><thead><tr><th>Claim</th><th>Status</th><th className="num">Paper (% a month)</th><th className="num">Paper t</th><th>Sample</th><th>Signal</th><th className="num">Tier</th><th>Evidence</th></tr></thead>
+      <section className="panel"><h2>Research ideas ({data.trial_count} versions tested in total)</h2>
+        <table><thead><tr><th>Idea</th><th>Status</th><th className="num">Published return (% a month)</th><th className="num">Published t-statistic</th><th>Years studied</th><th>Used by</th><th className="num">Evidence level</th><th></th></tr></thead>
           <tbody>{data.claims.map((c) => (
-            <tr key={c.claim_id}><td>{c.card.title}</td><td className={c.status === "FAILED" ? "loss" : ""}>{c.status}</td>
-              <td className="num">{c.card.reported_effect?.monthly_return_pct ?? "NOT AVAILABLE"}</td><td className="num">{c.card.reported_effect?.t_stat ?? "NOT AVAILABLE"}</td>
+            <tr key={c.claim_id}><td>{c.card.title}</td><td className={c.status === "FAILED" ? "loss" : ""}>{statusName(c.status)}</td>
+              <td className="num">{c.card.reported_effect?.monthly_return_pct ?? "Not available"}</td><td className="num">{c.card.reported_effect?.t_stat ?? "Not available"}</td>
               <td>{c.card.reported_effect ? `${c.card.reported_effect.sample[0]} to ${c.card.reported_effect.sample[1]}` : ""}</td>
-              <td className="muted">{c.signal_id ?? ""}</td><td className="num">{c.tier ?? ""}</td>
-              <td><button className={sel === c.claim_id ? "active" : ""} onClick={() => setSel(c.claim_id)}>Evidence chain</button></td></tr>))}
+              <td className="muted">{c.signal_id ? signalName(c.signal_id) : ""}</td><td className="num">{c.tier ?? ""}</td>
+              <td><button className={sel === c.claim_id ? "active" : ""} onClick={() => setSel(c.claim_id)}>Show evidence</button></td></tr>))}
           </tbody></table>
       </section>
       {chain && (
-        <section className="panel"><h2>Evidence chain: {chain.claim.card.title}</h2>
-          <p className="muted">Claim {chain.claim.claim_id}. Status {chain.claim.status}. Source replication quality {chain.claim.card.replication_quality_in_source ?? "NOT AVAILABLE"}.</p>
+        <section className="panel"><h2>Evidence: {chain.claim.card.title}</h2>
+          <p className="muted">Status {statusName(chain.claim.status)}. How well the data source reproduced it: {humanize((chain.claim.card.replication_quality_in_source ?? "not stated").replace(/^\d_/, ""))}.</p>
           <table>{EXP_HEAD}<tbody>{chain.experiments.map((e) => <ExperimentRow key={e.experiment_id} e={e} />)}</tbody></table>
-          <h2 style={{ marginTop: 12 }}>Links</h2>
-          <table><thead><tr><th>From</th><th>Relation</th><th>To</th><th>Independence</th></tr></thead>
-            <tbody>{chain.links.map((l, i) => <tr key={i}><td className="muted">{l.from_id}</td><td>{l.relation}</td><td className="muted">{l.to_id}</td><td>{l.independence}</td></tr>)}</tbody></table>
-          {chain.experiments.filter((e) => e.selection_note).map((e) => <p key={e.experiment_id} className="muted">Selection note: {e.selection_note}</p>)}
+          {chain.links.length > 0 && <p className="muted small">{chain.links.length} related research {chain.links.length === 1 ? "item" : "items"}: {Array.from(new Set(chain.links.map((l) => l.relation))).join(", ")}.</p>}
+          {chain.experiments.filter((e) => e.selection_note).map((e) => <p key={e.experiment_id} className="muted">Note: {e.selection_note}</p>)}
+          <Tech><p>Claim {chain.claim.claim_id}.</p>{chain.links.map((l, i) => <p key={i}>{l.from_id} {l.relation} {l.to_id} ({l.independence})</p>)}</Tech>
         </section>)}
-      <section className="panel"><h2>Failure archive</h2>
-        {data.failures.length === 0 ? <p className="muted">No failed experiments</p> : (
+      <section className="panel"><h2>Failure archive, ideas that did not hold up</h2>
+        {data.failures.length === 0 ? <p className="muted">No failed tests</p> : (
           <table>{EXP_HEAD}<tbody>{data.failures.map((e) => <ExperimentRow key={e.experiment_id} e={e} />)}</tbody></table>)}
       </section>
       </>}

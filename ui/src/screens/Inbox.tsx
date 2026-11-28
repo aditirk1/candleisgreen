@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { getJSON, post } from "../api";
 import { timeET } from "../format";
+import { humanize, statusName } from "../labels";
+import { useMode } from "../theme";
+
+const KINDS: Record<string, string> = { text: "Pasted text", link: "Link", file: "File" };
 
 type Card = { claim_type: string; title: string; direction: string; horizon: string | null; instruments: string[] };
 type Capture = { capture_id: string; kind: string; capture_hash: string; received_at: string; url: string | null; filename: string | null; summary: string | null; status: string; request: string | null; cards: Card[]; sent_to_factory: boolean };
 
 export function InboxPanel({ tick }: { tick: number }) {
+  const adv = useMode() === "advanced";
   const [items, setItems] = useState<Capture[]>([]);
   const [kind, setKind] = useState<"text" | "link">("text");
   const [content, setContent] = useState("");
@@ -28,7 +33,7 @@ export function InboxPanel({ tick }: { tick: number }) {
   }
   return (
     <section className="panel"><h2>Research Capture Inbox</h2>
-      <p className="muted">Paste a link or text, or add a file. Only a hash, the time, a short summary and extracted claims are kept. Links are not fetched automatically.</p>
+      <p className="muted">Paste a link or text, or add a file. Only a fingerprint of the original, the time, a short summary and the claims found are kept. Links are not fetched automatically.</p>
       <form onSubmit={(e) => { e.preventDefault(); send(kind === "link" ? { kind, url: content } : { kind, content }); }} style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" className={kind === "text" ? "active" : ""} onClick={() => setKind("text")}>Text</button>
@@ -42,11 +47,11 @@ export function InboxPanel({ tick }: { tick: number }) {
       </form>
       {msg && <p role="status">{msg}</p>}
       {items.length > 0 && (
-        <table><thead><tr><th>Received</th><th>Kind</th><th>Status</th><th>Summary or request</th><th className="num">Claims</th><th>Hash</th></tr></thead>
+        <table><thead><tr><th>Received</th><th>Kind</th><th>Status</th><th>Summary or request</th><th className="num">Claims found</th>{adv && <th>Fingerprint</th>}</tr></thead>
           <tbody>{items.map((c) => (
-            <tr key={c.capture_id} title={c.cards.map((k) => `${k.claim_type}: ${k.title}`).join("\n")}>
-              <td>{timeET(c.received_at)}</td><td>{c.kind}</td><td className={c.status === "EXTRACTED" ? "" : "na"}>{c.status}</td>
-              <td>{c.request ?? c.summary ?? c.url ?? ""}</td><td className="num">{c.cards.length}</td><td className="muted">{c.capture_hash.slice(0, 12)}</td></tr>))}
+            <tr key={c.capture_id} title={c.cards.map((k) => `${humanize(k.claim_type)}: ${k.title}`).join("\n")}>
+              <td>{timeET(c.received_at)}</td><td>{KINDS[c.kind] ?? humanize(c.kind)}</td><td className={c.status === "EXTRACTED" ? "" : "na"}>{statusName(c.status)}</td>
+              <td>{c.request ?? c.summary ?? c.url ?? ""}</td><td className="num">{c.cards.length}</td>{adv && <td className="muted">{c.capture_hash.slice(0, 12)}</td>}</tr>))}
           </tbody></table>)}
     </section>
   );

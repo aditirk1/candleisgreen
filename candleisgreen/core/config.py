@@ -243,6 +243,7 @@ class RecorderConfig(_Section):
 
 
 class SecSourceConfig(_Section):
+    managers_13f: tuple[str, ...] = ()
     data_base_url: str
     tickers_url: str
     archives_base_url: str

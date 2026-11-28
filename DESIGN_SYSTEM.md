@@ -4,35 +4,54 @@ Source: `SPEC.md` v3.2, section "Interface and design system". Built in `ui/src/
 
 ## Themes
 
-Three themes over one layout: Light, Dark (Glass) and Terminal, chosen from the Theme menu in the top bar or in Settings. The first visit follows the system's light or dark preference. Components read CSS variables only, so a theme switch changes tokens and nothing else. The commands `THEME TERMINAL` and `THEME GLASS` still work.
+Two themes: Light (default when the system prefers light) and Dark (the terminal theme). The choice is saved in the browser. Every color, size and surface comes from tokens in `ui/src/tokens.css`. Charts read the chart tokens and redraw when the theme changes.
 
-| Token | Terminal | Dark (Glass) | Light |
-| --- | --- | --- | --- |
-| `--bg` | #0B0D10 | gradient #0E1420 to #16213A | #F3F5F9 |
-| `--panel` | #12151A with a 1 px #232830 border | white at 6% with a 16 px blur and a white border at 12%. Tables sit on `--panel-solid` at 90% | #FFFFFF with a 1 px #E3E7EE border |
-| `--text`, `--muted` | #D7DCE2, #8A93A0 | #E8EDF5, #9AA6B8 | #111827, #4B5563 |
-| `--accent` | #FFB000 | #5B8CFF | #2F5BD3 |
-| `--gain`, `--loss` | #3FB950, #F85149 | #34C78A, #FF6B6B | #0F7A55, #C2303B |
-| Numbers | IBM Plex Mono or JetBrains Mono, tabular | Inter, tabular | Inter, tabular |
-| Rows, corners | 28 px, 2 px | 40 px, 12 px | 40 px, 12 px |
+| Token group | Light | Dark |
+| --- | --- | --- |
+| Background, surface, raised surface | #F6F7F9, #FFFFFF, #F1F3F6 | #0B0D10, #12151A, #171B21 |
+| Border, strong border, hover | #E2E5EA, #C9CED6, #EEF1F5 | #232830, #343B46, #1A1E25 |
+| Text, muted text | #111827, #4B5563 | #D7DCE2, #8A93A0 |
+| Accent, focus ring | #1F4FBF | #FFB000 |
+| Gain, loss, warning | #0F7A55, #B42330, #8A5A00 | #3FB950, #F85149, #E3B341 |
+| Chart line, grid, up, down, volume | #1F4FBF, #ECEFF3, #0F7A55, #B42330, gray at 25% | #FFB000, #1C2028, #3FB950, #F85149, gray at 30% |
+| Type scale | 12, 13, 14, 18, 26 px. Inter for text, IBM Plex Mono for numbers | Same sizes. IBM Plex Sans for text |
+| Corners, row height | 8 px, 40 px | 4 px, 34 px |
 
-The light accent, gain and loss are darker than the Glass values because the spec's 4.5:1 contrast rule fails for #5B8CFF and #34C78A on white. When the system asks for reduced transparency, Glass panels turn solid. Motion is limited to fades under 150 ms.
+Light text colors keep at least 4.5:1 contrast on white. Neither theme uses gradients, translucency or blur. The earlier Glass theme is retired, and a saved Glass or Terminal choice maps to Dark.
+
+## Information architecture
+
+Six destinations in the sidebar, with contextual tabs inside each:
+
+| Destination | Tabs (screen IDs in brackets) |
+| --- | --- |
+| Home | Home (`overview`) |
+| Discover | Opportunities (`opportunities`), Reasoning (`reasoning`) |
+| Markets | Instruments (`markets`), Earnings (`earnings`), Global (`global`) |
+| Intelligence | News (`news`) |
+| Portfolio | Orders and approvals (`execution`), Risk and rules (`rules`) |
+| Learn | Learn (`learn`), with its own Practice, Lessons, Your trades and Experiments tabs |
+
+Below a divider: the Research workspace (Research, Composite, Backtests, Experts) and Settings. Screen IDs, URL hashes and every command bar command are unchanged. Back and forward follow the URL hash.
+
+Focus mode (default) shows conclusions and the columns a decision needs. Advanced mode adds detail columns (volatility, trading volume, tier, tag, sector), the news relevance breakdown, System Health open by default, and the Guide controls. Safety items never depend on the mode: the venue label, the kill switch, failures in the status chip and critical Needs Attention items always show.
 
 ## Layout
 
-- A left sidebar groups the screens: Today (Overview, News), Trade (Opportunities, Execution, Reasoning), Markets (Markets, Earnings, Global), Research (Research, Composite, Backtests, Experts), Learn, System (Audit and Rules, Settings). On a narrow screen it folds behind a Menu button.
-- Details are one click away, never on screen by default. Opportunities rows open their evidence underneath. News cards open into what happened, why it may matter and what prices did. Learn and Research split into tabs.
-- Any ticker opens the stock panel: what the company is, its price and chart, what the system thinks in plain words, any planned trade, and news that names it. Typing a ticker in the top bar opens it too.
-- News shows stories that name a listed company or concern interest rates first. Everything else folds under Other official news.
-- The first-run tour shows each step only on its own screen.
+- Conclusions first, evidence one click away. The opportunity drawer opens with its conclusion, then folds model reasoning, signals, risk checks, news and provenance.
+- Any ticker opens the evidence drawer. It is a modal dialog: focus moves in, Tab stays inside, Escape closes, and focus returns to where it was. Rows open it with Enter or Space.
+- Home order: demo or live data banner, account summary, performance, Needs Attention beside market developments, top opportunities, watchlist beside positions, System Health folded.
+- Charts: candlesticks with volume or a line, with 1M, 3M, 6M, 1Y and All ranges.
 
 ## Rules for every string
 
 No em dashes, semicolons, middle dots, tildes as separators, filler, metaphors, slogans or exclamation marks. Units go in column headers. Times are 24-hour with zone (14:32 ET) and dates ISO. Gains and losses always carry a sign or arrow, never color alone. A missing value reads NOT AVAILABLE with its reason. `ui/scripts/screens.mjs` checks the visible text of every screen for banned punctuation on every run.
 
+Never show an identifier. Signal, source, license, limit, setting, event and status IDs go through `ui/src/labels.ts`. Backend reasons go through `plainReason`. Anything the user does not need to decide something (run IDs, claim IDs, hashes, versions, config paths, raw reasons) goes inside `<Tech>`, which renders a "Technical details" fold in Advanced mode only. Pages address the user as "you". The Playwright run fails if Focus mode shows a code name, config path, record ID or hash.
+
 ## Status strip
 
-Always visible in the top bar: PAPER or SIMULATION, mode in plain words, time, one status chip (Systems OK, or the parts that are not OK, with every part listed on hover), the search and command box, Guide mode, the theme menu and the kill switch.
+Always visible in the top bar: the venue label (PAPER or SIMULATION), mode in plain words, time, a status chip that appears only when a part is failing, the search and command box, Focus and Advanced, the theme switch and the kill switch.
 
 Verbatim source text, such as headlines and filing summaries, is shown as published and marked `data-source-text`. The punctuation check covers everything the app writes and skips only that marked text.
 
