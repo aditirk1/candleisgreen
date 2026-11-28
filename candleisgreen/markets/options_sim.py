@@ -2,11 +2,19 @@
 
 Fills use the quote side a real order would meet (buy at the ask, sell at the bid). With the
 free indicative feed those prices are not executable, so every fill and result carries that
-label. Expiry follows Alpaca's rules: exercise or assignment in the money by the threshold,
-worthless otherwise.
+label and `executable=False`. Nothing here can build or send a broker order: the order builder
+in options.py refuses indicative quotes.
+
+Assumptions, stated on every result:
+- A multi-leg order fills as one package or not at all, at each leg's own quote side, and only
+  when the net price is within the order's net limit. Real multi-leg fills can be better or worse,
+  can fill partly over time, or not fill. Partial fills are not modeled.
+- Expiry follows Alpaca's rules: exercise or assignment in the money by the threshold, worthless otherwise.
+- Early assignment can be applied with `assign_early`. It is not predicted: dividend dates are not recorded.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Optional, Sequence
@@ -15,6 +23,7 @@ from ..core.config import OptionsConfig
 from .options import Check, ExpiryEvent, Leg, OptionContract, OptionQuote, check_strategy, passed, settle_at_expiry
 
 INDICATIVE_LABEL = "Simulated at an indicative quote. Not an executable price, so results do not show real execution"
+PACKAGE_LABEL = "All legs filled together at their own quote sides, within the net limit. A real multi-leg order could fill better, worse, partly or not at all"
 
 
 @dataclass
@@ -32,6 +41,7 @@ class Fill:
     side: str
     time: datetime
     label: str
+    executable: bool = False
 
 
 @dataclass(frozen=True)
@@ -63,7 +73,9 @@ class OptionsSimulator:
         return total
 
     def open(self, orders: Sequence[tuple[OptionContract, int]], quotes: dict[str, OptionQuote], now: datetime,
-             equity: float) -> OrderResult:
+             equity: float, net_limit: Optional[float] = None) -> OrderResult:
+        """Open a position. `net_limit` is per share for the whole package: positive is the most you will pay,
+        negative is the least credit you will take. Multi-leg orders need one, as at the broker."""
         legs: list[Leg] = []
         fills: list[Fill] = []
         for contract, qty in orders:
@@ -71,11 +83,25 @@ class OptionsSimulator:
             price = None if q is None else (q.ask if qty > 0 else q.bid)
             legs.append(Leg(contract, qty, price if price is not None else 0.0))
             if price is not None:
-                label = INDICATIVE_LABEL if not q.executable else "Simulated at the quoted price"  # type: ignore[union-attr]
-                fills.append(Fill(contract.symbol, qty, price, "buy" if qty > 0 else "sell", now, label))
+                exe = bool(q.executable)  # type: ignore[union-attr]
+                label = "Simulated at the quoted price" if exe else INDICATIVE_LABEL
+                if len(orders) > 1:
+                    label = f"{label}. {PACKAGE_LABEL}"
+                fills.append(Fill(contract.symbol, qty, price, "buy" if qty > 0 else "sell", now, label, exe))
         underlyings = {c.underlying for c, _ in orders}
         held = sum(self.shares.get(u, 0) for u in underlyings) if len(underlyings) == 1 else 0
-        checks = check_strategy(legs, quotes, self.cfg, equity, self.cash, now, shares_held=held, premium_open=self.premium_open())
+        checks = list(check_strategy(legs, quotes, self.cfg, equity, self.cash, now, shares_held=held, premium_open=self.premium_open()))
+        if len(orders) > 1:
+            g = 0
+            for _, qty in orders:
+                g = math.gcd(g, abs(qty))
+            net = sum(l.quantity * l.premium for l in legs) / g
+            if net_limit is None:
+                checks.append(Check("net_limit", False, "A multi-leg order needs a net limit price, as at the broker"))
+            else:
+                ok = net <= net_limit + 1e-9
+                checks.append(Check("net_limit", ok, f"Net price {net:+.2f} per share at the quotes, limit {net_limit:+.2f}"
+                                    + ("" if ok else ". Not filled")))
         if not passed(checks):
             return OrderResult("blocked", tuple(checks))
         for leg in legs:
@@ -94,6 +120,23 @@ class OptionsSimulator:
                     pos.quantity = new_qty
         self.history.extend(fills)
         return OrderResult("filled", tuple(checks), tuple(fills))
+
+    def assign_early(self, symbol: str, contracts: int, day: date) -> ExpiryEvent:
+        """Apply an early assignment of `contracts` short contracts. Shares and cash move at the strike, as at expiry."""
+        pos = self.positions.get(symbol)
+        if pos is None or pos.quantity >= 0 or contracts <= 0 or contracts > -pos.quantity:
+            raise ValueError(f"no short position of {contracts} contracts in {symbol} to assign")
+        c = pos.contract
+        shares = contracts * c.multiplier
+        sign = 1 if c.kind == "put" else -1  # assigned put: buy shares. Assigned call: deliver shares
+        ev = ExpiryEvent(symbol, "assignment", -contracts, sign * shares, -sign * shares * c.strike)
+        self.shares[c.underlying] = self.shares.get(c.underlying, 0) + ev.share_change
+        self.cash += ev.cash_change
+        pos.quantity += contracts
+        if pos.quantity == 0:
+            del self.positions[symbol]
+        self.history.append((day, ev))
+        return ev
 
     def expire(self, day: date, closes: dict[str, float]) -> list[ExpiryEvent]:
         """Settle every contract expiring on `day`. A missing underlying close leaves the position open

@@ -369,6 +369,7 @@ class OptionsRiskConfig(_Section):
     min_open_interest: int = Field(ge=0)
     allow_uncovered_short_calls: bool
     allow_uncovered_short_puts: bool
+    require_cash_for_early_assignment: bool
 
 
 class OptionsConfig(_Section):

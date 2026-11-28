@@ -225,6 +225,7 @@ parameters:
   assets.options.risk.min_open_interest: {basis: provisional, review: Revisit with measured spreads by open interest bucket}
   assets.options.risk.allow_uncovered_short_calls: {basis: safeguard, change_policy: Aditi approves. Unlimited loss}
   assets.options.risk.allow_uncovered_short_puts: {basis: safeguard, change_policy: Aditi approves}
+  assets.options.risk.require_cash_for_early_assignment: {basis: safeguard, change_policy: "Aditi approves. Nothing is borrowed to trade, and early assignment happens without notice"}
 
   assets.crypto.location: {basis: provisional, review: "Alpaca US book. Compare with the Kraken locations once Kraken's terms are confirmed"}
   assets.crypto.symbols: {basis: provisional, review: Research list. Revisit with measured spreads and depth per pair}

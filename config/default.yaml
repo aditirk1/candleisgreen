@@ -325,6 +325,8 @@ assets:
       min_open_interest: 100
       allow_uncovered_short_calls: false
       allow_uncovered_short_puts: false
+      # Short legs can be assigned on any day. The account must hold the cash that assignment would need.
+      require_cash_for_early_assignment: true
   crypto:
     # Alpaca US venue. Its volume is Alpaca's own book, not the whole market.
     location: us

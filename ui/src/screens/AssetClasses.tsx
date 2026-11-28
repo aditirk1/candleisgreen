@@ -7,7 +7,7 @@ import { load, save } from "../theme";
 
 type Level = { key: string; label: string; state: string; note: string; checked: string | null };
 type AssetLevels = { id: string; label: string; levels: Level[] };
-type Check = { name: string; passed: boolean; reason: string };
+type Check = { name: string; passed: boolean; reason: string; blocking?: boolean };
 
 const STATE: Record<string, { text: string; cls: string }> = {
   yes: { text: "✓ Yes", cls: "gain" }, partial: { text: "◐ Partly", cls: "" }, waiting: { text: "… Waiting", cls: "warn-text" }, no: { text: "✗ No", cls: "na" },
@@ -19,7 +19,7 @@ const SHORT: Record<string, string> = {
 const usd = (v: number | null | undefined, d = 0) => (v === null || v === undefined ? "Not available" : v.toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d }));
 
 function Checks({ checks }: { checks: Check[] }) {
-  return <ul className="plain list">{checks.map((c, i) => <li key={i} className={c.passed ? "" : "loss"}>{c.passed ? "✓" : "✗"} {c.reason}</li>)}</ul>;
+  return <ul className="plain list">{checks.map((c, i) => <li key={i} className={c.passed ? "" : c.blocking === false ? "warn-text" : "loss"}>{c.passed ? "✓" : c.blocking === false ? "⚠" : "✗"} {c.reason}</li>)}</ul>;
 }
 
 function Matrix({ rows }: { rows: AssetLevels[] }) {
@@ -72,7 +72,7 @@ function OptionsView({ tick }: { tick: number }) {
   const [legs, setLegs] = useState<LegRow[]>([{ kind: "call", strike: "600", quantity: "1", premium: "10" }, { kind: "call", strike: "610", quantity: "-1", premium: "6" }]);
   const [prof, setProf] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [model, setModel] = useState({ kind: "call", spot: "600", strike: "600", days: "30", volatility: "0.2", rate: "0.04" });
+  const [model, setModel] = useState({ kind: "call", spot: "600", strike: "600", days: "30", volatility: "0.2", rate: "0.04", dividend_yield: "0" });
   const [mv, setMv] = useState<any>(null);
   useEffect(() => { getJSON<any>(`/api/assets/options/chain?underlying=${encodeURIComponent(under)}`).then(setChain).catch(() => setChain(null)); }, [tick]);
   const build = async () => {
@@ -119,13 +119,14 @@ function OptionsView({ tick }: { tick: number }) {
       </section>
       <section className="panel"><h2>Theoretical value</h2>
         <p className="muted small">The Black-Scholes model with inputs you choose. A model value, never a market price.</p>
-        <dl className="facts">{(["kind", "spot", "strike", "days", "volatility", "rate"] as const).map((k) => <Fragment key={k}>
-          <dt>{{ kind: "Type", spot: "Underlying price", strike: "Strike", days: "Days to expiry", volatility: "Volatility (0.2 is 20%)", rate: "Interest rate (0.04 is 4%)" }[k]}</dt>
+        <dl className="facts">{(["kind", "spot", "strike", "days", "volatility", "rate", "dividend_yield"] as const).map((k) => <Fragment key={k}>
+          <dt>{{ kind: "Type", spot: "Underlying price", strike: "Strike", days: "Days to expiry", volatility: "Volatility (0.2 is 20%)", rate: "Interest rate (0.04 is 4%)", dividend_yield: "Dividend yield (0.01 is 1%)" }[k]}</dt>
           <dd>{k === "kind" ? <select className="field" aria-label="Model type" value={model.kind} onChange={(e) => setModel({ ...model, kind: e.target.value })}><option value="call">Call</option><option value="put">Put</option></select>
             : <input className="field" aria-label={`Model ${k}`} value={model[k]} onChange={(e) => setModel({ ...model, [k]: e.target.value })} />}</dd></Fragment>)}</dl>
         <button onClick={runModel}>Calculate</button>
         {mv && <dl className="facts"><dt>Model value per share</dt><dd>{mv.price.toFixed(2)}</dd><dt>Delta</dt><dd>{mv.delta.toFixed(3)}</dd><dt>Gamma</dt><dd>{mv.gamma.toFixed(4)}</dd>
           <dt>Theta, per day</dt><dd>{mv.theta_per_day.toFixed(3)}</dd><dt>Vega, per volatility point</dt><dd>{mv.vega_per_vol_point.toFixed(3)}</dd></dl>}
+        {mv && <p className="muted small">{mv.label}.</p>}
       </section>
     </div>
   </>);

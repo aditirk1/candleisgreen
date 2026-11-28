@@ -52,9 +52,12 @@ def test_black_scholes_matches_the_textbook_value_and_parity():
     c = black_scholes("call", 100, 100, 1.0, 0.2, 0.05)
     p = black_scholes("put", 100, 100, 1.0, 0.2, 0.05)
     assert c.price == pytest.approx(10.4506, abs=1e-4)
+    assert "no dividends" in c.label and "European" in c.label
     assert c.price - p.price == pytest.approx(100 - 100 * 2.718281828 ** -0.05, abs=1e-6)
     assert 0 < c.delta < 1 and -1 < p.delta < 0 and c.gamma == pytest.approx(p.gamma)
     assert "Not a market price" in c.label
+    d = black_scholes("call", 100, 100, 1.0, 0.2, 0.05, dividend_yield=0.02)
+    assert d.price == pytest.approx(9.2270, abs=1e-3) and "2.00%" in d.label and d.inputs["dividend_yield"] == 0.02
 
 
 def test_expiry_exercises_and_assigns_only_in_the_money_by_the_threshold():
@@ -107,9 +110,9 @@ def test_risk_checks_cap_loss_premium_expiry_spread_and_open_interest():
 def test_simulator_fills_at_the_quote_side_labels_indicative_and_settles_expiry():
     sim = OptionsSimulator(OPT, cash=100_000)
     quotes = {C150.symbol: q(C150.symbol, 4.9, 5.1), C160.symbol: q(C160.symbol, 1.9, 2.1)}
-    res = sim.open([(C150, 1), (C160, -1)], quotes, NOW, equity=100_000)
+    res = sim.open([(C150, 1), (C160, -1)], quotes, NOW, equity=100_000, net_limit=3.20)
     assert res.status == "filled" and [f.price for f in res.fills] == [5.1, 1.9]
-    assert all(f.label == INDICATIVE_LABEL for f in res.fills)
+    assert all(f.label.startswith(INDICATIVE_LABEL) and "partly or not at all" in f.label and not f.executable for f in res.fills)
     assert sim.cash == pytest.approx(100_000 - 510 + 190)
     blocked = sim.open([(C150, -3)], quotes, NOW, equity=100_000)
     assert blocked.status == "blocked" and sim.cash == pytest.approx(99_680)
@@ -168,14 +171,16 @@ def test_contract_strike_must_match_its_symbol():
 
 def test_order_builder_uses_alpacas_documented_shape_and_lowest_ratios():
     from candleisgreen.markets.options import alpaca_order
-    single = alpaca_order([Leg(C150, 2, 5.1)], 5.1, "cid-1")
+    exe = {s: q(s, 1, 1.1, feed="opra") for s in (C150.symbol, C160.symbol)}
+    single = alpaca_order([Leg(C150, 2, 5.1)], 5.1, "cid-1", exe)
     assert single == {"symbol": C150.symbol, "qty": "2", "side": "buy", "type": "limit", "limit_price": "5.10",
                       "time_in_force": "day", "position_intent": "buy_to_open", "client_order_id": "cid-1"}
-    spread = alpaca_order([Leg(C150, 4, 5.1), Leg(C160, -2, 1.9)], 3.2, "cid-2")
+    spread = alpaca_order([Leg(C150, 4, 5.1), Leg(C160, -2, 1.9)], 3.2, "cid-2", exe)
     assert spread["order_class"] == "mleg" and spread["qty"] == "2"
     assert [(x["ratio_qty"], x["side"], x["position_intent"]) for x in spread["legs"]] == [("2", "buy", "buy_to_open"), ("1", "sell", "sell_to_open")]
     with pytest.raises(ValueError):
-        alpaca_order([Leg(C150, 1, 5.1), Leg(parse_occ("XYZ261218C00010000"), -1, 1)], 1, "cid-3")
+        alpaca_order([Leg(C150, 1, 5.1), Leg(parse_occ("XYZ261218C00010000"), -1, 1)], 1, "cid-3",
+                     {**exe, "XYZ261218C00010000": q("XYZ261218C00010000", 1, 1.1, feed="opra")})
 
 
 def test_nothing_in_the_options_code_sends_an_order():
@@ -186,3 +191,53 @@ def test_nothing_in_the_options_code_sends_an_order():
     for mod in (o, s, a):
         src = inspect.getsource(mod)
         assert ".send(" not in src and "/v2/orders" not in src
+
+
+def test_indicative_quotes_can_never_become_a_broker_order():
+    from candleisgreen.markets.options import IndicativeQuoteError, alpaca_order
+    with pytest.raises(IndicativeQuoteError):
+        alpaca_order([Leg(C150, 1, 5.1)], 5.1, "cid", {C150.symbol: q(C150.symbol, 4.9, 5.1)})
+    with pytest.raises(IndicativeQuoteError):
+        alpaca_order([Leg(C150, 1, 5.1)], 5.1, "cid", {})
+    import inspect
+    import candleisgreen.markets.options_sim as s
+    assert "alpaca_order" not in inspect.getsource(s)
+
+
+def test_early_assignment_needs_cash_and_is_always_disclosed():
+    P150 = parse_occ("UPCO261218P00150000")
+    quotes = {P150.symbol: q(P150.symbol, 4.9, 5.1), P140.symbol: q(P140.symbol, 1.9, 2.1)}
+    bull_put = [Leg(P150, -1, 4.9), Leg(P140, 1, 2.1)]
+    poor = check_strategy(bull_put, quotes, OPT, equity=100_000, cash=10_000, now=NOW)
+    assert "early_assignment_cash" in failed(poor) and not passed(poor)
+    rich = check_strategy(bull_put, quotes, OPT, equity=1_000_000, cash=20_000, now=NOW)
+    assert passed(rich)
+    note = next(c for c in rich if c.name == "early_assignment_note")
+    assert not note.blocking and "Dividend dates are not recorded" in note.reason
+    bull_call = [Leg(C150, 1, 5.1), Leg(C160, -1, 1.9)]
+    cq = {C150.symbol: q(C150.symbol, 4.9, 5.1), C160.symbol: q(C160.symbol, 1.9, 2.1)}
+    assert "early_assignment_cash" in failed(check_strategy(bull_call, cq, OPT, 1e6, 10_000, NOW))
+    assert "early_assignment_cash" not in failed(check_strategy(bull_call, cq, OPT, 1e6, 15_000, NOW))
+    long_only = check_strategy([Leg(C150, 1, 5.1)], cq, OPT, 1e6, 1e6, NOW)
+    assert not any(c.name.startswith("early_assignment") for c in long_only)
+
+
+def test_multi_leg_fills_as_one_package_within_the_net_limit_or_not_at_all():
+    quotes = {C150.symbol: q(C150.symbol, 4.9, 5.1), C160.symbol: q(C160.symbol, 1.9, 2.1)}
+    sim = OptionsSimulator(OPT, cash=100_000)
+    assert "net_limit" in failed(sim.open([(C150, 1), (C160, -1)], quotes, NOW, 100_000).checks)
+    tight = sim.open([(C150, 2), (C160, -2)], quotes, NOW, 100_000, net_limit=3.00)
+    assert tight.status == "blocked" and sim.cash == 100_000 and not sim.positions
+    ok = sim.open([(C150, 2), (C160, -2)], quotes, NOW, 100_000, net_limit=3.20)
+    assert ok.status == "filled" and sim.positions[C160.symbol].quantity == -2
+
+
+def test_early_assignment_moves_shares_and_cash_at_the_strike():
+    quotes = {C150.symbol: q(C150.symbol, 4.9, 5.1), C160.symbol: q(C160.symbol, 1.9, 2.1)}
+    sim = OptionsSimulator(OPT, cash=100_000)
+    sim.open([(C150, 1), (C160, -1)], quotes, NOW, 100_000, net_limit=3.20)
+    ev = sim.assign_early(C160.symbol, 1, date(2026, 12, 1))
+    assert (ev.share_change, ev.cash_change) == (-100, 16_000.0) and sim.shares["UPCO"] == -100
+    assert C160.symbol not in sim.positions and C150.symbol in sim.positions
+    with pytest.raises(ValueError):
+        sim.assign_early(C150.symbol, 1, date(2026, 12, 1))   # a long contract is never assigned

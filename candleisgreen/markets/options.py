@@ -187,34 +187,45 @@ class ModelValue:
     vega_per_vol_point: float
     rho_per_rate_point: float
     inputs: dict
-    label: str = "Theoretical value from the Black-Scholes model. Not a market price"
+    label: str
 
 
-def black_scholes(kind: Kind, spot: float, strike: float, years: float, vol: float, rate: float) -> ModelValue:
+def model_label(dividend_yield: float) -> str:
+    div = "no dividends" if dividend_yield == 0 else f"a constant dividend yield of {dividend_yield:.2%}"
+    return (f"Theoretical value from the Black-Scholes-Merton model for a European option, assuming {div}. "
+            "American options can be worth more, and early exercise before a dividend is not modeled. Not a market price")
+
+
+def black_scholes(kind: Kind, spot: float, strike: float, years: float, vol: float, rate: float, dividend_yield: float = 0.0) -> ModelValue:
     if spot <= 0 or strike <= 0:
         raise ValueError("spot and strike must be positive")
-    inputs = {"spot": spot, "strike": strike, "years": years, "volatility": vol, "rate": rate, "model": "black_scholes"}
+    if dividend_yield < 0:
+        raise ValueError("dividend yield cannot be negative")
+    q = dividend_yield
+    inputs = {"spot": spot, "strike": strike, "years": years, "volatility": vol, "rate": rate, "dividend_yield": q,
+              "model": "black_scholes_merton", "style": "european"}
+    label = model_label(q)
     if years <= 0 or vol <= 0:
         intrinsic = max(spot - strike, 0) if kind == "call" else max(strike - spot, 0)
         itm = intrinsic > 0
-        return ModelValue(intrinsic, (1.0 if itm else 0.0) if kind == "call" else (-1.0 if itm else 0.0), 0, 0, 0, 0, inputs)
+        return ModelValue(intrinsic, (1.0 if itm else 0.0) if kind == "call" else (-1.0 if itm else 0.0), 0, 0, 0, 0, inputs, label)
     sq = vol * math.sqrt(years)
-    d1 = (math.log(spot / strike) + (rate + vol * vol / 2) * years) / sq
+    d1 = (math.log(spot / strike) + (rate - q + vol * vol / 2) * years) / sq
     d2 = d1 - sq
-    disc = math.exp(-rate * years)
+    disc, ddisc = math.exp(-rate * years), math.exp(-q * years)
     if kind == "call":
-        price = spot * _ncdf(d1) - strike * disc * _ncdf(d2)
-        delta = _ncdf(d1)
-        theta = -spot * _npdf(d1) * vol / (2 * math.sqrt(years)) - rate * strike * disc * _ncdf(d2)
+        price = spot * ddisc * _ncdf(d1) - strike * disc * _ncdf(d2)
+        delta = ddisc * _ncdf(d1)
+        theta = -spot * ddisc * _npdf(d1) * vol / (2 * math.sqrt(years)) - rate * strike * disc * _ncdf(d2) + q * spot * ddisc * _ncdf(d1)
         rho = strike * years * disc * _ncdf(d2)
     else:
-        price = strike * disc * _ncdf(-d2) - spot * _ncdf(-d1)
-        delta = _ncdf(d1) - 1
-        theta = -spot * _npdf(d1) * vol / (2 * math.sqrt(years)) + rate * strike * disc * _ncdf(-d2)
+        price = strike * disc * _ncdf(-d2) - spot * ddisc * _ncdf(-d1)
+        delta = ddisc * (_ncdf(d1) - 1)
+        theta = -spot * ddisc * _npdf(d1) * vol / (2 * math.sqrt(years)) + rate * strike * disc * _ncdf(-d2) - q * spot * ddisc * _ncdf(-d1)
         rho = -strike * years * disc * _ncdf(-d2)
-    gamma = _npdf(d1) / (spot * sq)
-    vega = spot * _npdf(d1) * math.sqrt(years)
-    return ModelValue(price, delta, gamma, theta / 365, vega / 100, rho / 100, inputs)
+    gamma = ddisc * _npdf(d1) / (spot * sq)
+    vega = spot * ddisc * _npdf(d1) * math.sqrt(years)
+    return ModelValue(price, delta, gamma, theta / 365, vega / 100, rho / 100, inputs, label)
 
 
 # Expiry. Alpaca exercises a long contract in the money by at least the threshold, and assigns
@@ -244,9 +255,11 @@ def settle_at_expiry(contract: OptionContract, quantity: int, underlying_close: 
 # order. A failed check blocks. Each reason names the setting that decided it.
 @dataclass(frozen=True)
 class Check:
+    """A blocking check stops the order when it fails. A non-blocking one is a disclosure shown with it."""
     name: str
     passed: bool
     reason: str
+    blocking: bool = True
 
 
 def _covered(legs: Sequence[Leg], shares_held: int, cash: float) -> list[Check]:
@@ -305,6 +318,7 @@ def check_strategy(legs: Sequence[Leg], quotes: dict[str, OptionQuote], cfg: Opt
             if (chk.name == "short_calls_covered" and not r.allow_uncovered_short_calls) or \
                (chk.name == "short_puts_secured" and not r.allow_uncovered_short_puts):
                 out.append(chk)
+    out.extend(early_assignment(legs, cash, shares_held, cfg))
     prof = profile(legs, stock)
     if prof.max_loss is None:
         out.append(Check("max_loss", False, "The possible loss has no limit"))
@@ -322,16 +336,55 @@ def check_strategy(legs: Sequence[Leg], quotes: dict[str, OptionQuote], cfg: Opt
 
 
 def passed(checks: Sequence[Check]) -> bool:
-    return all(c.passed for c in checks)
+    return all(c.passed or not c.blocking for c in checks)
+
+
+def early_assignment(legs: Sequence[Leg], cash: float, shares_held: int, cfg: OptionsConfig) -> list[Check]:
+    """US equity options are American: a short leg can be assigned on any day before expiry, without notice.
+    A long leg still limits the loss, but until it is exercised the account must pay for or deliver the shares.
+    - A short put assigned: buy shares at its strike.
+    - A short call covered by a long call, not by shares: deliver shares, which means exercising the long call
+      and paying its strike.
+    Puts and calls cannot both be deep in the money at once in a normal spread, so the larger of the two needs counts."""
+    out: list[Check] = []
+    puts = sum(-l.quantity * l.contract.multiplier * l.contract.strike for l in legs if l.contract.kind == "put" and l.quantity < 0)
+    short_calls = sum(-l.quantity for l in legs if l.contract.kind == "call" and l.quantity < 0)
+    not_by_shares = max(0, short_calls - shares_held // 100)
+    long_calls = sorted((l for l in legs if l.contract.kind == "call" and l.quantity > 0), key=lambda l: -l.contract.strike)
+    calls, left = 0.0, not_by_shares
+    for l in long_calls:
+        take = min(left, l.quantity)
+        calls += take * l.contract.multiplier * l.contract.strike
+        left -= take
+    need = max(puts, calls)
+    if any(l.quantity < 0 for l in legs):
+        if cfg.risk.require_cash_for_early_assignment:
+            out.append(Check("early_assignment_cash", need <= cash,
+                             f"If a short leg is assigned early the account needs {need:,.0f} USD to settle the shares, it has {cash:,.0f} USD"))
+        out.append(Check("early_assignment_note", False,
+                         "Short legs can be assigned on any day, most often when deep in the money or the day before an ex-dividend date. "
+                         "Dividend dates are not recorded here, so that risk is not measured", blocking=False))
+    return out
 
 
 # Order shape for Alpaca, built but never sent from here. Sending waits until the read-only
 # check against a live Alpaca account has passed (config/capabilities.yaml, broker_paper level).
-def alpaca_order(legs: Sequence[Leg], limit_price: float, client_order_id: str) -> dict:
+class IndicativeQuoteError(ValueError):
+    """A broker order may only be priced from executable quotes. Indicative quotes stay in the simulator."""
+
+
+def alpaca_order(legs: Sequence[Leg], limit_price: float, client_order_id: str, quotes: dict[str, OptionQuote]) -> dict:
     """A day limit order in Alpaca's documented form. One leg is a plain order. Several legs are a
-    multi-leg ("mleg") order with leg ratios in lowest terms, as Alpaca requires."""
+    multi-leg ("mleg") order with leg ratios in lowest terms, as Alpaca requires.
+    Every leg needs an executable quote. The free indicative feed never qualifies, so with the free
+    plan this always refuses: simulated results can never become a broker order by this route."""
     if not legs:
         raise ValueError("an order needs at least one leg")
+    for l in legs:
+        q = quotes.get(l.contract.symbol)
+        if q is None or not q.executable:
+            raise IndicativeQuoteError(f"{l.contract.symbol}: no executable quote ({'missing' if q is None else q.feed} feed). "
+                                       "Indicative prices are for simulation only")
     if limit_price <= 0:
         raise ValueError("a limit price must be positive. A net credit is sent as a positive price with the selling legs")
     unders = {l.contract.underlying for l in legs}

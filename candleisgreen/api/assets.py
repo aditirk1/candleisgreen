@@ -122,11 +122,11 @@ def build(workdir: Path, cfg: AppConfig, clock) -> APIRouter:
                 "note": "Profit or loss at expiry for the premiums you entered. Not a forecast"}
 
     @r.get("/api/assets/options/model")
-    def options_model(kind: str, spot: float, strike: float, days: int, volatility: float, rate: float = 0.0):
+    def options_model(kind: str, spot: float, strike: float, days: int, volatility: float, rate: float = 0.0, dividend_yield: float = 0.0):
         if kind not in ("call", "put"):
             raise HTTPException(400, "kind must be call or put")
         try:
-            v = op.black_scholes(kind, spot, strike, days / 365, volatility, rate)  # type: ignore[arg-type]
+            v = op.black_scholes(kind, spot, strike, days / 365, volatility, rate, dividend_yield)  # type: ignore[arg-type]
         except ValueError as exc:
             raise HTTPException(400, str(exc))
         return {"price": v.price, "delta": v.delta, "gamma": v.gamma, "theta_per_day": v.theta_per_day,
