@@ -1,32 +1,38 @@
 # Asset classes shown in the research interface (Priority 7). Each facet names a capability in
 # config/capabilities.yaml, and the screen shows that capability's status and reason. Nothing here
 # turns trading on. Paper execution is possible only where the capability says available or limited.
+# `capability` names the per-asset entry with its eight levels, from a free source existing to live trading.
 asset_classes:
   - id: stocks_etfs
+    capability: asset_stocks_etfs
     label: Stocks and ETFs
     research: us_factor_research
     history: us_daily_bars
     paper_execution: paper_execution_us
     extra: [short_selling_us, us_fundamentals_point_in_time, us_stock_history_with_delistings]
   - id: options
+    capability: asset_options
     label: Options
     research: options_data_and_flow
     history: options_data_and_flow
     paper_execution: options_trading
     extra: []
   - id: futures
+    capability: asset_futures
     label: Futures
     research: futures_data
     history: futures_data
     paper_execution: futures_trading
     extra: []
   - id: forex
+    capability: asset_forex
     label: Forex
     research: fx_rates
     history: fx_rates
     paper_execution: fx_trading
     extra: [macro]
   - id: crypto
+    capability: asset_crypto
     label: Crypto
     research: crypto_data
     history: crypto_data

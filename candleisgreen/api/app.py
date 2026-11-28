@@ -973,6 +973,9 @@ def create_app(workdir: Path, risk_url: str, cfg: Optional[AppConfig] = None, cl
         except Exception as exc:
             raise HTTPException(503, f"risk service did not confirm ({type(exc).__name__})")
 
+    from . import assets as assets_api
+    app.include_router(assets_api.build(workdir, cfg, clock))
+
     if (UI_DIST / "index.html").exists():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")
 

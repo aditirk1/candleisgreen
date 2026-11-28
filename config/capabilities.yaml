@@ -52,11 +52,11 @@ capabilities:
   options_trading:
     status: not_available
     sources: []
-    reason: The Alpaca paper account allows options, but the free plan gives only an indicative options feed, not real-time OPRA quotes, so no options order can pass the execution-grade quote rule. No options model exists
+    reason: Paper options orders through Alpaca are not sent yet. They wait for a read-only check with your Alpaca keys, and the free indicative quotes cannot pass the execution-grade quote rule. The options simulator inside the platform works
   crypto_trading:
     status: not_available
     sources: []
-    reason: Alpaca's free plan includes crypto data and paper crypto trading, buy and sell only, never short. Not built. It trades all week, so it needs its own calendar, recorder and risk checks
+    reason: Paper crypto orders through Alpaca are not sent yet. They need your Alpaca keys and a read-only check first. The crypto simulator inside the platform works now, buy and sell only, never short
   futures_trading:
     status: not_available
     sources: []
@@ -68,15 +68,15 @@ capabilities:
   fx_trading:
     status: not_available
     sources: []
-    reason: Alpaca offers no currency trading. FX appears only as the currency part of a foreign stock's return
+    reason: Alpaca offers no currency trading. OANDA practice orders are not built. The forex simulator works once an OANDA practice token is set and its license is confirmed
   futures_data:
-    status: not_available
-    sources: []
-    reason: No free futures price source. Exchange futures data needs a paid license
+    status: limited
+    sources: [cftc_cot]
+    reason: Positioning from the CFTC Commitments of Traders only. No futures prices are fetched, because CME's terms could not be read. Settlement files you download yourself can be uploaded
   crypto_data:
-    status: not_available
-    sources: []
-    reason: Alpaca's free plan includes crypto prices, but no recorder for them is built yet
+    status: limited
+    sources: [alpaca_crypto]
+    reason: Alpaca's own book only, so volume is Alpaca's volume, not the whole market. Daily history from 2021. Kraken is built but blocked until its terms are confirmed
   insider_transactions:
     status: limited
     sources: [sec_edgar_form4]
@@ -106,8 +106,9 @@ capabilities:
     sources: []
     reason: Not built. Needs recorded companies with industry codes and a pre-registered event study before any exposure is shown
   options_data_and_flow:
-    status: not_available
-    reason: No free source of historical or real-time options data
+    status: limited
+    sources: [alpaca_options_indicative]
+    reason: Alpaca's free indicative feed, a modified version of exchange quotes, never executable prices. Needs your Alpaca keys. History from February 2024. Order flow data is not free
   analyst_consensus_estimates:
     status: not_available
     reason: No free source of timestamped estimates, so reported results are never compared with a consensus
@@ -121,3 +122,71 @@ capabilities:
     status: limited
     sources: [local_open_weight_model]
     reason: Optional and off by default. Local models only, no paid API
+
+  # One entry per asset class with its eight levels (core/capabilities.py LEVELS).
+  # yes: built and checked. partial: part of it works. waiting: built, needs a key, a license
+  # confirmation or a first live check. no: not built or not possible for free.
+  asset_stocks_etfs:
+    status: available
+    sources: [alpaca_market_data, alpaca_paper]
+    levels:
+      source_exists: {state: "yes", note: "Alpaca free plan for daily bars and paper trading"}
+      adapter: {state: "yes", note: "Daily bars, assets, corporate actions and quotes", modules: [candleisgreen.sources.alpaca, candleisgreen.sources.alpaca_quotes]}
+      history_verified: {state: "waiting", note: "History from 2016. Response shapes follow the documentation and get their first live check when your Alpaca keys are set"}
+      realtime_verified: {state: "waiting", note: "IEX quotes only on the free plan. First live check when your Alpaca keys are set"}
+      research: {state: "yes", note: "Signals, backtests, composite and research pipeline", modules: [candleisgreen.composite, candleisgreen.research]}
+      simulation: {state: "yes", note: "Simulated broker with the risk service", modules: [candleisgreen.broker.simulator]}
+      broker_paper: {state: "yes", note: "Built and tested against a stand-in. Every order passes the independent risk service", modules: [candleisgreen.broker.alpaca_paper]}
+      live_execution: {state: "no", note: "Never built"}
+  asset_options:
+    status: limited
+    sources: [alpaca_options_indicative]
+    reason: Indicative quotes only, never executable. Needs your Alpaca keys for data
+    levels:
+      source_exists: {state: "yes", note: "Alpaca's free indicative feed: contracts, quotes, Greeks, history from February 2024. OPRA needs a paid plan and is refused"}
+      adapter: {state: "yes", note: "Read-only client for contracts, chain snapshots and bars", modules: [candleisgreen.sources.alpaca_options]}
+      history_verified: {state: "waiting", note: "Needs your Alpaca keys. The check is in tests/test_live_sources.py"}
+      realtime_verified: {state: "waiting", note: "Needs your Alpaca keys. Quotes are indicative and delayed trades are 15 minutes old"}
+      research: {state: "partial", note: "Payoff and break-even calculator and a labeled theoretical model work now. The chain with Alpaca's Greeks needs your keys", modules: [candleisgreen.markets.options]}
+      simulation: {state: "yes", note: "Fills at indicative quotes with that label, exercise and assignment at expiry, risk checks first", modules: [candleisgreen.markets.options_sim]}
+      broker_paper: {state: "waiting", note: "Order builder done and nothing sends it. Sending waits for the read-only check with your keys, and indicative quotes fail the execution-grade quote rule", modules: [candleisgreen.markets.options]}
+      live_execution: {state: "no", note: "Never built"}
+  asset_crypto:
+    status: limited
+    sources: [alpaca_crypto]
+    reason: Alpaca's own book only. Kraken blocked until its terms are confirmed
+    levels:
+      source_exists: {state: "yes", note: "Alpaca crypto data and paper trading. Kraken public data as a comparison"}
+      adapter: {state: "yes", note: "Alpaca crypto client. Kraken client built and blocked by its license", modules: [candleisgreen.sources.alpaca_crypto, candleisgreen.sources.kraken]}
+      history_verified: {state: "yes", note: "Daily bars for six pairs, BTC/USD from 2021-01-01", checked: "2026-11-28"}
+      realtime_verified: {state: "yes", note: "Latest quotes and order books, read without keys", checked: "2026-11-28"}
+      research: {state: "yes", note: "Charts, returns, volatility on calendar days, drawdown, spreads and depth", modules: [candleisgreen.markets.crypto]}
+      simulation: {state: "yes", note: "Walks the live order book, Alpaca's published fees, no shorts, no margin", modules: [candleisgreen.markets.crypto]}
+      broker_paper: {state: "no", note: "Alpaca paper crypto orders need your keys and a read-only check of the paper account first. Not built yet"}
+      live_execution: {state: "no", note: "Never built"}
+  asset_forex:
+    status: limited
+    sources: [fred, oanda_practice]
+    reason: FRED daily reference rates now. OANDA practice prices need your token and the license confirmed
+    levels:
+      source_exists: {state: "yes", note: "OANDA v20 practice API, history to 2005. FRED daily reference rates"}
+      adapter: {state: "yes", note: "Read-only OANDA practice client with no order methods", modules: [candleisgreen.sources.oanda, candleisgreen.sources.fx]}
+      history_verified: {state: "waiting", note: "Needs an OANDA practice token and the license confirmed. FRED daily rates already load"}
+      realtime_verified: {state: "waiting", note: "Needs an OANDA practice token"}
+      research: {state: "partial", note: "FRED daily rates and the currency part of foreign stock returns work now. Spread research needs OANDA bid and ask", modules: [candleisgreen.markets.forex, candleisgreen.sources.fx]}
+      simulation: {state: "waiting", note: "Simulator built: bid and ask fills, size and leverage caps. It runs on OANDA practice prices", modules: [candleisgreen.markets.forex]}
+      broker_paper: {state: "no", note: "OANDA practice orders come after the simulator is checked on OANDA data"}
+      live_execution: {state: "no", note: "Never built"}
+  asset_futures:
+    status: limited
+    sources: [cftc_cot]
+    reason: Positioning only. No futures prices are fetched
+    levels:
+      source_exists: {state: "partial", note: "CFTC Commitments of Traders is public domain. CME settlement pages exist but their terms could not be read"}
+      adapter: {state: "partial", note: "CFTC client built. Nothing reads CME", modules: [candleisgreen.sources.cftc]}
+      history_verified: {state: "partial", note: "CFTC reports read for ES, NQ, CL, GC and ZN. No futures price history", checked: "2026-11-28"}
+      realtime_verified: {state: "no", note: "No free real-time futures data"}
+      research: {state: "partial", note: "Positioning by trader group, contract calendar, rolls and continuous series on files you upload", modules: [candleisgreen.markets.futures, candleisgreen.sources.cftc]}
+      simulation: {state: "partial", note: "Daily mark to market with margin calls on uploaded settlements. Contract terms not yet checked against CME, and you enter the margin", modules: [candleisgreen.markets.futures]}
+      broker_paper: {state: "no", note: "Alpaca lists futures as coming soon. Other brokers need paid futures data"}
+      live_execution: {state: "no", note: "Never built"}
