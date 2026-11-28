@@ -137,6 +137,7 @@ CONTRACT_ROW = {"id": "x", "symbol": "UPCO261218C00150000", "name": "UPCO Dec 18
                 "open_interest": "1234", "open_interest_date": "2026-11-26", "close_price": "5.05", "close_price_date": "2026-11-26", "ppind": True}
 
 
+@pytest.mark.documented_shape
 def test_alpaca_client_parses_documented_shapes_pages_and_names_the_feed():
     t = Stub([{"option_contracts": [CONTRACT_ROW], "next_page_token": "p2"}, {"option_contracts": [], "next_page_token": None}])
     api = AlpacaOptions(t, CFG.sources.alpaca, OPT)
@@ -154,6 +155,7 @@ def test_alpaca_client_parses_documented_shapes_pages_and_names_the_feed():
     assert t2.calls[0][2]["feed"] == "indicative" and t2.calls[0][1] == "/v1beta1/options/snapshots/UPCO"
 
 
+@pytest.mark.documented_shape
 def test_alpaca_client_refuses_paid_feeds_and_history_it_cannot_serve():
     with pytest.raises(SubscriptionRequiredError):
         AlpacaOptions(Stub([]), CFG.sources.alpaca, OPT.model_copy(update={"feed": "opra"}))
@@ -164,6 +166,7 @@ def test_alpaca_client_refuses_paid_feeds_and_history_it_cannot_serve():
         api.bars(["UPCO261218C00150000"], date(2026, 1, 2), NOW.replace(hour=14, minute=50), NOW.replace(hour=14, minute=55))
 
 
+@pytest.mark.documented_shape
 def test_contract_strike_must_match_its_symbol():
     with pytest.raises(ValueError):
         parse_contract({**CONTRACT_ROW, "strike_price": "155"})

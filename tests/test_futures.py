@@ -27,6 +27,7 @@ def test_every_product_is_marked_unverified_until_checked_against_cme():
 FIXTURE_OF = {"ES": "tff_es", "NQ": "tff_nq", "CL": "disagg_cl", "GC": "legacy_gc", "ZN": "tff_zn"}
 
 
+@pytest.mark.recorded
 def test_every_contract_size_matches_the_cftcs_own_record():
     from candleisgreen.markets.futures import cftc_size, multiplier_confirmed, term_status
     assert cftc_size("($50 X S&P 500 INDEX)") == 50 and cftc_size("(NASDAQ 100 STOCK INDEX X $20)") == 20
@@ -41,6 +42,7 @@ def test_every_contract_size_matches_the_cftcs_own_record():
     assert not multiplier_confirmed("ES", None)                                     # no record, no confirmation
 
 
+@pytest.mark.recorded
 def test_cftc_rows_are_validated_before_storage():
     from candleisgreen.sources.cftc import InvalidReportError, validate
     row = json.loads((FIX / "tff_es.json").read_text())[0]
@@ -126,6 +128,7 @@ def test_simulator_needs_a_margin_moves_variation_margin_and_closes_on_a_margin_
     assert "maintenance margin" in notes[0] and not big.positions
 
 
+@pytest.mark.recorded
 def test_cot_reports_count_only_once_surely_public():
     rows = json.loads((FIX / "tff_es.json").read_text())
     rep = report_date(rows[0])
@@ -136,6 +139,7 @@ def test_cot_reports_count_only_once_surely_public():
     assert first_usable_at(rep, datetime(2026, 11, 28, tzinfo=timezone.utc), FU) == datetime(2026, 11, 23, 20, 30, tzinfo=timezone.utc)
 
 
+@pytest.mark.recorded
 def test_cot_positioning_on_real_reports():
     es = json.loads((FIX / "tff_es.json").read_text())[0]
     oi, groups = positioning(es, "tff")

@@ -55,6 +55,7 @@ def test_only_the_practice_host_and_separate_credentials(monkeypatch):
     assert t.headers["Authorization"] == "Bearer t" and acct == "101-001-1-001"
 
 
+@pytest.mark.documented_shape
 def test_client_refuses_until_the_license_is_confirmed_and_has_no_order_methods():
     with pytest.raises(LicenseNotPermittedError):
         OandaPractice(Stub([]), "acct", FX)
@@ -62,6 +63,7 @@ def test_client_refuses_until_the_license_is_confirmed_and_has_no_order_methods(
     assert not any(name in dir(api) for name in ("order", "submit", "send", "orders"))
 
 
+@pytest.mark.documented_shape
 def test_candles_page_by_the_documented_maximum_and_keep_bid_and_ask():
     small = FX.model_copy(update={"max_candles_per_request": 2})
     t = Stub([{"candles": [candle("2026-11-23T22:00:00.000000000Z", 1.05), candle("2026-11-24T22:00:00.000000000Z", 1.06)]},
@@ -81,6 +83,7 @@ def test_daily_candles_end_at_five_pm_new_york_across_daylight_saving():
     assert summer == datetime(2026, 7, 14, 21, tzinfo=timezone.utc)
 
 
+@pytest.mark.documented_shape
 def test_pips_spreads_and_conversion():
     assert pip_size(-4) == 0.0001 and pip_size(-2) == 0.01
     assert spread_pips(1.1000, 1.1002, 0.0001) == pytest.approx(2)

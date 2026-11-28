@@ -56,3 +56,27 @@ def make_ctx(**overrides):
     )
     base.update(overrides)
     return RiskContext(**base)
+
+
+# Evidence labels. Every run ends with a count of passed tests by what they rest on, so a mocked
+# test is never mistaken for a check against a real API.
+EVIDENCE = ("live", "recorded", "documented_shape")
+_evidence: dict[str, str] = {}
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        _evidence[item.nodeid] = next((m for m in EVIDENCE if item.get_closest_marker(m)), "offline")
+
+
+def pytest_terminal_summary(terminalreporter):
+    counts: dict[str, int] = {}
+    for rep in terminalreporter.stats.get("passed", []):
+        kind = _evidence.get(rep.nodeid, "offline")
+        counts[kind] = counts.get(kind, 0) + 1
+    skipped_live = sum(1 for rep in terminalreporter.stats.get("skipped", []) if _evidence.get(rep.nodeid) == "live")
+    if counts or skipped_live:
+        terminalreporter.write_sep("-", "evidence behind passed tests")
+        terminalreporter.write_line(
+            f"live API calls: {counts.get('live', 0)} passed, {skipped_live} skipped | real recorded responses: {counts.get('recorded', 0)} | "
+            f"documented shape with invented values: {counts.get('documented_shape', 0)} | offline logic: {counts.get('offline', 0)}")

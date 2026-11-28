@@ -28,6 +28,7 @@ def bar_rows(n, start=date(2026, 10, 1)):
             for i in range(n)]
 
 
+@pytest.mark.documented_shape
 def test_daily_bars_are_usable_only_after_they_close_and_never_stored_open():
     rows = bar_rows(2, date(2026, 11, 26)) + [{"t": "2026-11-28T00:00:00Z", "o": 1, "h": 1, "l": 1, "c": 1, "v": 1}]
     bars = to_bars("BTC/USD", rows, NOW)
@@ -57,6 +58,7 @@ class Stub:
         return self.pages.pop(0)
 
 
+@pytest.mark.documented_shape
 def test_alpaca_crypto_client_pages_and_clamps_to_the_history_start():
     t = Stub([{"bars": {"BTC/USD": bar_rows(2)}, "next_page_token": "x"}, {"bars": {"BTC/USD": bar_rows(1, date(2026, 10, 3))}, "next_page_token": None}])
     out = AlpacaCrypto(t, CFG.sources.alpaca, CR).daily_bars(["BTC/USD"], date(2015, 1, 1))
@@ -69,6 +71,7 @@ def test_fees_follow_the_published_tiers():
     assert fee_bps(CR, 150_000, maker=False) == 22 and fee_bps(CR, 2e8, maker=True) == 0
 
 
+@pytest.mark.documented_shape
 def test_book_quality_and_walking_the_book():
     q = book_quality(BOOK, CR)
     assert q.mid == pytest.approx(60005) and q.spread_bps == pytest.approx(10 / 60005 * 1e4)
@@ -121,6 +124,7 @@ KRAKEN_OHLC = {"error": [], "result": {"XXBTZUSD": [[1795564800, "60000.0", "610
                                       "last": 1795564800}}
 
 
+@pytest.mark.documented_shape
 def test_kraken_parsing_and_its_license_gate():
     bars = parse_ohlc(KRAKEN_OHLC, "BTC/USD", datetime(2026, 11, 27, 12, tzinfo=timezone.utc))
     assert [b.complete for b in bars] == [True, False] and bars[0].volume == 100.5 and bars[0].vwap == 60200.0

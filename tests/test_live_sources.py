@@ -12,7 +12,7 @@ import pytest
 
 from candleisgreen.core.config import load_config
 
-pytestmark = pytest.mark.skipif(os.environ.get("CANDLE_LIVE") != "1", reason="live source checks run only with CANDLE_LIVE=1")
+pytestmark = [pytest.mark.live, pytest.mark.skipif(os.environ.get("CANDLE_LIVE") != "1", reason="live source checks run only with CANDLE_LIVE=1")]
 CFG = load_config()
 NOW = datetime.now(timezone.utc)
 
@@ -30,6 +30,55 @@ def test_alpaca_crypto_history_and_current_book():
     assert q is not None and q.spread_bps > 0
     from candleisgreen.core.timeutil import parse_rfc3339
     assert NOW - parse_rfc3339(book["t"]) < timedelta(hours=1)
+
+
+def test_alpaca_crypto_response_fields_match_what_the_parsers_and_fixtures_assume():
+    """The documented-shape tests use invented values. This checks the real field names behind them."""
+    from candleisgreen.sources.alpaca_crypto import AlpacaCrypto, transport_from_env
+    api = AlpacaCrypto(transport_from_env(CFG.sources.alpaca), CFG.sources.alpaca, CFG.assets.crypto)
+    bar = api.daily_bars(["BTC/USD"], date(2024, 1, 1), date(2024, 1, 2))["BTC/USD"][0]
+    assert {"t", "o", "h", "l", "c", "v", "n", "vw"} <= set(bar)
+    book = api.latest_orderbooks(["BTC/USD"])["BTC/USD"]
+    assert {"t", "b", "a"} <= set(book) and {"p", "s"} <= set(book["b"][0])
+    quote = api.latest_quotes(["BTC/USD"])["BTC/USD"]
+    assert {"t", "bp", "ap", "bs", "as"} <= set(quote)
+    trades = api.trades("BTC/USD", NOW - timedelta(hours=6), limit=5)
+    assert trades and {"t", "p", "s"} <= set(trades[0])
+
+
+def test_live_crypto_practice_order_end_to_end(tmp_path):
+    """A practice order through the real API route against the live Alpaca book. No broker order exists."""
+    from fastapi.testclient import TestClient
+    from candleisgreen.api.app import create_app
+    api = TestClient(create_app(tmp_path, "http://127.0.0.1:9", CFG))
+    book = api.get("/api/assets/crypto/book", params={"symbol": "BTC/USD"}).json()
+    assert book["status"] == "OK" and book["fresh"], book
+    out = api.post("/api/assets/crypto/simulate", json={"client_order_id": "live-1", "side": "buy", "symbol": "BTC/USD", "notional": 100}).json()
+    times = [c for c in out["checks"] if c["name"] == "book_time"]
+    assert times and times[0]["passed"], out["checks"]
+    again = api.post("/api/assets/crypto/simulate", json={"client_order_id": "live-1", "side": "buy", "symbol": "BTC/USD", "notional": 100}).json()
+    assert again["duplicate"] and again["cash"] == out["cash"]
+
+
+def test_cftc_recording_validates_every_product_and_confirms_contract_sizes(tmp_path):
+    from candleisgreen.markets.futures import multiplier_confirmed, products
+    from candleisgreen.markets.service import record_cot
+    from candleisgreen.markets.store import MarketStore
+    from candleisgreen.sources.public_http import PublicTransport
+    store = MarketStore(tmp_path / "m.sqlite", shared=False)
+    out = record_cot(store, PublicTransport(), CFG, NOW, since=NOW.date() - timedelta(weeks=6))
+    assert not out["rejected"] and all(n >= 4 for n in out["stored"].values()), out
+    for code, p in products().items():
+        latest = store.reports(p.cot_dataset, p.cftc_code, NOW + timedelta(days=30))[-1][1]
+        assert multiplier_confirmed(code, latest["contract_units"]), (code, latest["contract_units"])
+
+
+def test_kraken_is_not_called_while_its_license_is_unconfirmed():
+    from candleisgreen.core.licenses import LicenseNotPermittedError
+    from candleisgreen.sources.kraken import KrakenPublic
+    from candleisgreen.sources.public_http import PublicTransport
+    with pytest.raises(LicenseNotPermittedError):
+        KrakenPublic(PublicTransport())
 
 
 def test_cftc_cot_latest_report_parses():

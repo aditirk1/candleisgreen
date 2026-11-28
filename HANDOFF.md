@@ -6,6 +6,19 @@ Last updated: 2026-11-27. Working branch: `ux-redesign-intelligence`, draft pull
 
 Each asset class now records eight levels in `config/capabilities.yaml` (entries `asset_*`), shown on Markets, Asset classes. Live trading is never built. No broker order is sent for any of the four new asset classes.
 
+### PR #3 review fixes, 2026-11-28
+
+| Review item | What changed | Tested by |
+| --- | --- | --- |
+| 1. Crypto book freshness | A book with no time, an unreadable time, an age over 15 seconds or a time over 2 seconds in the future is refused. New safeguards `assets.crypto.risk.max_book_age_seconds` and `max_clock_skew_seconds` | `tests/test_crypto.py`, and live: the real Alpaca book passed the check through the app's routes |
+| 2. Crypto practice persistence | `markets/crypto_ledger.py`: append-only SQLite ledger, one insert per order with the account state after it. Each row names the row before it uniquely, so two writers cannot fork the balance. A repeated client order ID returns the first result. A reused ID for a different order is refused. Fee tier volume counts only the last 30 days | Restart recovery, duplicate, reuse, two-writer and stale-writer tests |
+| 3. Options audit | Early assignment: new safeguard `require_cash_for_early_assignment` needs the cash an early assignment would take, and every strategy with a short leg carries a disclosure that dividend dates are not recorded. Dividends: the model is Black-Scholes-Merton with a dividend yield and says it is European. Multi-leg: a net limit is required and all legs fill together or none. Separation: simulated fills record `executable=False`, and the order builder refuses any leg without an executable quote | `tests/test_options.py` |
+| 4. Futures data | CFTC rows validated before storage (market code, futures only, Tuesday date, fields present). Settlement uploads need a source and a license confirmation, positive prices, past dates, no conflicting duplicates. Each contract term records a CME check date. Contract sizes cross-checked against the CFTC record (all five match). The simulator trades only confirmed sizes. Calendar and rolls labeled estimates | `tests/test_futures.py` on real CFTC reports, live CFTC check |
+| 5. CI | `.github/workflows/ci.yml`: Python tests, frontend type check and build, Playwright on fresh demo data through `scripts/ci_playwright.sh`. Playwright 1.63.0 added as an exact dev dependency. Free tools only | The same steps ran locally: clean `npm ci`, type check, build, 125 browser checks passed |
+| 6. Live checks | Six live checks passed on 2026-11-28. Every run prints how many passed tests used live calls, real recorded responses, documented shapes with invented values, or offline logic | See `TEST_RESULTS.md` |
+
+Still not verified against a live service: Alpaca options, Alpaca stocks, OANDA (need your credentials), CME (site did not answer), Kraken (license unconfirmed).
+
 ### Where each asset class stands
 
 | Level | Options | Crypto | Forex | Futures |
@@ -28,14 +41,15 @@ Each asset class now records eight levels in `config/capabilities.yaml` (entries
 - Shared: `markets/store.py` (point-in-time store, separate from stocks), `sources/public_http.py` (read-only, host allowlist), `markets/service.py` (recording jobs), `api/assets.py` (routes), registry and API tests in `tests/test_asset_levels.py` (6).
 - Live checks in `tests/test_live_sources.py`, skipped unless `CANDLE_LIVE=1`. Crypto and CFTC passed on 2026-11-28. Options and OANDA wait for credentials.
 
-`make ci`: 402 passed, 4 skipped (the live checks). Playwright: 124 checks passed, including Focus-mode guards on every asset class view.
+`make ci`: 412 passed, 8 skipped (the live checks). Playwright: 125 checks passed, including Focus-mode guards on every asset class view.
 
 ### Waiting on you
 
 1. Alpaca paper keys (`APCA_API_KEY_ID`, `APCA_API_SECRET_KEY`): turns on the options chain and the options and stock live checks. Then run `CANDLE_LIVE=1 .venv/bin/python -m pytest tests/test_live_sources.py -v`.
 2. OANDA: open a free fxTrade Practice account, create a token, set `OANDA_PRACTICE_TOKEN` and `OANDA_PRACTICE_ACCOUNT_ID`. Read the API license shown when you create the token. If it allows personal research, set `oanda_practice` research to `permitted` in `config/licenses.yaml`.
 3. Kraken (optional): read sections 8 and 9 of kraken.com/legal/global-terms. Only if they allow this use, set `kraken_public` research to `permitted`.
-4. CME: open the five contract specification pages linked in `config/futures_contracts.yaml`, compare the terms, and set `verified: true` with the date.
+4. CME: open the five contract specification pages linked in `config/futures_contracts.yaml`, compare each term, and put the date in that term's `checked_against_cme` entry. Calendar results stop being labeled estimates once months and both date rules are checked.
+5. GitHub Actions: the workflow runs on free minutes. If the repository is private and the free minutes run out, runs pause until the next month. Nothing is charged unless you add a payment method.
 
 ### Commands
 
@@ -48,7 +62,6 @@ Both need only an internet connection. The app's Record latest and Read latest r
 
 ### Known flaws
 
-- The crypto practice balance lives in memory and resets when the app restarts.
 - Forex and options simulators have no screen for placing practice orders yet. Their code is tested directly.
 - The holiday list covers 2026 and 2027 only, so futures dates after 2027 are refused.
 - Exchange holidays use the NYSE list. CME holidays mostly match it but are not checked.

@@ -1,8 +1,51 @@
 # TEST_RESULTS.md
 
-Latest full run: 2026-11-27, **357 passed, 0 failed** in about 221 seconds on Python 3.13.
+Latest full run: 2026-11-28, **412 passed, 8 skipped, 0 failed** in about 217 seconds on Python 3.13. The 8 skipped are live source checks, which run only with `CANDLE_LIVE=1`.
 
 Only results that actually ran are listed. Command: `make ci` (which runs `.venv/bin/python -m pytest`).
+
+## Options, crypto, forex and futures, PR #3 review, 2026-11-28, Python 3.13
+
+Every run ends with a line counting passed tests by what they rest on. Labels are pytest markers:
+`live` calls a real API, `recorded` uses a real response saved from the source, `documented_shape`
+uses invented values in a source's documented format and is not evidence the live API matches.
+
+### Full suite, 2026-11-28
+
+`.venv/bin/python -m pytest`: **412 passed, 8 skipped, 0 failed**.
+Evidence line: live API calls 0 passed and 8 skipped, real recorded responses 4, documented shape with invented values 10, offline logic 398.
+
+### Live source checks, run 2026-11-28 05:20 UTC
+
+`CANDLE_LIVE=1 .venv/bin/python -m pytest tests/test_live_sources.py -rA`: **6 passed, 2 skipped**.
+
+| Test | Result | What it checked against the real service |
+| --- | --- | --- |
+| `test_alpaca_crypto_history_and_current_book` | PASSED | Alpaca crypto daily bars start 2021-01-01, every bar complete, order book under an hour old with a positive spread |
+| `test_alpaca_crypto_response_fields_match_what_the_parsers_and_fixtures_assume` | PASSED | Real field names of bars, order books, quotes and trades match the invented-value fixtures |
+| `test_live_crypto_practice_order_end_to_end` | PASSED | Through the app's own routes: the live book passed the 15-second freshness check, a 100 USD practice order ran, the same client order ID returned the first result |
+| `test_cftc_recording_validates_every_product_and_confirms_contract_sizes` | PASSED | Six weeks of CFTC reports for ES, NQ, CL, GC and ZN, none rejected by validation, every contract size matching the CFTC record |
+| `test_cftc_cot_latest_report_parses` | PASSED | The latest S&P 500 report parses into trader groups |
+| `test_kraken_is_not_called_while_its_license_is_unconfirmed` | PASSED | Makes no network call. Confirms the license gate refuses Kraken |
+| `test_alpaca_options_contracts_and_indicative_chain` | SKIPPED | Needs Alpaca paper keys |
+| `test_oanda_practice_candles_and_prices` | SKIPPED | Needs an OANDA practice token |
+
+Not run anywhere: any Alpaca options or stock endpoint, any OANDA endpoint, any CME page (the site did not answer), any Kraken endpoint (license unconfirmed).
+
+### Browser checks, 2026-11-28
+
+`scripts/ci_playwright.sh` after a clean `npm ci`, `npm run typecheck` and `npm run build`: **125 checks passed, 0 failed**, on synthetic demo data with no live source.
+
+### New and changed tests
+
+| File | Tests | Evidence |
+| --- | --- | --- |
+| `tests/test_crypto.py` | 14 | 4 documented shape, 10 offline. Covers stale, missing, unreadable and future book times, restart recovery, duplicate and reused client order IDs, two writers, a stale writer refused and retried |
+| `tests/test_options.py` | 16 | 3 documented shape, 13 offline. Covers early assignment cash and disclosure, dividend yield in the model, package fills within a net limit, early assignment events, indicative quotes refused by the order builder |
+| `tests/test_futures.py` | 11 | 4 recorded (real CFTC reports for all five products), 7 offline. Covers contract sizes against the CFTC record, row validation, licensed uploads |
+| `tests/test_forex.py` | 7 | 3 documented shape, 4 offline |
+| `tests/test_asset_levels.py` | 6 | Offline. Upload refusals without a source or license confirmation, bad prices, future dates, conflicting duplicates |
+| `tests/test_live_sources.py` | 8 | Live, skipped unless `CANDLE_LIVE=1` |
 
 ## Phase 0, 2026-11-17, Python 3.13.18
 
