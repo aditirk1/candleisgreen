@@ -236,6 +236,8 @@ parameters:
   assets.crypto.risk.max_total_pct_equity: {basis: safeguard, change_policy: Aditi approves}
   assets.crypto.risk.max_spread_bps: {basis: provisional, review: Revisit with measured spreads on the Alpaca book}
   assets.crypto.risk.min_book_depth_usd: {basis: provisional, review: Revisit with measured depth on the Alpaca book}
+  assets.crypto.risk.max_book_age_seconds: {basis: safeguard, change_policy: "Aditi approves. Matches the stock quote age limit"}
+  assets.crypto.risk.max_clock_skew_seconds: {basis: safeguard, change_policy: Aditi approves. A book stamped further in the future than this is refused}
 
   assets.forex.practice_rest_url: {basis: external_fact, source: "https://developer.oanda.com/rest-live-v20/development-guide/ API URLs table, fxTrade Practice", as_of: "2026-11-28"}
   assets.forex.instruments: {basis: provisional, review: Major pairs only. Revisit with measured practice spreads}

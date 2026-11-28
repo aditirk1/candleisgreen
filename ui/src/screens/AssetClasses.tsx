@@ -142,7 +142,12 @@ function CryptoView({ tick }: { tick: number }) {
   useEffect(() => { loadAll(); }, [tick, sym]);
   const refresh = async () => { setMsg("Recording from Alpaca"); const r = await post("/api/assets/crypto/refresh"); const j = await r.json(); setMsg(r.ok ? "Up to date" : j.detail); loadAll(); };
   const getBook = () => getJSON<any>(`/api/assets/crypto/book?symbol=${encodeURIComponent(sym)}`).then(setBook);
-  const simulate = async () => { const r = await post("/api/assets/crypto/simulate", { side: order.side, symbol: sym, notional: Number(order.notional) }); const j = await r.json(); setRes(r.ok ? j : { status: "error", detail: j.detail }); loadAll(); };
+  const simulate = async () => {
+    // One ID per press. A retried request with the same ID returns the first result instead of filling twice.
+    const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const r = await post("/api/assets/crypto/simulate", { client_order_id: id, side: order.side, symbol: sym, notional: Number(order.notional) });
+    const j = await r.json(); setRes(r.ok ? j : { status: "error", detail: j.detail }); loadAll();
+  };
   if (!d) return <p className="muted">Loading</p>;
   return (<>
     <section className="panel"><h2>Crypto pairs</h2>
@@ -162,10 +167,11 @@ function CryptoView({ tick }: { tick: number }) {
         {book && (book.status !== "OK" ? <p className="na">NOT AVAILABLE. {book.reason}.</p> : <dl className="facts">
           <dt>Midpoint</dt><dd>{usd(book.mid, 2)} USD</dd><dt>Spread</dt><dd>{book.spread_bps.toFixed(1)} basis points</dd>
           <dt>Buyers within {book.band_bps} bps</dt><dd>{usd(book.bid_depth_usd)} USD</dd><dt>Sellers within {book.band_bps} bps</dt><dd>{usd(book.ask_depth_usd)} USD</dd>
-          <dt>Fee for an order that takes liquidity</dt><dd>{book.taker_fee_bps} basis points</dd><dt>Book time</dt><dd>{book.time ? timeET(book.time) : "Not given"}</dd></dl>)}
+          <dt>Fee for an order that takes liquidity</dt><dd>{book.taker_fee_bps} basis points</dd><dt>Book time</dt><dd>{book.time ? timeET(book.time) : "Not given"}</dd>
+          <dt>Fresh enough to use</dt><dd className={book.fresh ? "" : "loss"}>{book.fresh ? "✓ Yes" : "✗ No"}. {book.freshness}</dd></dl>)}
       </section>
       <section className="panel"><h2>Practice order, simulated</h2>
-        <p className="muted small">Fills against the live Alpaca book with Alpaca's fees. No broker order is sent. Crypto cannot be sold short or bought on margin. Practice balance resets when the app restarts.</p>
+        <p className="muted small">Fills against the live Alpaca book with Alpaca's fees. No broker order is sent. Crypto cannot be sold short or bought on margin. An order book older than 15 seconds is refused. The practice balance is saved and survives restarts.</p>
         <div className="toolbar">
           <div className="segmented small" role="group" aria-label="Side">{["buy", "sell"].map((s) => <button key={s} className={order.side === s ? "active" : ""} onClick={() => setOrder({ ...order, side: s })}>{s === "buy" ? "Buy" : "Sell"}</button>)}</div>
           <label className="small">Amount (USD) <input className="field" aria-label="Order amount in USD" value={order.notional} onChange={(e) => setOrder({ ...order, notional: e.target.value })} /></label>

@@ -386,6 +386,8 @@ class CryptoRiskConfig(_Section):
     max_total_pct_equity: float = Field(ge=0, le=1)
     max_spread_bps: float = Field(gt=0)
     min_book_depth_usd: float = Field(ge=0)
+    max_book_age_seconds: float = Field(gt=0)
+    max_clock_skew_seconds: float = Field(ge=0)
 
 
 class CryptoConfig(_Section):

@@ -340,6 +340,9 @@ assets:
       max_total_pct_equity: 0.05
       max_spread_bps: 50
       min_book_depth_usd: 1000
+      # An order book older than this, missing its time, or stamped in the future is refused.
+      max_book_age_seconds: 15
+      max_clock_skew_seconds: 2
   forex:
     practice_rest_url: https://api-fxpractice.oanda.com
     instruments: [EUR_USD, GBP_USD, USD_JPY, AUD_USD, USD_CAD, USD_CHF]

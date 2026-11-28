@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Optional, Sequence
 
 from ..core.config import CryptoConfig
+from ..core.timeutil import ensure_utc, parse_rfc3339
 from .options import Check
 from .store import Bar
 
@@ -61,8 +62,25 @@ def walk_book(levels: Sequence[dict], notional: float) -> Optional[tuple[float, 
     return None
 
 
+def check_freshness(quality: Optional[BookQuality], now: datetime, cfg: CryptoConfig) -> Check:
+    """The book must carry a time, be no older than the limit and not be stamped in the future."""
+    r = cfg.risk
+    if quality is None or not quality.book_time:
+        return Check("book_time", False, "The order book has no timestamp, so its age is unknown")
+    try:
+        t = parse_rfc3339(quality.book_time)
+    except ValueError:
+        return Check("book_time", False, f"The order book timestamp '{quality.book_time}' cannot be read")
+    age = (ensure_utc(now) - t).total_seconds()
+    if age < -r.max_clock_skew_seconds:
+        return Check("book_time", False, f"The order book is stamped {-age:.1f} seconds in the future. Clocks disagree, so it is refused")
+    return Check("book_time", age <= r.max_book_age_seconds,
+                 f"Order book is {max(age, 0):.1f} seconds old, at most {r.max_book_age_seconds:g} seconds allowed")
+
+
 def check_order(side: str, notional: float, symbol: str, quality: Optional[BookQuality], cfg: CryptoConfig, equity: float,
-                held_value: float, total_crypto_value: float) -> list[Check]:
+                held_value: float, total_crypto_value: float, now: Optional[datetime] = None) -> list[Check]:
+    """Every check for one order. `now` is required for a fill: without it the book's age cannot be checked."""
     r = cfg.risk
     out = [Check("listed", symbol in cfg.symbols, f"{symbol} is {'on' if symbol in cfg.symbols else 'not on'} the research list")]
     out.append(Check("order_size", notional <= cfg.max_order_notional_usd,
@@ -80,6 +98,7 @@ def check_order(side: str, notional: float, symbol: str, quality: Optional[BookQ
     if quality is None:
         out.append(Check("book", False, "No usable order book"))
         return out
+    out.append(check_freshness(quality, now, cfg) if now is not None else Check("book_time", False, "No decision time given, so the book's age cannot be checked"))
     out.append(Check("spread", quality.spread_bps <= r.max_spread_bps,
                      f"Spread {quality.spread_bps:.1f} bps, at most {r.max_spread_bps:g} bps allowed"))
     depth = quality.ask_depth_usd if side == "buy" else quality.bid_depth_usd
@@ -150,7 +169,7 @@ class CryptoSimulator:
         quality = book_quality(book, self.cfg)
         held = self.holdings.get(symbol, 0.0) * (quality.mid if quality else 0.0)
         total = sum(q * mids.get(s, 0.0) for s, q in self.holdings.items())
-        checks = check_order(side, notional, symbol, quality, self.cfg, equity, held, total)
+        checks = check_order(side, notional, symbol, quality, self.cfg, equity, held, total, now)
         if side == "buy" and notional > self.cash:
             checks.append(Check("cash", False, f"Order {notional:,.0f} USD, cash {self.cash:,.0f} USD. Crypto cannot be bought on margin"))
         if not all(c.passed for c in checks):

@@ -43,6 +43,7 @@ class StrategyBody(BaseModel):
 
 
 class CryptoOrderBody(BaseModel):
+    client_order_id: str
     side: str
     symbol: str
     notional: float
@@ -60,7 +61,8 @@ def _bars_json(bars) -> list[dict]:
 def build(workdir: Path, cfg: AppConfig, clock) -> APIRouter:
     r = APIRouter()
     store = MarketStore(Path(workdir) / STORE_FILE, shared=True)
-    crypto_sim = cr.CryptoSimulator(cfg.assets.crypto, cash=cfg.execution.simulator_starting_equity_usd)
+    from ..markets.crypto_ledger import CryptoPractice, OrderIdReusedError
+    practice = CryptoPractice(Path(workdir) / "crypto_practice.sqlite", cfg.assets.crypto, cfg.execution.simulator_starting_equity_usd)
 
     def crypto_api():
         from ..sources.alpaca_crypto import AlpacaCrypto, transport_from_env
@@ -148,8 +150,7 @@ def build(workdir: Path, cfg: AppConfig, clock) -> APIRouter:
         chart = _bars_json(store.bars("alpaca_us", sel, "1Day", now)) if sel in series else []
         return {"rows": rows, "symbol": sel, "bars": chart, "recorded": bool(series),
                 "source": "Alpaca crypto data, Alpaca US book. Volume is Alpaca's own, not the whole market",
-                "simulator": {"cash": crypto_sim.cash, "holdings": crypto_sim.holdings,
-                              "fills": [f.__dict__ | {"time": f.time.isoformat()} for f in crypto_sim.fills[-10:]]}}
+                "simulator": {"cash": practice.state()[0], "holdings": practice.state()[1], "fills": practice.fills(10)}}
 
     @r.post("/api/assets/crypto/refresh")
     def crypto_refresh():
@@ -167,23 +168,28 @@ def build(workdir: Path, cfg: AppConfig, clock) -> APIRouter:
         q = cr.book_quality(book or {}, cfg.assets.crypto)
         if q is None:
             return {"status": "NOT AVAILABLE", "reason": "No usable order book"}
+        fresh = cr.check_freshness(q, clock(), cfg.assets.crypto)
         return {"status": "OK", "symbol": symbol, "mid": q.mid, "spread_bps": q.spread_bps, "bid_depth_usd": q.bid_depth_usd,
-                "ask_depth_usd": q.ask_depth_usd, "time": q.book_time, "band_bps": cfg.assets.crypto.risk.max_spread_bps,
-                "taker_fee_bps": cr.fee_bps(cfg.assets.crypto, crypto_sim.volume_30d_usd, maker=False)}
+                "ask_depth_usd": q.ask_depth_usd, "time": q.book_time, "fresh": fresh.passed, "freshness": fresh.reason,
+                "band_bps": cfg.assets.crypto.risk.max_spread_bps,
+                "taker_fee_bps": cr.fee_bps(cfg.assets.crypto, practice.volume_30d(clock()), maker=False)}
 
     @r.post("/api/assets/crypto/simulate")
     def crypto_simulate(body: CryptoOrderBody):
         if body.side not in ("buy", "sell") or body.notional <= 0:
             raise HTTPException(400, "side must be buy or sell and the amount positive")
+        cash, holdings = practice.state()
         try:
-            books = crypto_api().latest_orderbooks(sorted({body.symbol, *crypto_sim.holdings}))
+            books = crypto_api().latest_orderbooks(sorted({body.symbol, *holdings}))
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(503, f"Could not reach Alpaca crypto data ({type(exc).__name__})")
-        mids = {s: q.mid for s, b in books.items() if (q := cr.book_quality(b, cfg.assets.crypto))}
-        equity = crypto_sim.value(mids) or crypto_sim.cash
-        status, checks, fill = crypto_sim.order(body.side, body.symbol, body.notional, books.get(body.symbol) or {}, clock(), equity, mids)
-        return {"status": status, "checks": [c.__dict__ for c in checks], "fill": (fill.__dict__ | {"time": fill.time.isoformat()}) if fill else None,
-                "cash": crypto_sim.cash, "holdings": crypto_sim.holdings, "label": cr.SIM_LABEL}
+        now = clock()
+        mids = {s: q.mid for s, b in books.items() if (q := cr.book_quality(b, cfg.assets.crypto)) and cr.check_freshness(q, now, cfg.assets.crypto).passed}
+        try:
+            out = practice.order(body.client_order_id, body.side, body.symbol, body.notional, books.get(body.symbol) or {}, now, mids)
+        except (OrderIdReusedError, ValueError) as exc:
+            raise HTTPException(409, str(exc))
+        return out | {"label": cr.SIM_LABEL}
 
     # Forex
     @r.get("/api/assets/forex")

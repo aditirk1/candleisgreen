@@ -17,6 +17,7 @@ from candleisgreen.sources.public_http import HostNotAllowedError, PublicTranspo
 CFG = load_config()
 CR = CFG.assets.crypto
 NOW = datetime(2026, 11, 28, 2, 30, tzinfo=timezone.utc)
+BOOK_NOW = datetime(2026, 11, 28, 2, 27, 45, tzinfo=timezone.utc)  # 6 seconds after the book's time
 BOOK = {"t": "2026-11-28T02:27:39Z",
         "b": [{"p": 60000.0, "s": 0.05}, {"p": 59990.0, "s": 0.2}, {"p": 59000.0, "s": 5}],
         "a": [{"p": 60010.0, "s": 0.05}, {"p": 60020.0, "s": 0.2}, {"p": 61000.0, "s": 5}]}
@@ -84,7 +85,8 @@ def names(checks):
 
 def test_risk_checks_forbid_shorts_and_cap_size_spread_and_depth():
     q = book_quality(BOOK, CR)
-    assert names(check_order("buy", 1000, "BTC/USD", q, CR, equity=100_000, held_value=0, total_crypto_value=0)) == set()
+    assert names(check_order("buy", 1000, "BTC/USD", q, CR, equity=100_000, held_value=0, total_crypto_value=0, now=BOOK_NOW)) == set()
+    assert "book_time" in names(check_order("buy", 1000, "BTC/USD", q, CR, equity=100_000, held_value=0, total_crypto_value=0))
     assert "no_short" in names(check_order("sell", 1000, "BTC/USD", q, CR, 100_000, held_value=500, total_crypto_value=500))
     assert "position" in names(check_order("buy", 2500, "BTC/USD", q, CR, 100_000, 0, 0))
     assert "total" in names(check_order("buy", 1000, "BTC/USD", q, CR, 100_000, 0, 4500))
@@ -97,14 +99,14 @@ def test_risk_checks_forbid_shorts_and_cap_size_spread_and_depth():
 
 def test_simulator_charges_the_taker_fee_in_what_is_received_and_never_goes_short():
     sim = CryptoSimulator(CR, cash=100_000)
-    status, _, fill = sim.order("buy", "BTC/USD", 1500, BOOK, NOW, equity=100_000, mids={"BTC/USD": 60005})
+    status, _, fill = sim.order("buy", "BTC/USD", 1500, BOOK, BOOK_NOW, equity=100_000, mids={"BTC/USD": 60005})
     assert status == "filled" and fill.fee_usd == pytest.approx(1500 * 25 / 1e4)
     assert sim.cash == pytest.approx(98_500)
     assert sim.holdings["BTC/USD"] == pytest.approx(fill.quantity * (1 - 0.0025))
-    status, checks, _ = sim.order("sell", "BTC/USD", 5000, BOOK, NOW, 100_000, {"BTC/USD": 60005})
+    status, checks, _ = sim.order("sell", "BTC/USD", 5000, BOOK, BOOK_NOW, 100_000, {"BTC/USD": 60005})
     assert status == "blocked" and "no_short" in names(checks)
     poor = CryptoSimulator(CR, cash=100)
-    assert "cash" in names(poor.order("buy", "BTC/USD", 500, BOOK, NOW, 100_000, {})[1])
+    assert "cash" in names(poor.order("buy", "BTC/USD", 500, BOOK, BOOK_NOW, 100_000, {})[1])
 
 
 def test_series_stats_use_calendar_days():
@@ -133,3 +135,68 @@ def test_public_transport_refuses_hosts_outside_the_allowlist():
         PublicTransport().get("https://api.alpaca.markets", "/v2/orders", {})
     with pytest.raises(HostNotAllowedError):
         PublicTransport().get("https://paper-api.alpaca.markets", "/v2/account", {})
+
+
+def test_stale_missing_unreadable_and_future_books_are_refused():
+    from candleisgreen.markets.crypto import check_freshness
+    q = book_quality(BOOK, CR)
+    assert check_freshness(q, BOOK_NOW, CR).passed
+    assert not check_freshness(q, NOW, CR).passed                                   # 141 seconds old
+    assert not check_freshness(q, datetime(2026, 11, 28, 2, 27, 30, tzinfo=timezone.utc), CR).passed  # 9 seconds in the future
+    assert check_freshness(q, datetime(2026, 11, 28, 2, 27, 38, tzinfo=timezone.utc), CR).passed      # 1 second ahead, within skew
+    assert not check_freshness(book_quality({**BOOK, "t": None}, CR), BOOK_NOW, CR).passed
+    assert not check_freshness(book_quality({**BOOK, "t": "yesterday"}, CR), BOOK_NOW, CR).passed
+    assert not check_freshness(None, BOOK_NOW, CR).passed
+    sim = CryptoSimulator(CR, cash=100_000)
+    status, checks, _ = sim.order("buy", "BTC/USD", 1000, BOOK, NOW, 100_000, {})
+    assert status == "blocked" and "book_time" in names(checks) and sim.cash == 100_000
+
+
+def test_practice_account_survives_a_restart_and_ignores_duplicate_orders(tmp_path):
+    from candleisgreen.markets.crypto_ledger import CryptoPractice, OrderIdReusedError
+    path = tmp_path / "practice.sqlite"
+    a = CryptoPractice(path, CR, starting_cash=100_000)
+    first = a.order("id-1", "buy", "BTC/USD", 1500, BOOK, BOOK_NOW, {"BTC/USD": 60005})
+    assert first["status"] == "filled" and not first["duplicate"]
+    again = a.order("id-1", "buy", "BTC/USD", 1500, BOOK, BOOK_NOW, {"BTC/USD": 60005})
+    assert again["duplicate"] and again["fill"] == first["fill"] and a.state()[0] == pytest.approx(98_500)
+    with pytest.raises(OrderIdReusedError):
+        a.order("id-1", "buy", "BTC/USD", 2000, BOOK, BOOK_NOW, {"BTC/USD": 60005})
+    blocked = a.order("id-2", "buy", "BTC/USD", 1000, BOOK, NOW, {})
+    assert blocked["status"] == "blocked"
+    del a
+    b = CryptoPractice(path, CR, starting_cash=100_000)                             # a restart
+    cash, holdings = b.state()
+    assert cash == pytest.approx(98_500) and holdings["BTC/USD"] == pytest.approx(first["holdings"]["BTC/USD"])
+    assert [f["client_order_id"] for f in b.fills()] == ["id-1"]
+    assert b.volume_30d(BOOK_NOW) == 1500 and b.volume_30d(BOOK_NOW + timedelta(days=31)) == 0
+    assert b.order("id-2", "buy", "BTC/USD", 1000, BOOK, BOOK_NOW, {})["duplicate"]  # a blocked order keeps its first result too
+
+
+def test_two_writers_cannot_fork_the_practice_account(tmp_path):
+    from candleisgreen.markets.crypto_ledger import CryptoPractice
+    path = tmp_path / "practice.sqlite"
+    a, b = CryptoPractice(path, CR, 100_000), CryptoPractice(path, CR, 100_000)
+    a.order("a-1", "buy", "BTC/USD", 1000, BOOK, BOOK_NOW, {"BTC/USD": 60005})
+    b.order("b-1", "buy", "BTC/USD", 1000, BOOK, BOOK_NOW, {"BTC/USD": 60005})       # starts from a's state, not the opening balance
+    assert a.state()[0] == pytest.approx(98_000) and b.state()[0] == pytest.approx(98_000)
+    rows = a.conn.execute("SELECT client_order_id, prev_order_id FROM crypto_practice ORDER BY seq").fetchall()
+    assert rows == [("a-1", "start"), ("b-1", "a-1")]
+
+
+def test_a_writer_working_from_stale_state_is_refused_and_retries(tmp_path):
+    from candleisgreen.markets.crypto_ledger import CryptoPractice
+    path = tmp_path / "practice.sqlite"
+    a, b = CryptoPractice(path, CR, 100_000), CryptoPractice(path, CR, 100_000)
+    real_last, calls = b._last, {"n": 0}
+
+    def stale_once():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            a.order("a-1", "buy", "BTC/USD", 1000, BOOK, BOOK_NOW, {"BTC/USD": 60005})  # lands between b's read and b's write
+            return None                                                                # b believes the account is untouched
+        return real_last()
+    b._last = stale_once
+    out = b.order("b-1", "buy", "BTC/USD", 1000, BOOK, BOOK_NOW, {"BTC/USD": 60005})
+    assert out["status"] == "filled" and calls["n"] >= 3
+    assert a.state()[0] == pytest.approx(98_000)
