@@ -21,7 +21,35 @@ FIX = ROOT / "tests" / "fixtures" / "cftc"
 
 def test_every_product_is_marked_unverified_until_checked_against_cme():
     assert set(products()) == {"ES", "NQ", "CL", "GC", "ZN"}
-    assert all(not p.verified and p.source.startswith("https://www.cmegroup.com/") for p in products().values())
+    assert all(not p.verified and not p.calendar_checked and p.source.startswith("https://www.cmegroup.com/") for p in products().values())
+
+
+FIXTURE_OF = {"ES": "tff_es", "NQ": "tff_nq", "CL": "disagg_cl", "GC": "legacy_gc", "ZN": "tff_zn"}
+
+
+def test_every_contract_size_matches_the_cftcs_own_record():
+    from candleisgreen.markets.futures import cftc_size, multiplier_confirmed, term_status
+    assert cftc_size("($50 X S&P 500 INDEX)") == 50 and cftc_size("(NASDAQ 100 STOCK INDEX X $20)") == 20
+    assert cftc_size("(CONTRACTS OF 1,000 BARRELS)") == 1000 and cftc_size("(CONTRACTS OF $100,000 FACE VALUE)") == 100_000
+    for code, fx in FIXTURE_OF.items():
+        units = json.loads((FIX / f"{fx}.json").read_text())[0]["contract_units"]
+        terms = {t.field: t.status for t in term_status(code, units)}
+        assert terms["multiplier"] == "cross_checked", code
+        assert terms["tick_size"] == terms["last_trade_rule"] == "estimated"
+        assert multiplier_confirmed(code, units)
+    assert not multiplier_confirmed("ES", "($20 X S&P 500 INDEX)")                # a wrong size is caught
+    assert not multiplier_confirmed("ES", None)                                     # no record, no confirmation
+
+
+def test_cftc_rows_are_validated_before_storage():
+    from candleisgreen.sources.cftc import InvalidReportError, validate
+    row = json.loads((FIX / "tff_es.json").read_text())[0]
+    assert validate(row, "tff", "13874A") == date(2026, 11, 17)
+    for bad, why in [({**row, "cftc_contract_market_code": "209742"}, "market"), ({**row, "futonly_or_combined": "Combined"}, "futures-only"),
+                     ({**row, "report_date_as_yyyy_mm_dd": "2026-11-18T00:00:00.000"}, "Tuesday"), ({**row, "open_interest_all": "-1"}, "negative"),
+                     ({k: v for k, v in row.items() if k != "asset_mgr_positions_long"}, "missing")]:
+        with pytest.raises(InvalidReportError, match=why):
+            validate(bad, "tff", "13874A")
 
 
 def test_contract_codes_round_trip():
@@ -77,15 +105,17 @@ def test_continuous_series_adjust_history_at_the_roll():
 
 
 def test_simulator_needs_a_margin_moves_variation_margin_and_closes_on_a_margin_call():
-    sim = FuturesSimulator(FU, cash=100_000)
+    unconfirmed = FuturesSimulator(FU, cash=400_000)
+    st, checks = unconfirmed.trade("ESZ26", 1, 6000, 9_000)
+    assert st == "blocked" and any(c.name == "multiplier_confirmed" and not c.passed for c in checks)
+    sim = FuturesSimulator(FU, cash=100_000, confirmed=frozenset({"ES"}))
     st, checks = sim.trade("ESZ26", 1, 6000, None)
     assert st == "blocked" and any(c.name == "margin_known" and not c.passed for c in checks)
-    assert any("not yet checked against CME" in c.reason for c in checks)
     st, _ = sim.trade("ESZ26", 1, 6000, 25_000)
     assert st == "blocked"  # 25 000 margin is over 10% of the account
     st, _ = sim.trade("ESZ26", 1, 6000, 9_000)
     assert st == "blocked"  # contract value 300 000 is over the account
-    big = FuturesSimulator(FU, cash=400_000)
+    big = FuturesSimulator(FU, cash=400_000, confirmed=frozenset({"ES"}))
     assert big.trade("ESZ26", 1, 6000, 9_000)[0] == "filled"
     big.mark(date(2026, 12, 9), {"ESZ26": 5990}, {"ESZ26": 8_000})
     assert big.cash == pytest.approx(400_000 - 500)

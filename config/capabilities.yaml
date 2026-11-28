@@ -148,7 +148,7 @@ capabilities:
       history_verified: {state: "waiting", note: "Needs your Alpaca keys. The check is in tests/test_live_sources.py"}
       realtime_verified: {state: "waiting", note: "Needs your Alpaca keys. Quotes are indicative and delayed trades are 15 minutes old"}
       research: {state: "partial", note: "Payoff and break-even calculator and a labeled theoretical model work now. The chain with Alpaca's Greeks needs your keys", modules: [candleisgreen.markets.options]}
-      simulation: {state: "yes", note: "Fills at indicative quotes with that label, exercise and assignment at expiry, risk checks first", modules: [candleisgreen.markets.options_sim]}
+      simulation: {state: "yes", note: "Fills at indicative quotes with that label, multi-leg as one package within a net limit, early assignment and expiry, cash for early assignment checked first", modules: [candleisgreen.markets.options_sim]}
       broker_paper: {state: "waiting", note: "Order builder done and nothing sends it. Sending waits for the read-only check with your keys, and indicative quotes fail the execution-grade quote rule", modules: [candleisgreen.markets.options]}
       live_execution: {state: "no", note: "Never built"}
   asset_crypto:
@@ -161,7 +161,7 @@ capabilities:
       history_verified: {state: "yes", note: "Daily bars for six pairs, BTC/USD from 2021-01-01", checked: "2026-11-28"}
       realtime_verified: {state: "yes", note: "Latest quotes and order books, read without keys", checked: "2026-11-28"}
       research: {state: "yes", note: "Charts, returns, volatility on calendar days, drawdown, spreads and depth", modules: [candleisgreen.markets.crypto]}
-      simulation: {state: "yes", note: "Walks the live order book, Alpaca's published fees, no shorts, no margin", modules: [candleisgreen.markets.crypto]}
+      simulation: {state: "yes", note: "Walks the live order book, refuses books older than 15 seconds, Alpaca's published fees, no shorts, no margin. The practice account is saved", modules: [candleisgreen.markets.crypto, candleisgreen.markets.crypto_ledger]}
       broker_paper: {state: "no", note: "Alpaca paper crypto orders need your keys and a read-only check of the paper account first. Not built yet"}
       live_execution: {state: "no", note: "Never built"}
   asset_forex:
@@ -186,7 +186,7 @@ capabilities:
       adapter: {state: "partial", note: "CFTC client built. Nothing reads CME", modules: [candleisgreen.sources.cftc]}
       history_verified: {state: "partial", note: "CFTC reports read for ES, NQ, CL, GC and ZN. No futures price history", checked: "2026-11-28"}
       realtime_verified: {state: "no", note: "No free real-time futures data"}
-      research: {state: "partial", note: "Positioning by trader group, contract calendar, rolls and continuous series on files you upload", modules: [candleisgreen.markets.futures, candleisgreen.sources.cftc]}
-      simulation: {state: "partial", note: "Daily mark to market with margin calls on uploaded settlements. Contract terms not yet checked against CME, and you enter the margin", modules: [candleisgreen.markets.futures]}
+      research: {state: "partial", note: "Validated CFTC positioning by trader group. Estimated contract calendar and rolls. Continuous series on settlement files you upload with their source and a license confirmation", modules: [candleisgreen.markets.futures, candleisgreen.sources.cftc]}
+      simulation: {state: "partial", note: "Daily mark to market with margin calls on uploaded settlements. Trades only contracts whose size matches the CFTC record. Calendar and tick terms are estimates until checked against CME, and you enter the margin", modules: [candleisgreen.markets.futures]}
       broker_paper: {state: "no", note: "Alpaca lists futures as coming soon. Other brokers need paid futures data"}
       live_execution: {state: "no", note: "Never built"}

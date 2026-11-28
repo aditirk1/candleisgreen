@@ -210,21 +210,24 @@ function FuturesView({ tick }: { tick: number }) {
   const [d, setD] = useState<any>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [csv, setCsv] = useState(() => load("futures_csv") ?? "");
+  const [src, setSrc] = useState("");
+  const [ok, setOk] = useState(false);
   const [cont, setCont] = useState<any>(null);
   const [prod, setProd] = useState("ES");
   const reload = () => getJSON<any>("/api/assets/futures").then(setD).catch(() => setD(null));
   useEffect(() => { reload(); }, [tick]);
   const refresh = async () => { setMsg("Reading CFTC reports"); const r = await post("/api/assets/futures/cot/refresh"); const j = await r.json(); setMsg(r.ok ? "Up to date" : j.detail); reload(); };
-  const upload = async () => { save("futures_csv", csv); const r = await post("/api/assets/futures/settlements", { text: csv }); const j = await r.json(); setMsg(r.ok ? `Stored ${j.stored} settlement prices for ${j.contracts.join(", ")}` : j.detail); reload(); };
+  const upload = async () => { save("futures_csv", csv); const r = await post("/api/assets/futures/settlements", { text: csv, source: src, license_confirmed: ok }); const j = await r.json(); setMsg(r.ok ? `Stored ${j.stored} settlement prices for ${j.contracts.join(", ")}` : j.detail); reload(); };
   const showCont = () => getJSON<any>(`/api/assets/futures/continuous?product=${prod}`).then(setCont);
   if (!d) return <p className="muted">Loading</p>;
   return (<>
     <section className="panel"><h2>Contracts</h2>
-      <p className="muted small">{d.prices}. Contract terms come from CME's published specifications and are not yet checked against CME, because its site did not answer.</p>
-      <div className="scroll-x"><table><thead><tr><th>Contract</th><th className="num">Size</th><th className="num">Tick value (USD)</th><th>Settles in</th><th>Hold now</th><th>Roll on</th><th>Last trading day</th><th>Terms</th></tr></thead>
+      <p className="muted small">{d.prices}. Contract sizes are confirmed against the CFTC's own records. Tick values, settlement and the calendar come from CME's published rules and stay estimates until checked against CME, whose site did not answer.</p>
+      <div className="scroll-x"><table><thead><tr><th>Contract</th><th className="num">Size</th><th className="num">Tick value (USD)</th><th>Settles in</th><th>Hold now, estimate</th><th>Roll on, estimate</th><th>Last trading day, estimate</th><th>Terms</th></tr></thead>
         <tbody>{d.products.map((p: any) => <tr key={p.code}><td><strong>{p.code}</strong> {p.name}</td><td className="num">{p.multiplier} per point</td><td className="num">{p.tick_value_usd}</td>
           <td>{p.settlement === "cash" ? "Cash" : "Delivery"}</td><td>{p.front ?? "Not available"}</td><td>{p.roll_date ?? (p.calendar_reason ? "Holiday list missing" : "")}</td><td>{p.last_trade ?? ""}</td>
-          <td className={p.verified ? "gain" : "warn-text"}>{p.verified ? "✓ Checked" : "Not yet checked"}</td></tr>)}</tbody></table></div>
+          <td className={p.verified ? "gain" : "warn-text"} title={(p.terms ?? []).map((t: any) => `${t.field}: ${t.note}`).join("\n")}>
+            {p.verified ? "✓ Checked against CME" : (p.terms ?? []).some((t: any) => t.field === "multiplier" && t.status === "cross_checked") ? "Size confirmed, rest estimated" : (p.terms ?? []).some((t: any) => t.status === "mismatch") ? "✗ Size does not match the CFTC" : "Not yet checked"}</td></tr>)}</tbody></table></div>
     </section>
     <section className="panel"><h2>Who holds futures, CFTC weekly report</h2>
       <div className="toolbar"><button onClick={refresh}>Read latest reports</button>{msg && <span role="status" className="small">{msg}</span>}</div>
@@ -242,6 +245,9 @@ function FuturesView({ tick }: { tick: number }) {
     <section className="panel"><h2>Your settlement prices</h2>
       <p className="muted small">Paste settlement prices you downloaded yourself, one per line as date, contract, settle (for example 2026-12-11,ESZ26,6030). Stored as research only.</p>
       <textarea className="field" aria-label="Settlement prices" rows={5} style={{ width: "100%" }} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={"date,contract,settle\n2026-12-11,ESZ26,6030"} />
+      <div className="toolbar">
+        <input className="field" aria-label="Where the prices came from" placeholder="Where they came from, for example CME Daily Bulletin 2026-12-11" value={src} onChange={(e) => setSrc(e.target.value)} style={{ minWidth: 340 }} />
+        <label className="small"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} /> The source's terms allow my personal research use</label></div>
       <div className="toolbar"><button onClick={upload} disabled={!csv.trim()}>Store prices</button>
         <select className="field" aria-label="Product" value={prod} onChange={(e) => setProd(e.target.value)}>{d.products.map((p: any) => <option key={p.code} value={p.code}>{p.code}</option>)}</select>
         <button onClick={showCont}>Join into one series</button></div>

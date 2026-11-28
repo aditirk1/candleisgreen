@@ -1,9 +1,12 @@
 """Futures: contract months, last trading days, rolls, continuous series and a daily simulator.
 
-Contract terms come from config/futures_contracts.yaml and are marked unverified until checked
-against CME. Business days use the US holiday list in config/markets.yaml, which covers only the
-years it lists. A date outside those years is refused instead of guessed. No futures price is
-fetched: settlement series come from files you upload. Results are daily approximations.
+Contract terms come from config/futures_contracts.yaml. Each field is an estimate until checked
+against CME. The contract size (multiplier) is also cross-checked against the CFTC's own record of
+it, and the simulator trades only a product whose size is confirmed one of those two ways.
+Calendar results (contract to hold, roll, last trading day) are estimates from CME's published
+rules until those rules are checked. Business days use the US holiday list in config/markets.yaml,
+which covers only the years it lists; a date outside them is refused instead of guessed. No futures
+price is fetched: settlement series come from files you upload. Results are daily approximations.
 """
 from __future__ import annotations
 
@@ -23,7 +26,8 @@ from .options import Check
 
 PATH = Path(__file__).resolve().parents[2] / "config" / "futures_contracts.yaml"
 MONTH_CODES = "FGHJKMNQUVXZ"
-SIM_LABEL = "Daily simulation on uploaded settlement prices. Contract terms not yet checked against CME. No broker was involved"
+SIM_LABEL = "Daily simulation on uploaded settlement prices. Calendar and tick terms are estimates until checked against CME. No broker was involved"
+TERM_FIELDS = ("multiplier", "tick_size", "months", "last_trade_rule", "first_notice_rule", "settlement")
 
 
 class CalendarGapError(LookupError):
@@ -49,13 +53,65 @@ class Product:
     cftc_code: str
     cot_dataset: str
     source: str
-    verified: bool
+    cftc_size_factor: float
+    checked_against_cme: dict
+
+    @property
+    def verified(self) -> bool:
+        """Every term checked against CME."""
+        return all(self.checked_against_cme.get(k) for k in TERM_FIELDS)
+
+    @property
+    def calendar_checked(self) -> bool:
+        return all(self.checked_against_cme.get(k) for k in ("months", "last_trade_rule", "first_notice_rule"))
 
 
 @lru_cache(maxsize=1)
 def products() -> dict[str, Product]:
     raw = yaml.safe_load(PATH.read_text())["products"]
     return {k: Product(code=k, **{**v, "months": tuple(v["months"])}) for k, v in raw.items()}
+
+
+def cftc_size(contract_units: str) -> Optional[float]:
+    """The contract size in a CFTC record: the dollar amount where one is given ('$50 X S&P 500 INDEX',
+    'NASDAQ 100 STOCK INDEX X $20', '$100,000 FACE VALUE'), otherwise the first number ('1,000 BARRELS')."""
+    import re
+    m = re.search(r"\$\s*([\d,]+(?:\.\d+)?)", contract_units) or re.search(r"([\d,]+(?:\.\d+)?)", contract_units)
+    return float(m.group(1).replace(",", "")) if m else None
+
+
+@dataclass(frozen=True)
+class TermStatus:
+    field: str
+    value: object
+    status: str   # checked (against CME), cross_checked (against the CFTC), mismatch, estimated
+    note: str
+
+
+def term_status(code: str, cftc_units: Optional[str] = None) -> list[TermStatus]:
+    """How far each contract term can be trusted. Only checked and cross_checked are authoritative."""
+    p = products()[code]
+    out = []
+    for f in TERM_FIELDS:
+        value = getattr(p, f)
+        when = p.checked_against_cme.get(f)
+        if when:
+            out.append(TermStatus(f, value, "checked", f"Checked against CME on {when}"))
+            continue
+        if f == "multiplier" and cftc_units:
+            size = cftc_size(cftc_units)
+            implied = None if size is None else size * p.cftc_size_factor
+            if implied is not None and abs(implied - p.multiplier) < 1e-9:
+                out.append(TermStatus(f, value, "cross_checked", f"Matches the CFTC contract size {cftc_units.strip('()')}"))
+            else:
+                out.append(TermStatus(f, value, "mismatch", f"Does not match the CFTC contract size {cftc_units.strip('()')}"))
+            continue
+        out.append(TermStatus(f, value, "estimated", "From CME's published specification, not yet checked against CME"))
+    return out
+
+
+def multiplier_confirmed(code: str, cftc_units: Optional[str] = None) -> bool:
+    return next(t for t in term_status(code, cftc_units) if t.field == "multiplier").status in ("checked", "cross_checked")
 
 
 @lru_cache(maxsize=1)
@@ -210,14 +266,16 @@ class FuturesSimulator:
     position is closed at that day's settlement."""
     cfg: FuturesConfig
     cash: float
+    confirmed: frozenset = frozenset()   # products whose contract size is checked against CME or the CFTC
     positions: dict[str, int] = field(default_factory=dict)
     last_settle: dict[str, float] = field(default_factory=dict)
     events: list = field(default_factory=list)
 
     def check(self, code: str, contracts: int, settle: float, initial_margin: Optional[float], equity: float) -> list[Check]:
         prod = products()[parse_code(code)[0]]
-        out = [Check("terms_verified", True, "Contract terms checked against CME" if prod.verified
-                     else "Contract terms not yet checked against CME. Results are labeled")]
+        ok = prod.code in self.confirmed
+        out = [Check("multiplier_confirmed", ok, f"Contract size {prod.multiplier:g} USD per point "
+                     + ("confirmed" if ok else "not confirmed against CME or the CFTC, so profit and loss cannot be trusted"))]
         if initial_margin is None:
             return out + [Check("margin_known", False, "Margin requirement NOT AVAILABLE. Enter the current CME margin for this contract")]
         held = self.positions.get(code, 0) + contracts

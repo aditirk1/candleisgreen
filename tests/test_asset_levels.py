@@ -71,7 +71,12 @@ def test_strategy_and_model_endpoints(tmp_path):
 def test_settlement_upload_builds_a_continuous_series(tmp_path):
     api = TestClient(create_app(tmp_path, "http://127.0.0.1:9", load_config(), clock=lambda: EXEC_NOW.replace(year=2026, month=12, day=20)))
     text = "date,contract,settle\n2026-12-08,ESZ26,6000\n2026-12-08,ESH27,6050\n2026-12-11,ESZ26,6030\n2026-12-11,ESH27,6080\n2026-12-14,ESH27,6090\n"
-    assert api.post("/api/assets/futures/settlements", json={"text": text}).json()["stored"] == 5
+    good = {"text": text, "source": "CME Daily Bulletin, downloaded by hand", "license_confirmed": True}
+    assert api.post("/api/assets/futures/settlements", json={**good, "license_confirmed": False}).status_code == 400
+    assert api.post("/api/assets/futures/settlements", json={**good, "source": ""}).status_code == 400
+    assert api.post("/api/assets/futures/settlements", json=good).json()["stored"] == 5
     out = api.get("/api/assets/futures/continuous", params={"product": "ES"}).json()
-    assert out["status"] == "OK" and out["points"][0]["adjusted"] == 6050
-    assert api.post("/api/assets/futures/settlements", json={"text": "date,contract,settle\nx,ESZ26,1\n"}).status_code == 400
+    assert out["status"] == "OK" and out["points"][0]["adjusted"] == 6050 and out["rolls_estimated"] and "estimates" in out["label"]
+    for bad in ("date,contract,settle\nx,ESZ26,1\n", "date,contract,settle\n2026-12-08,ESZ26,-5\n",
+                "date,contract,settle\n2026-12-25,ESZ26,6000\n", "date,contract,settle\n2026-12-08,ESZ26,6000\n2026-12-08,ESZ26,6001\n"):
+        assert api.post("/api/assets/futures/settlements", json={**good, "text": bad}).status_code == 400, bad

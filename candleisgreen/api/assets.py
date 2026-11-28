@@ -51,6 +51,8 @@ class CryptoOrderBody(BaseModel):
 
 class SettlementBody(BaseModel):
     text: str
+    source: str = ""
+    license_confirmed: bool = False
 
 
 def _bars_json(bars) -> list[dict]:
@@ -216,15 +218,19 @@ def build(workdir: Path, cfg: AppConfig, clock) -> APIRouter:
         today = now.date()
         out = []
         for code, p in fu.products().items():
+            reports = store.reports(p.cot_dataset, p.cftc_code, now)
+            units = reports[-1][1].get("contract_units") if reports else None
+            terms = fu.term_status(code, units)
             row = {"code": code, "name": p.name, "exchange": p.exchange, "multiplier": p.multiplier, "tick_size": p.tick_size,
-                   "tick_value_usd": p.tick_value_usd, "settlement": p.settlement, "verified": p.verified, "source": p.source}
+                   "tick_value_usd": p.tick_value_usd, "settlement": p.settlement, "verified": p.verified, "source": p.source,
+                   "calendar_estimated": not p.calendar_checked,
+                   "terms": [{"field": t.field, "status": t.status, "note": t.note} for t in terms]}
             try:
                 front, roll = fu.front_contract(code, today, cfg.assets.futures)
                 _, y, m = fu.parse_code(front)
                 row |= {"front": front, "roll_date": roll.isoformat(), "last_trade": fu.last_trade_day(code, y, m).isoformat()}
             except fu.CalendarGapError as exc:
                 row |= {"front": None, "calendar_reason": str(exc)}
-            reports = store.reports(p.cot_dataset, p.cftc_code, now)
             if reports:
                 rep, body, usable = reports[-1]
                 oi, groups = positioning(body, p.cot_dataset)
@@ -251,8 +257,11 @@ def build(workdir: Path, cfg: AppConfig, clock) -> APIRouter:
 
     @r.post("/api/assets/futures/settlements")
     def settlements(body: SettlementBody):
+        from ..markets.service import SettlementUploadError
         try:
-            return load_settlements(store, body.text, clock())
+            return load_settlements(store, body.text, clock(), body.source, body.license_confirmed)
+        except SettlementUploadError as exc:
+            raise HTTPException(400, str(exc))
         except (ValueError, KeyError, fu.UnknownContractError) as exc:
             raise HTTPException(400, f"Could not read the file: {exc}. Columns needed: date, contract, settle")
 
@@ -269,7 +278,9 @@ def build(workdir: Path, cfg: AppConfig, clock) -> APIRouter:
             pts = fu.continuous(product.upper(), series, cfg.assets.futures, method)
         except fu.CalendarGapError as exc:
             return {"status": "NOT AVAILABLE", "reason": str(exc)}
-        return {"status": "OK", "method": method or cfg.assets.futures.continuous_method, "label": fu.SIM_LABEL,
+        estimated = not fu.products()[product.upper()].calendar_checked
+        label = ("Roll dates are estimates from CME's published rules, not yet checked against CME. " if estimated else "") + fu.SIM_LABEL
+        return {"status": "OK", "method": method or cfg.assets.futures.continuous_method, "label": label, "rolls_estimated": estimated,
                 "points": [{"date": p.day.isoformat(), "contract": p.contract, "raw": p.raw, "adjusted": p.adjusted, "rolled": p.rolled} for p in pts]}
 
     return r

@@ -52,6 +52,28 @@ def first_usable_at(rep: date, ingested_at: datetime, cfg: FuturesConfig) -> dat
     return conservative
 
 
+class InvalidReportError(ValueError):
+    pass
+
+
+def validate(row: dict, dataset: str, market_code: str) -> date:
+    """A row is kept only if it is the futures-only report for the market asked for, with a readable
+    date, a non-negative open interest and every trader-group field the report type should carry."""
+    if row.get("cftc_contract_market_code") != market_code:
+        raise InvalidReportError(f"market code {row.get('cftc_contract_market_code')} is not {market_code}")
+    if row.get("futonly_or_combined") != "FutOnly":
+        raise InvalidReportError("not a futures-only report")
+    rep = report_date(row)
+    if rep.weekday() != 1:
+        raise InvalidReportError(f"report date {rep} is not a Tuesday")
+    if int(float(row["open_interest_all"])) < 0:
+        raise InvalidReportError("negative open interest")
+    missing = [f for _, lf, sf in GROUPS[dataset] for f in (lf, sf) if row.get(f) in (None, "")]
+    if missing:
+        raise InvalidReportError(f"missing fields {', '.join(missing)}")
+    return rep
+
+
 def fetch(transport, dataset: str, market_code: str, since: Optional[date] = None, limit: int = 1000) -> list[dict]:
     where = f"cftc_contract_market_code='{market_code}'" + (f" AND report_date_as_yyyy_mm_dd >= '{since.isoformat()}T00:00:00'" if since else "")
     return transport.get(BASE, f"/resource/{DATASETS[dataset]}.json",

@@ -1,11 +1,13 @@
-# Futures contract terms. External facts from CME Group contract specification pages.
-# cmegroup.com did not answer automated requests on 2026-11-28, so none of these values were
-# checked against the exchange that day. Each product is marked verified: false and every
-# result built on it says so. Read the linked page and set verified: true with the date.
-# Margins are not listed: CME publishes them, they change often, and they could not be read.
-# The simulator asks for the current margin instead of assuming one.
-registry_version: "1.0.0"
-checked_on: null
+# Futures contract terms, from CME Group's published contract specifications.
+# cmegroup.com did not answer automated requests on 2026-11-28 (two tries), so nothing here was
+# checked against CME. Each field records when it was checked against the linked CME page
+# (`checked_against_cme`, a date or null). Until then a field is an estimate:
+# - multiplier: also cross-checked automatically against the contract size in the CFTC's own
+#   Commitments of Traders records. `cftc_size_factor` turns the CFTC size into dollars per point.
+# - tick size, contract months, last trading and first notice rules, settlement: estimates only.
+# Results that depend on an estimate say so. Margins are not listed: they change often and could
+# not be read, so the simulator asks for the current margin.
+registry_version: "1.1.0"
 products:
   ES:
     name: E-mini S&P 500
@@ -20,7 +22,8 @@ products:
     cftc_code: "13874A"
     cot_dataset: tff
     source: https://www.cmegroup.com/markets/equities/sp/e-mini-sandp500.contractSpecs.html
-    verified: false
+    cftc_size_factor: 1
+    checked_against_cme: {multiplier: null, tick_size: null, months: null, last_trade_rule: null, first_notice_rule: null, settlement: null}
   NQ:
     name: E-mini Nasdaq-100
     exchange: CME
@@ -34,7 +37,8 @@ products:
     cftc_code: "209742"
     cot_dataset: tff
     source: https://www.cmegroup.com/markets/equities/nasdaq/e-mini-nasdaq-100.contractSpecs.html
-    verified: false
+    cftc_size_factor: 1
+    checked_against_cme: {multiplier: null, tick_size: null, months: null, last_trade_rule: null, first_notice_rule: null, settlement: null}
   CL:
     name: WTI crude oil
     exchange: NYMEX
@@ -48,7 +52,8 @@ products:
     cftc_code: "067651"
     cot_dataset: disaggregated
     source: https://www.cmegroup.com/markets/energy/crude-oil/light-sweet-crude.contractSpecs.html
-    verified: false
+    cftc_size_factor: 1
+    checked_against_cme: {multiplier: null, tick_size: null, months: null, last_trade_rule: null, first_notice_rule: null, settlement: null}
   GC:
     name: Gold
     exchange: COMEX
@@ -62,7 +67,8 @@ products:
     cftc_code: "088691"
     cot_dataset: disaggregated
     source: https://www.cmegroup.com/markets/metals/precious/gold.contractSpecs.html
-    verified: false
+    cftc_size_factor: 1
+    checked_against_cme: {multiplier: null, tick_size: null, months: null, last_trade_rule: null, first_notice_rule: null, settlement: null}
   ZN:
     name: 10-Year US Treasury Note
     exchange: CBOT
@@ -76,4 +82,6 @@ products:
     cftc_code: "043602"
     cot_dataset: tff
     source: https://www.cmegroup.com/markets/interest-rates/us-treasury/10-year-us-treasury-note.contractSpecs.html
-    verified: false
+    # CFTC states 100,000 USD face value. Prices are in points of par, so one point is 1% of face.
+    cftc_size_factor: 0.01
+    checked_against_cme: {multiplier: null, tick_size: null, months: null, last_trade_rule: null, first_notice_rule: null, settlement: null}
